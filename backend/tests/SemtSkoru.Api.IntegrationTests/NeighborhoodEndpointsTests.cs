@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using NetTopologySuite.IO.Converters;
 using SemtSkoru.Api.Endpoints;
 using SemtSkoru.Domain;
 using SemtSkoru.Infrastructure.Persistence;
@@ -43,6 +45,13 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
         return new AppDbContext(options);
     }
 
+    // NeighborhoodSummaryDto.Boundary is an abstract NTS Geometry; a client that wants it back
+    // needs the same GeoJSON converter the Api registers server-side (Program.cs).
+    private static readonly JsonSerializerOptions GeoJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new GeoJsonConverterFactory() },
+    };
+
     private static DataSourceMetadata TestSource(DateTimeOffset at) => new(
         SourceName: "Test Source",
         SourceUrl: "https://example.test",
@@ -60,15 +69,18 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
         var response = await client.GetAsync("/api/neighborhoods");
 
         response.EnsureSuccessStatusCode();
-        var neighborhoods = await response.Content.ReadFromJsonAsync<List<NeighborhoodSummaryDto>>();
+        var neighborhoods = await response.Content.ReadFromJsonAsync<List<NeighborhoodSummaryDto>>(GeoJsonOptions);
         Assert.NotNull(neighborhoods);
         Assert.Equal(3, neighborhoods.Count);
-        Assert.Contains(neighborhoods, n => n.Id == "kadikoy" && n.Name == "Kadıköy");
+        var kadikoy = Assert.Single(neighborhoods, n => n.Id == "kadikoy" && n.Name == "Kadıköy");
+        Assert.True(kadikoy.Boundary.IsValid);
+        Assert.True(kadikoy.Boundary.Area > 0);
     }
 
     [Fact]
     public async Task GetScore_returns_computed_dimension_scores_for_a_known_district_with_partial_data()
     {
+        var publishedAt = DateTimeOffset.UtcNow;
         await using (var context = CreateContext())
         {
             context.AirQualityReadings.Add(new AirQualityReading
@@ -76,7 +88,7 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
                 NeighborhoodId = "kadikoy",
                 AqiIndex = 0,
                 ReadingTime = DateTimeOffset.UtcNow,
-                Source = TestSource(DateTimeOffset.UtcNow),
+                Source = TestSource(publishedAt),
             });
             await context.SaveChangesAsync();
         }
@@ -91,7 +103,10 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
         Assert.Equal("kadikoy", score.NeighborhoodId);
         Assert.Equal(100, score.AirQuality.Score);
         Assert.Equal("Fresh", score.AirQuality.Freshness);
+        Assert.Equal("Test Source", score.AirQuality.SourceName);
+        Assert.Equal(publishedAt, score.AirQuality.PublishedAt);
         Assert.Null(score.GreenSpace.Score);
+        Assert.Null(score.GreenSpace.SourceName);
         Assert.False(score.IsComplete);
     }
 

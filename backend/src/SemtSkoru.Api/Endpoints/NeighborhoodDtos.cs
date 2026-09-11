@@ -1,13 +1,14 @@
+using NetTopologySuite.Geometries;
 using SemtSkoru.Application.Scoring;
 
 namespace SemtSkoru.Api.Endpoints;
 
-public sealed record NeighborhoodSummaryDto(string Id, string Name);
+public sealed record NeighborhoodSummaryDto(string Id, string Name, Geometry Boundary);
 
-public sealed record DimensionScoreDto(int? Score, string? Freshness)
+public sealed record DimensionScoreDto(int? Score, string? Freshness, string? SourceName, DateTimeOffset? PublishedAt)
 {
     public static DimensionScoreDto From(DimensionScore dimension) =>
-        new(dimension.Value?.Value, dimension.Freshness?.ToString());
+        new(dimension.Value?.Value, dimension.Freshness?.ToString(), dimension.SourceName, dimension.PublishedAt);
 }
 
 public sealed record NeighborhoodComparisonDto(NeighborhoodScoreDto A, NeighborhoodScoreDto B);

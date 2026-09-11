@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
+using NetTopologySuite.IO.Converters;
 using Scalar.AspNetCore;
 using SemtSkoru.Api.Endpoints;
 using SemtSkoru.Application.Scoring;
@@ -13,7 +14,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
 
+// Frontend (Next.js) and backend run on different ports/origins in dev; without this,
+// every browser fetch from web/ silently fails CORS (curl/jsdom tests never surfaced it --
+// they don't enforce CORS -- only a real browser hitting the real API does).
+var corsOrigin = builder.Configuration["Cors:FrontendOrigin"] ?? "http://localhost:3000";
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+    policy.WithOrigins(corsOrigin).AllowAnyHeader().AllowAnyMethod()));
+
 builder.Services.AddOpenApi();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new GeoJsonConverterFactory()));
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.UseNetTopologySuite()));
 
@@ -45,6 +55,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors();
 
 app.MapNeighborhoodEndpoints();
 

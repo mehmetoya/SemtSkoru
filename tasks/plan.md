@@ -58,16 +58,16 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 - [ ] Integration testler (WebApplicationFactory) geçiyor
 
 ### Phase 6: Frontend (Dikey dilim: kullanıcı arayabiliyor ve karşılaştırabiliyor)
-- [ ] Task 13: API client + TanStack Query hook'ları (mocked API ile component testleri)
-- [ ] Task 14: Mahalle arama/seçme + tekil skor kartı sayfası
-- [ ] Task 15: İki mahalle karşılaştırma görünümü + MapLibre harita (mahalle sınırları)
-- [ ] Task 16: Playwright e2e — arama → iki mahalle seç → karşılaştırmayı gör
+- [x] Task 13: API client + TanStack Query hook'ları (mocked API ile component testleri)
+- [x] Task 14: Mahalle arama/seçme + tekil skor kartı sayfası
+- [x] Task 15: İki mahalle karşılaştırma görünümü + MapLibre harita (mahalle sınırları)
+- [x] Task 16: Playwright e2e — arama → iki mahalle seç → karşılaştırmayı gör
 
 ### Checkpoint: End-to-End
 - [ ] Backend+frontend birlikte çalışırken tam kullanıcı akışı manuel doğrulanıyor
 
 ### Phase 7: Yayına Hazırlık
-- [ ] Task 17: "Bayat veri" uyarı rozeti (7 günden eski kaynak için)
+- [x] Task 17: "Bayat veri" uyarı rozeti (7 günden eski kaynak için)
 - [ ] Task 18: README (kurulum, docker-compose ile 5 dakikada çalıştırma), LICENSE (MIT — onay bekliyor)
 - [ ] Task 19: CI (GitHub Actions): dotnet build/test, npm build/test/lint
 

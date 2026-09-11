@@ -12,7 +12,7 @@ public static class NeighborhoodEndpoints
         {
             var neighborhoods = await db.Neighborhoods
                 .OrderBy(n => n.Name)
-                .Select(n => new NeighborhoodSummaryDto(n.Id, n.Name))
+                .Select(n => new NeighborhoodSummaryDto(n.Id, n.Name, n.Boundary))
                 .ToListAsync(ct);
 
             return Results.Ok(neighborhoods);

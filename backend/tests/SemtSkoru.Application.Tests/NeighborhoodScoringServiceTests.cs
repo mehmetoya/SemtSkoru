@@ -47,6 +47,8 @@ public class NeighborhoodScoringServiceTests
         Assert.Equal(100, result.GreenSpace.Value!.Value.Value);
         Assert.Equal(100, result.Transportation.Value!.Value.Value);
         Assert.Equal(94, result.Overall!.Value.Value); // round(94.33) == 94
+        Assert.Equal("İBB Hava Kalitesi", result.AirQuality.SourceName);
+        Assert.Equal(Now, result.AirQuality.PublishedAt);
     }
 
     [Fact]
@@ -66,6 +68,8 @@ public class NeighborhoodScoringServiceTests
         Assert.False(result.GreenSpace.HasData);
         Assert.Null(result.GreenSpace.Value);
         Assert.Null(result.GreenSpace.Freshness);
+        Assert.Null(result.GreenSpace.SourceName);
+        Assert.Null(result.GreenSpace.PublishedAt);
         Assert.Equal(100, result.Overall!.Value.Value); // average of the two available dimensions
     }
 
