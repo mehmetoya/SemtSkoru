@@ -1,16 +1,18 @@
-# Spec: SemtSkoru — İstanbul Mahalle Yaşam Skoru
+# Spec: SemtSkoru — İstanbul İlçe Yaşam Skoru
 
 ## Objective
 
-**Ne yapıyoruz:** İstanbul'daki bir mahallenin ulaşım, hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu açısından yaşanabilirliğini açık belediye/kamu verisinden hesaplayıp 0-100 arası skorlarla gösteren, iki mahalleyi yan yana karşılaştırabilen açık kaynak bir web uygulaması.
+**Ne yapıyoruz:** İstanbul'daki bir ilçenin ulaşım, hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu açısından yaşanabilirliğini açık belediye/kamu verisinden hesaplayıp 0-100 arası skorlarla gösteren, iki ilçeyi yan yana karşılaştırabilen açık kaynak bir web uygulaması.
 
-**Neden:** Mevcut açık veri projeleri (örn. otoparkadresi.com) veriyi haritada gösterir ama bir karara dönüştürmez. SemtSkoru "Nereye taşınmalıyım / hangi mahalle daha uygun?" sorusuna doğrudan cevap verir.
+**Neden:** Mevcut açık veri projeleri (örn. otoparkadresi.com) veriyi haritada gösterir ama bir karara dönüştürmez. SemtSkoru "Nereye taşınmalıyım / hangi ilçe daha uygun?" sorusuna doğrudan cevap verir.
 
 **Hedef kullanıcılar:** İstanbul'da ev arayanlar, şehre yeni taşınanlar, uzaktan çalışanlar, öğrenciler/aileler, emlak profesyonelleri.
 
-**Tek cümlelik vaat:** "İstanbul'da bir mahallenin ulaşım, hava kalitesi ve yeşil alan koşullarını tek ekranda karşılaştır."
+**Tek cümlelik vaat:** "İstanbul'da bir ilçenin ulaşım, hava kalitesi ve yeşil alan koşullarını tek ekranda karşılaştır."
 
-**Kapsam dışı (v1):** Türkiye geneli (yalnızca İstanbul'da başlanacak), profil bazlı ağırlıklandırma (uzaktan çalışan/aile/öğrenci vb.), günlük yaşam/amenities skoru, kullanıcı hesapları, 3 mahalle dışına çıkmak.
+**Kapsam dışı (v1):** Türkiye geneli (yalnızca İstanbul'da başlanacak), profil bazlı ağırlıklandırma (uzaktan çalışan/aile/öğrenci vb.), günlük yaşam/amenities skoru, kullanıcı hesapları, 3 ilçe dışına çıkmak.
+
+**Terminoloji notu (Task 4'te düzeltildi):** İlk taslakta Kadıköy/Üsküdar/Beşiktaş "mahalle" olarak anılıyordu; bunlar aslında birer **ilçe** (her biri onlarca resmi mahalle içerir). Task 4 araştırmasında İBB'nin hava kalitesi istasyonlarının da tam bu ilçe adlarıyla eşleştiği görüldü, bu yüzden kullanıcı onayıyla karşılaştırma birimi ilçe olarak netleştirildi. Kod tabanındaki `Neighborhood` tipi adı değiştirilmedi (İngilizce'de "neighborhood" bu ölçekte de doğal kullanım) — sadece Türkçe ürün metni düzeltildi.
 
 ## Tech Stack
 
@@ -18,7 +20,7 @@
 - PostgreSQL + PostGIS (coğrafi veri ve mesafe sorguları)
 - Entity Framework Core
 - Hangfire (zamanlanmış veri çekme/senkronizasyon işleri)
-- Redis (skor ve mahalle sorgu önbelleği)
+- Redis (skor ve ilçe sorgu önbelleği)
 - NetTopologySuite (mesafe/coğrafi hesaplamalar)
 - OpenTelemetry (izlenebilirlik/observability)
 - Swagger / Scalar (API dokümantasyonu)
@@ -61,7 +63,7 @@ Lint:    npm run lint --fix
     SemtSkoru.Application.Tests/
     SemtSkoru.Api.IntegrationTests/
 /web
-  app/            → Next.js App Router sayfaları (mahalle arama, karşılaştırma, mahalle detay)
+  app/            → Next.js App Router sayfaları (ilçe arama, karşılaştırma, ilçe detay)
   components/
   lib/            → API client, TanStack Query hook'ları
   tests/
@@ -104,29 +106,30 @@ export function NeighborhoodScoreCard({ neighborhoodId }: { neighborhoodId: stri
 ## Testing Strategy
 
 - **Backend:** xUnit. Domain/Application mantığı (skor formülleri, mesafe hesapları) → unit test. Infrastructure/Api → Testcontainers ile gerçek Postgres'e karşı integration test.
-- **Frontend:** Vitest + React Testing Library (bileşen/hook), Playwright (kritik yol: iki mahalleyi karşılaştırma akışı, e2e).
+- **Frontend:** Vitest + React Testing Library (bileşen/hook), Playwright (kritik yol: iki ilçeyi karşılaştırma akışı, e2e).
 - Test pyramid ve red-green-refactor döngüsü için proje genelinde `.claude/skills/test-driven-development` esas alınır.
 - Coverage eşiği henüz belirlenmedi — `/constraints` komutuyla ayrıca netleştirilecek.
 
 ## Boundaries
 
 - **Always:** Her veri kaydında kaynak adı/lisans/son güncelleme tarihi metadata'sını tut ve bunu kullanıcıya UI'da göster; dış API'leri yalnızca backend ingestion katmanından çağır; bir veri kaynağı 7 günden uzun süredir güncellenmemişse UI'da "bayat veri" uyarısı göster.
-- **Ask first:** Ücretli/limitli üçüncü taraf servis eklemeden önce (harita tile sağlayıcı, hosting, vb.); veritabanı şema değişiklikleri; 3 mahalle sınırını genişletmeden önce; v2 kapsamına (profil ağırlıklandırma, amenities skoru, Türkiye geneli) başlamadan önce.
+- **Ask first:** Ücretli/limitli üçüncü taraf servis eklemeden önce (harita tile sağlayıcı, hosting, vb.); veritabanı şema değişiklikleri; 3 ilçe sınırını genişletmeden önce; v2 kapsamına (profil ağırlıklandırma, amenities skoru, Türkiye geneli) başlamadan önce.
 - **Never:** Kullanıcı hesabı/PII toplama (MVP'de yok); lisans/kullanım şartı doğrulanmamış bir veri kaynağını entegre etme; kaynağın kendisi garanti etmiyorsa veriyi "canlı/gerçek zamanlı" diye sunma.
 
 ## Success Criteria
 
-- Kullanıcı Kadıköy, Üsküdar, Beşiktaş arasından bir mahalle arayıp Ulaşım / Yeşil Alan / Hava Kalitesi skorlarını (0-100) görebilir.
-- Kullanıcı iki mahalleyi yan yana karşılaştırabilir.
+- Kullanıcı Kadıköy, Üsküdar, Beşiktaş arasından bir ilçe arayıp Ulaşım / Yeşil Alan / Hava Kalitesi skorlarını (0-100) görebilir.
+- Kullanıcı iki ilçeyi yan yana karşılaştırabilir.
 - Her skor kartında veri kaynağı adı ve son güncelleme tarihi görünür.
 - Ingestion job'ları günde en az bir kez çalışır; veri tazeliği izlenir ve bayat veri UI'da işaretlenir.
 - Proje MIT lisansıyla, README ile GitHub'da açık kaynak olarak yayına hazırdır.
 
 ## Open Questions
 
-1. İBB Açık Veri Portalı'ndaki hava kalitesi / yeşil alan / trafik veri setlerinin tam API endpoint'leri, kimlik doğrulama, rate limit ve lisans şartları henüz doğrulanmadı. DataIngestion modülüne başlamadan önce ayrı bir araştırma (spike) görevi gerekiyor — uydurma endpoint kullanılmayacak.
-2. Trafik veri setinin gerçek zamanlılığı belirsiz (kaynağın kendi açıklamasında ileride güncelleneceği belirtiliyor). "Trafik sakinliği" skorunu statik/günlük ortalama mı yapacağız, yoksa bu netleşene kadar v1 kapsamı dışında mı bırakacağız — spike sonrasında karar verilecek.
+1. ~~İBB Açık Veri Portalı'ndaki hava kalitesi / yeşil alan / trafik veri setlerinin tam API endpoint'leri...~~ **Çözüldü (Task 4).** Bkz. `docs/data-sources.md`. Hava kalitesi: canlı, kimlik doğrulama gerektirmiyor. Yeşil alan: GeoJSON, yıllık güncelleniyor. Trafik: sadece geçmiş (Ocak 2025) veri ilçe ayrımı yapabiliyor, canlı API tek bir İstanbul-geneli sayı veriyor.
+2. ~~Trafik veri setinin gerçek zamanlılığı belirsiz...~~ **Çözüldü (Task 4).** Kullanıcı onayıyla: Ocak 2025 tarihsel geohash verisi kullanılacak, UI'da "canlı değil, Ocak 2025 tarihsel ortalaması" olarak açıkça etiketlenecek.
 3. Barındırma/altyapı seçimi (Docker Compose ile self-host vs. bulut) Plan aşamasında netleştirilecek.
 4. Repo lisansı MIT varsayıldı — onay bekliyor.
 5. Arayüz dili MVP'de yalnızca Türkçe varsayıldı — onay bekliyor.
 6. "SemtSkoru" adı taslak — GitHub'da yayınlamadan önce isim/alan adı çakışması kontrol edilmeli.
+7. Mahalle sınırları için resmi bir İBB veri seti bulunamadı (Task 4) — OpenStreetMap (Nominatim) ilçe sınırları kullanılacak; ODbL lisansı gereği README'de OSM atıfı yapılmalı (Task 18).

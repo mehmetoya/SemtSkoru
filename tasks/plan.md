@@ -21,23 +21,23 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 - [x] Task 3: Docker Compose (Postgres+PostGIS+Redis) + EF Core DbContext + ilk boş migration
 
 ### Checkpoint: Foundation
-- [ ] Backend `dotnet build` ve `dotnet test` temiz geçiyor
-- [ ] Frontend `npm run build` temiz geçiyor
-- [ ] `docker compose up` ile DB ayağa kalkıyor, migration uygulanıyor
+- [x] Backend `dotnet build` ve `dotnet test` temiz geçiyor
+- [x] Frontend `npm run build` temiz geçiyor
+- [x] `docker compose up` ile DB ayağa kalkıyor, migration uygulanıyor
 
 ### Phase 2: Veri Kaynağı Doğrulama (Spike — kod değil, araştırma)
-- [ ] Task 4: Hava kalitesi / yeşil alan / trafik / mahalle sınırı için gerçek API endpoint, auth, format, lisans, güncellik doğrulaması — `docs/data-sources.md`
+- [x] Task 4: Hava kalitesi / yeşil alan / trafik / ilçe sınırı için gerçek API endpoint, auth, format, lisans, güncellik doğrulaması — `docs/data-sources.md`
 
 ### Checkpoint: Data Sources
-- [ ] Her veri boyutu için ya doğrulanmış bir kaynak ya da açıkça işaretlenmiş bir fallback var
-- [ ] SPEC.md Open Question #1 ve #2 kapatıldı veya bilinçli olarak ertelendi (insan onayı ile)
+- [x] Her veri boyutu için ya doğrulanmış bir kaynak ya da açıkça işaretlenmiş bir fallback var
+- [x] SPEC.md Open Question #1 ve #2 kapatıldı (insan onayı ile)
 
-### Phase 3: Domain + Veritabanı (Dikey dilim: 3 mahalle DB'de sorgulanabilir)
-- [ ] Task 5: Domain entity/value object'leri (Neighborhood, DataSourceMetadata, Score) + unit testler
-- [ ] Task 6: EF Core migration (PostGIS geometry dahil) + 3 mahalle için seed data
+### Phase 3: Domain + Veritabanı (Dikey dilim: 3 ilçe DB'de sorgulanabilir)
+- [x] Task 5: Domain entity/value object'leri (Neighborhood, DataSourceMetadata, Score) + unit testler
+- [x] Task 6: EF Core migration (PostGIS geometry dahil) + 3 ilçe için seed data
 
 ### Checkpoint: Domain
-- [ ] 3 mahalle repository üzerinden sorgulanabiliyor (integration test)
+- [x] 3 ilçe repository üzerinden sorgulanabiliyor (Testcontainers integration test)
 
 ### Phase 4: Ingestion (Dikey dilim: ham veri DB'de, kaynak metadata'sıyla)
 - [ ] Task 7: Hava kalitesi ingestion job'ı (Hangfire) + normalize + metadata
