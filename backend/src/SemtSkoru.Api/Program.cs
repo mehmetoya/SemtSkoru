@@ -1,9 +1,13 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
+using SemtSkoru.Api.Endpoints;
+using SemtSkoru.Application.Scoring;
 using SemtSkoru.Infrastructure.ExternalApis;
 using SemtSkoru.Infrastructure.Ingestion;
 using SemtSkoru.Infrastructure.Persistence;
+using SemtSkoru.Infrastructure.Scoring;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +29,9 @@ builder.Services.AddScoped<GreenSpaceIngestionJob>();
 builder.Services.AddHttpClient<ITrafficDataClient, TrafficDataClient>(c => c.Timeout = TimeSpan.FromMinutes(5));
 builder.Services.AddScoped<TrafficIngestionJob>();
 
+builder.Services.AddScoped<INeighborhoodScoringRepository, NeighborhoodScoringRepository>();
+builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringService>();
+
 builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
 builder.Services.AddHangfireServer();
@@ -34,9 +41,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
+
+app.MapNeighborhoodEndpoints();
 
 var recurringJobs = app.Services.GetRequiredService<IRecurringJobManager>();
 

@@ -49,9 +49,9 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 - [x] Testler gerçek dış API'ye değil, sahte/mock kaynağa karşı çalışıyor
 
 ### Phase 5: Scoring + API (Dikey dilim: bir mahallenin tam skoru API'den alınabiliyor)
-- [ ] Task 10: Scoring servisi (0-100 formülleri, eksik/bayat veri davranışı) + unit testler
-- [ ] Task 11: `GET /api/neighborhoods`, `GET /api/neighborhoods/{id}/score` + Swagger/Scalar
-- [ ] Task 12: `GET /api/neighborhoods/compare?a=&b=`
+- [x] Task 10: Scoring servisi (0-100 formülleri, eksik/bayat veri davranışı) + unit testler
+- [x] Task 11: `GET /api/neighborhoods`, `GET /api/neighborhoods/{id}/score` + Swagger/Scalar
+- [x] Task 12: `GET /api/neighborhoods/compare?a=&b=`
 
 ### Checkpoint: Backend API
 - [ ] Swagger üzerinden 3 mahallenin gerçek skorları görüntülenebiliyor
