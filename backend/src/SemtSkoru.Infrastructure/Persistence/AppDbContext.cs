@@ -6,6 +6,9 @@ namespace SemtSkoru.Infrastructure.Persistence;
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Neighborhood> Neighborhoods => Set<Neighborhood>();
+    public DbSet<AirQualityReading> AirQualityReadings => Set<AirQualityReading>();
+    public DbSet<GreenSpaceReading> GreenSpaceReadings => Set<GreenSpaceReading>();
+    public DbSet<TrafficReading> TrafficReadings => Set<TrafficReading>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

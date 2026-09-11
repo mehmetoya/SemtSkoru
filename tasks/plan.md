@@ -40,13 +40,13 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 - [x] 3 ilçe repository üzerinden sorgulanabiliyor (Testcontainers integration test)
 
 ### Phase 4: Ingestion (Dikey dilim: ham veri DB'de, kaynak metadata'sıyla)
-- [ ] Task 7: Hava kalitesi ingestion job'ı (Hangfire) + normalize + metadata
-- [ ] Task 8: Yeşil alan/park erişimi ingestion + PostGIS mesafe hesabı
-- [ ] Task 9: Trafik yoğunluğu ingestion (Task 4 kararına göre canlı veya fallback statik)
+- [x] Task 7: Hava kalitesi ingestion job'ı (Hangfire) + normalize + metadata
+- [x] Task 8: Yeşil alan/park erişimi ingestion + mesafe hesabı (Haversine)
+- [x] Task 9: Trafik yoğunluğu ingestion (statik fallback — Ocak 2025, StaticSnapshot/Historical)
 
 ### Checkpoint: Ingestion
-- [ ] 3 mahalle için 3 boyutta ham veri + SourceName/SourceUrl/SourceLicense/FetchedAt/PublishedAt/LastSuccessfulSyncAt/DataFreshnessStatus DB'de
-- [ ] Testler gerçek dış API'ye değil, sahte/mock kaynağa karşı çalışıyor
+- [x] 3 ilçe için 3 boyutta ham veri + SourceName/SourceUrl/SourceLicense/FetchedAt/PublishedAt/LastSuccessfulSyncAt/Cadence/DataFreshnessStatus DB'de
+- [x] Testler gerçek dış API'ye değil, sahte/mock kaynağa karşı çalışıyor
 
 ### Phase 5: Scoring + API (Dikey dilim: bir mahallenin tam skoru API'den alınabiliyor)
 - [ ] Task 10: Scoring servisi (0-100 formülleri, eksik/bayat veri davranışı) + unit testler

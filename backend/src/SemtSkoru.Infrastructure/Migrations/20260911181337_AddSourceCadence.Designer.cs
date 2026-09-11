@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using SemtSkoru.Infrastructure.Persistence;
 namespace SemtSkoru.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911181337_AddSourceCadence")]
+    partial class AddSourceCadence
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -78,23 +81,6 @@ namespace SemtSkoru.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Neighborhoods", (string)null);
-                });
-
-            modelBuilder.Entity("SemtSkoru.Domain.TrafficReading", b =>
-                {
-                    b.Property<string>("NeighborhoodId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<double>("AverageSpeedKmh")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("SampleCount")
-                        .HasColumnType("integer");
-
-                    b.HasKey("NeighborhoodId");
-
-                    b.ToTable("TrafficReadings", (string)null);
                 });
 
             modelBuilder.Entity("SemtSkoru.Domain.AirQualityReading", b =>
@@ -201,61 +187,6 @@ namespace SemtSkoru.Infrastructure.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("GreenSpaceReadingNeighborhoodId");
-                        });
-
-                    b.Navigation("Source")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("SemtSkoru.Domain.TrafficReading", b =>
-                {
-                    b.OwnsOne("SemtSkoru.Domain.DataSourceMetadata", "Source", b1 =>
-                        {
-                            b1.Property<string>("TrafficReadingNeighborhoodId")
-                                .HasColumnType("character varying(64)");
-
-                            b1.Property<string>("Cadence")
-                                .IsRequired()
-                                .HasMaxLength(20)
-                                .HasColumnType("character varying(20)")
-                                .HasColumnName("Cadence");
-
-                            b1.Property<DateTimeOffset>("FetchedAt")
-                                .HasColumnType("timestamp with time zone")
-                                .HasColumnName("FetchedAt");
-
-                            b1.Property<DateTimeOffset>("LastSuccessfulSyncAt")
-                                .HasColumnType("timestamp with time zone")
-                                .HasColumnName("LastSuccessfulSyncAt");
-
-                            b1.Property<DateTimeOffset>("PublishedAt")
-                                .HasColumnType("timestamp with time zone")
-                                .HasColumnName("PublishedAt");
-
-                            b1.Property<string>("SourceLicense")
-                                .IsRequired()
-                                .HasMaxLength(300)
-                                .HasColumnType("character varying(300)")
-                                .HasColumnName("SourceLicense");
-
-                            b1.Property<string>("SourceName")
-                                .IsRequired()
-                                .HasMaxLength(300)
-                                .HasColumnType("character varying(300)")
-                                .HasColumnName("SourceName");
-
-                            b1.Property<string>("SourceUrl")
-                                .IsRequired()
-                                .HasMaxLength(500)
-                                .HasColumnType("character varying(500)")
-                                .HasColumnName("SourceUrl");
-
-                            b1.HasKey("TrafficReadingNeighborhoodId");
-
-                            b1.ToTable("TrafficReadings");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TrafficReadingNeighborhoodId");
                         });
 
                     b.Navigation("Source")
