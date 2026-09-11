@@ -17,8 +17,8 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 
 ### Phase 1: Foundation (İskelet)
 - [x] Task 1: .NET Clean Architecture solution iskeleti (Domain/Application/Infrastructure/Api + test projeleri)
-- [ ] Task 2: Next.js + TypeScript + Tailwind app iskeleti
-- [ ] Task 3: Docker Compose (Postgres+PostGIS+Redis) + EF Core DbContext + ilk boş migration
+- [x] Task 2: Next.js + TypeScript + Tailwind app iskeleti
+- [x] Task 3: Docker Compose (Postgres+PostGIS+Redis) + EF Core DbContext + ilk boş migration
 
 ### Checkpoint: Foundation
 - [ ] Backend `dotnet build` ve `dotnet test` temiz geçiyor

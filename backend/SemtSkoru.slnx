@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SemtSkoru.Api/SemtSkoru.Api.csproj" />
+    <Project Path="src/SemtSkoru.Application/SemtSkoru.Application.csproj" />
+    <Project Path="src/SemtSkoru.Domain/SemtSkoru.Domain.csproj" />
+    <Project Path="src/SemtSkoru.Infrastructure/SemtSkoru.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SemtSkoru.Api.IntegrationTests/SemtSkoru.Api.IntegrationTests.csproj" />
+    <Project Path="tests/SemtSkoru.Application.Tests/SemtSkoru.Application.Tests.csproj" />
+    <Project Path="tests/SemtSkoru.Domain.Tests/SemtSkoru.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
