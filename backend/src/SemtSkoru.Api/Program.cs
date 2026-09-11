@@ -12,7 +12,10 @@ using SemtSkoru.Infrastructure.Scoring;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Default");
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException(
+        "ConnectionStrings:Default ayarlı değil. Yerel geliştirme için README'deki " +
+        "'dotnet user-secrets set' adımını çalıştırın.");
 
 // Frontend (Next.js) and backend run on different ports/origins in dev; without this,
 // every browser fetch from web/ silently fails CORS (curl/jsdom tests never surfaced it --

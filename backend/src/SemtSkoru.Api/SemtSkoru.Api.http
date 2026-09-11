@@ -1,6 +1,16 @@
 @SemtSkoru.Api_HostAddress = http://localhost:5169
 
-GET {{SemtSkoru.Api_HostAddress}}/weatherforecast/
+GET {{SemtSkoru.Api_HostAddress}}/api/neighborhoods
+Accept: application/json
+
+###
+
+GET {{SemtSkoru.Api_HostAddress}}/api/neighborhoods/kadikoy/score
+Accept: application/json
+
+###
+
+GET {{SemtSkoru.Api_HostAddress}}/api/neighborhoods/compare?a=kadikoy&b=uskudar
 Accept: application/json
 
 ###

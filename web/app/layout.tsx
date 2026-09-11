@@ -4,7 +4,7 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "SemtSkoru",
-  description: "İstanbul mahalle yaşam skoru ve karşılaştırma",
+  description: "İstanbul ilçe yaşam skoru ve karşılaştırma",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

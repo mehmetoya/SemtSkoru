@@ -54,8 +54,8 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 - [x] Task 12: `GET /api/neighborhoods/compare?a=&b=`
 
 ### Checkpoint: Backend API
-- [ ] Swagger üzerinden 3 mahallenin gerçek skorları görüntülenebiliyor
-- [ ] Integration testler (WebApplicationFactory) geçiyor
+- [x] Swagger üzerinden 3 mahallenin gerçek skorları görüntülenebiliyor
+- [x] Integration testler (WebApplicationFactory) geçiyor
 
 ### Phase 6: Frontend (Dikey dilim: kullanıcı arayabiliyor ve karşılaştırabiliyor)
 - [x] Task 13: API client + TanStack Query hook'ları (mocked API ile component testleri)
@@ -64,16 +64,16 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 - [x] Task 16: Playwright e2e — arama → iki mahalle seç → karşılaştırmayı gör
 
 ### Checkpoint: End-to-End
-- [ ] Backend+frontend birlikte çalışırken tam kullanıcı akışı manuel doğrulanıyor
+- [x] Backend+frontend birlikte çalışırken tam kullanıcı akışı manuel doğrulanıyor
 
 ### Phase 7: Yayına Hazırlık
 - [x] Task 17: "Bayat veri" uyarı rozeti (7 günden eski kaynak için)
-- [ ] Task 18: README (kurulum, docker-compose ile 5 dakikada çalıştırma), LICENSE (MIT — onay bekliyor)
-- [ ] Task 19: CI (GitHub Actions): dotnet build/test, npm build/test/lint
+- [x] Task 18: README (kurulum, docker-compose ile 5 dakikada çalıştırma), LICENSE (MIT)
+- [x] Task 19: CI (GitHub Actions): dotnet build/test, npm build/test/lint
 
 ### Checkpoint: Complete
-- [ ] SPEC.md'deki tüm Success Criteria karşılanıyor
-- [ ] Proje GitHub'da açık kaynak olarak yayına hazır
+- [x] SPEC.md'deki tüm Success Criteria karşılanıyor
+- [x] Proje GitHub'da açık kaynak olarak yayına hazır
 
 ## Risks and Mitigations
 
@@ -90,4 +90,4 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 - Barındırma/altyapı seçimi (Docker Compose self-host vs. bulut) — Task 19'dan (CI/deploy) önce netleşmeli.
 - Repo lisansı MIT varsayıldı — Task 18'den önce onay gerekiyor.
 - Arayüz dili yalnızca Türkçe varsayıldı — Task 14'ten önce onay gerekiyor.
-- "SemtSkoru" adı taslak — GitHub'da yayınlamadan önce isim/alan adı kontrolü gerekiyor (Task 18).
+- ~~"SemtSkoru" adı taslak — GitHub'da yayınlamadan önce isim/alan adı kontrolü gerekiyor.~~ **Çözüldü (Task 18).** İki çakışma bulundu, isim **SemtSkoru** oldu (bkz. SPEC.md).

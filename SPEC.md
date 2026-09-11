@@ -14,6 +14,8 @@
 
 **Terminoloji notu (Task 4'te düzeltildi):** İlk taslakta Kadıköy/Üsküdar/Beşiktaş "mahalle" olarak anılıyordu; bunlar aslında birer **ilçe** (her biri onlarca resmi mahalle içerir). Task 4 araştırmasında İBB'nin hava kalitesi istasyonlarının da tam bu ilçe adlarıyla eşleştiği görüldü, bu yüzden kullanıcı onayıyla karşılaştırma birimi ilçe olarak netleştirildi. Kod tabanındaki `Neighborhood` tipi adı değiştirilmedi (İngilizce'de "neighborhood" bu ölçekte de doğal kullanım) — sadece Türkçe ürün metni düzeltildi.
 
+**İsim notu (Task 18'de düzeltildi):** Proje başlangıçta farklı bir adla planlanmıştı, ancak yayına hazırlanırken yapılan araştırmada iki gerçek isim çakışması bulundu: `semtpusulasi.com` (İzmir bölgesi için bir gezi rehberi) ve `kentpusulasi.com` (Türkiye genelinde bir yerel işletme rehberi) — ikisi de aynı "___Pusulası" kalıbını kullanan, temaca yakın ürünler. Kullanıcı onayıyla ürün adı **SemtSkoru** olarak seçildi (çakışma yok, ürünün asıl mekaniğini — 0-100 skor — doğrudan anlatıyor). İsim değişikliğinin ardından kullanıcı, kod tabanındaki namespace'lerin, klasör adlarının ve .NET solution adının da **SemtSkoru.*** olarak güncellenmesini istedi; bu değişiklik ve geçmiş git commit'lerinin içeriği buna göre yeniden yazıldı.
+
 ## Tech Stack
 
 **Backend** — ASP.NET Core Web API (.NET 10 — geliştirme makinesinde kurulu olan LTS sürümü; SPEC ilk taslağında .NET 8 yazılmıştı, Task 1'de düzeltildi), Clean Architecture / modüler monolit:
@@ -54,8 +56,8 @@ Lint:    npm run lint --fix
 ```
 /backend
   src/
-    SemtSkoru.Domain/          → Entity ve value object'ler (Neighborhood, Score, DataSource)
-    SemtSkoru.Application/     → Use case'ler (GetNeighborhoodScore, CompareNeighborhoods, Ingest*)
+    SemtSkoru.Domain/          → Entity ve value object'ler (Neighborhood, Score, DataSourceMetadata)
+    SemtSkoru.Application/     → Scoring servisi
     SemtSkoru.Infrastructure/  → EF Core, Postgres/PostGIS, dış API client'ları, Hangfire job'ları
     SemtSkoru.Api/             → ASP.NET Core Web API, endpoint'ler, DI wiring
   tests/
@@ -63,12 +65,17 @@ Lint:    npm run lint --fix
     SemtSkoru.Application.Tests/
     SemtSkoru.Api.IntegrationTests/
 /web
-  app/            → Next.js App Router sayfaları (ilçe arama, karşılaştırma, ilçe detay)
-  components/
+  app/            → Next.js App Router sayfaları (ilçe arama, karşılaştırma, ilçe detay) — testler kaynak dosyalarının yanında __tests__/ altında
+  components/     → Skor kartı, karşılaştırma tablosu, harita, bayat-veri rozeti
   lib/            → API client, TanStack Query hook'ları
-  tests/
+  e2e/            → Playwright kritik yol testi
 docs/
-  SPEC.md, tasks/plan.md, tasks/todo.md
+  data-sources.md → Doğrulanmış veri kaynağı endpoint/lisans/güncellik bilgisi
+tasks/
+  plan.md, todo.md → Uygulama planı ve görev listesi
+.github/workflows/
+  ci.yml          → CI (dotnet build/test, npm build/test/lint)
+SPEC.md           → Bu doküman
 ```
 
 **Mimari kural (kritik):** Dış veri kaynakları (İBB Açık Veri Portalı vb.) hiçbir zaman doğrudan frontend'den çağrılmaz. Akış her zaman: `Belediye API/CSV/GeoJSON → Hangfire ingestion job → normalize → PostgreSQL+PostGIS → Scoring API → Next.js`.
@@ -128,8 +135,8 @@ export function NeighborhoodScoreCard({ neighborhoodId }: { neighborhoodId: stri
 
 1. ~~İBB Açık Veri Portalı'ndaki hava kalitesi / yeşil alan / trafik veri setlerinin tam API endpoint'leri...~~ **Çözüldü (Task 4).** Bkz. `docs/data-sources.md`. Hava kalitesi: canlı, kimlik doğrulama gerektirmiyor. Yeşil alan: GeoJSON, yıllık güncelleniyor. Trafik: sadece geçmiş (Ocak 2025) veri ilçe ayrımı yapabiliyor, canlı API tek bir İstanbul-geneli sayı veriyor.
 2. ~~Trafik veri setinin gerçek zamanlılığı belirsiz...~~ **Çözüldü (Task 4).** Kullanıcı onayıyla: Ocak 2025 tarihsel geohash verisi kullanılacak, UI'da "canlı değil, Ocak 2025 tarihsel ortalaması" olarak açıkça etiketlenecek.
-3. Barındırma/altyapı seçimi (Docker Compose ile self-host vs. bulut) Plan aşamasında netleştirilecek.
-4. Repo lisansı MIT varsayıldı — onay bekliyor.
-5. Arayüz dili MVP'de yalnızca Türkçe varsayıldı — onay bekliyor.
-6. "SemtSkoru" adı taslak — GitHub'da yayınlamadan önce isim/alan adı çakışması kontrol edilmeli.
-7. Mahalle sınırları için resmi bir İBB veri seti bulunamadı (Task 4) — OpenStreetMap (Nominatim) ilçe sınırları kullanılacak; ODbL lisansı gereği README'de OSM atıfı yapılmalı (Task 18).
+3. Barındırma/altyapı seçimi (Docker Compose ile self-host vs. bulut) — henüz netleşmedi, Task 19'dan (CI) önce karara bağlanmalı.
+4. ~~Repo lisansı MIT varsayıldı — onay bekliyor.~~ **Çözüldü (Task 18).** Kullanıcı onayıyla MIT.
+5. ~~Arayüz dili MVP'de yalnızca Türkçe varsayıldı — onay bekliyor.~~ **Çözüldü (fiilen Task 1-17 boyunca).** Tüm UI metni, hata mesajları ve dokümantasyon Türkçe; onaylandı (Task 18).
+6. ~~Proje adı taslak — GitHub'da yayınlamadan önce isim/alan adı çakışması kontrol edilmeli.~~ **Çözüldü (Task 18).** İki gerçek çakışma bulundu (`semtpusulasi.com`, `kentpusulasi.com`); kullanıcı onayıyla ürün adı **SemtSkoru** oldu. Bkz. yukarıdaki "İsim notu".
+7. Mahalle sınırları için resmi bir İBB veri seti bulunamadı (Task 4) — OpenStreetMap (Nominatim) ilçe sınırları kullanılıyor; ODbL lisansı gereği README'de OSM atıfı yapıldı (Task 18).
