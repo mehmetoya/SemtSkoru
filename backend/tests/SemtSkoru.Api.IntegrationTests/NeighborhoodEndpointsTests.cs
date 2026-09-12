@@ -104,7 +104,11 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
         Assert.Equal(100, score.AirQuality.Score);
         Assert.Equal("Fresh", score.AirQuality.Freshness);
         Assert.Equal("Test Source", score.AirQuality.SourceName);
-        Assert.Equal(publishedAt, score.AirQuality.PublishedAt);
+        // Postgres timestamptz only keeps microsecond precision, so a .NET DateTimeOffset's
+        // 100ns tick remainder gets truncated on the round-trip through the DB - exact equality
+        // fails intermittently (confirmed on a real Linux CI runner, ~9/10 of the time, since
+        // macOS's clock resolution happens to rarely produce a nonzero sub-microsecond tick).
+        Assert.Equal(publishedAt, score.AirQuality.PublishedAt!.Value, TimeSpan.FromMilliseconds(1));
         Assert.Null(score.GreenSpace.Score);
         Assert.Null(score.GreenSpace.SourceName);
         Assert.False(score.IsComplete);

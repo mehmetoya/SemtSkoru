@@ -75,6 +75,35 @@ public class AirQualityIngestionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RunAsync_skips_readings_with_null_AQI_and_uses_the_latest_valid_one()
+    {
+        // Live-verified against the real İBB endpoint: the newest ReadTime slot can carry a
+        // null AQI (not yet computed) while an earlier slot in the same window has a real one.
+        var handler = new FakeHttpMessageHandler(_ =>
+        {
+            const string json = """
+                [
+                    {"ReadTime":"2026-09-11T11:00:00","AQI":{"AQIIndex":30.0}},
+                    {"ReadTime":"2026-09-11T12:00:00","AQI":null}
+                ]
+                """;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+        });
+
+        await using var context = CreateContext();
+        var job = CreateJob(context, handler);
+
+        await job.RunAsync(CancellationToken.None);
+
+        var readings = await context.AirQualityReadings.ToListAsync();
+        Assert.Equal(3, readings.Count);
+        Assert.All(readings, r => Assert.Equal(30.0, r.AqiIndex));
+    }
+
+    [Fact]
     public async Task RunAsync_upserts_rather_than_duplicating_on_a_second_run()
     {
         var handler = new FakeHttpMessageHandler(_ =>

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: semtskoru-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: ConnectionStrings__Default
+        sync: false # Supabase connection string - set manually in the Render dashboard
+      - key: Cors__FrontendOrigin
+        sync: false # deployed Vercel URL, e.g. https://semtskoru.vercel.app
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production

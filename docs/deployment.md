@@ -1,0 +1,87 @@
+# Yayına Alma (ücretsiz katmanlarla)
+
+Bu proje bütçesiz — tamamen kalıcı ücretsiz katmanlar üzerinde çalışacak şekilde
+tasarlandı. Üç ayrı sağlayıcı, üç ayrı sorumluluk:
+
+| Katman | Sağlayıcı | Neden |
+|---|---|---|
+| Frontend (Next.js) | [Vercel](https://vercel.com) — Hobby (ücretsiz) | Next.js'in kendi platformu, sıfır konfigürasyonla App Router desteği |
+| API (.NET) | [Render](https://render.com) — Free Web Service | Docker deploy'u destekliyor, kalıcı ücretsiz |
+| Veritabanı (Postgres+PostGIS) | [Supabase](https://supabase.com) — Free | Yönetilen Postgres, PostGIS uzantısı dahil |
+
+Redis burada **yok** — `docker-compose.yml`'deki Redis servisi hâlâ duruyor ama kod
+hiçbir yerde gerçekten kullanmıyor (`grep -r Redis backend/src` boş dönüyor; SPEC.md'nin
+"skor cache" planı hiç implemente edilmedi). Bu yüzden prod için Upstash gibi ek bir
+ücretsiz Redis katmanı eklemedik — olmayan bir şeyi barındırmanın anlamı yok. Redis'i
+gerçekten kullanan bir cache eklenirse bu doküman güncellenmeli.
+
+## 1. Supabase (veritabanı)
+
+1. [supabase.com](https://supabase.com) üzerinde ücretsiz bir proje oluştur.
+2. Dashboard'daki **Connect** butonundan **Session pooler** bağlantı dizesini al
+   (`aws-N-<region>.pooler.supabase.com:5432`, kullanıcı adı `postgres.<project-ref>`).
+   **Direct connection**'ı (`db.<ref>.supabase.co`) DEĞİL — canlıda gerçekten denendi:
+   o host artık yalnızca IPv6 çözümleniyor, Render'ın free planı ise IPv6 çıkışını
+   desteklemiyor ("Network is unreachable"). Session pooler hem IPv4 uyumlu hem de
+   Supabase'in kendi dokümantasyonuna göre migration'ların/Hangfire'ın ihtiyaç duyduğu
+   advisory lock, `LOCK TABLE` ve prepared statement'ları tam destekliyor — **Transaction**
+   pooler (port 6543) desteklemiyor, o yüzden onu değil Session'ı seçmek önemli.
+3. Supabase'in verdiği `postgresql://user:pass@host:port/db` (URI) formatını olduğu gibi
+   kullanma — Npgsql/EF Core bu formatı kabul etmiyor (`Format of the initialization
+   string does not conform to specification`, canlıda denendi). Anahtar=değer formatına
+   çevir:
+
+   ```
+   Host=aws-N-<region>.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.<project-ref>;Password=<password>;SSL Mode=Require
+   ```
+
+4. Migration'ı bu bağlantı dizesiyle uygula (PostGIS uzantısını migration zaten
+   `CREATE EXTENSION IF NOT EXISTS postgis` ile açıyor — Supabase bunu allowlist'te
+   tutuyor, ekstra yetki gerekmiyor):
+
+   ```bash
+   cd backend
+   dotnet tool restore
+   dotnet tool run dotnet-ef database update --connection "<yukarıdaki anahtar=değer formatı>"
+   ```
+
+## 2. Render (API)
+
+1. Render'da yeni bir **Web Service** oluştur, bu GitHub reposunu bağla.
+2. Repo kökünde `render.yaml` bir Blueprint olarak algılanır (Docker runtime, Dockerfile
+   yolu `backend/Dockerfile`, context `backend/`, health check `/health`) — "New +" →
+   "Blueprint" ile de kurulabilir.
+3. Ortam değişkenlerini Render dashboard'undan gir (bunlar `render.yaml`'da `sync: false`
+   olarak işaretli, yani repo'ya yazılmıyor — secret oldukları için elle girilmeli):
+   - `ConnectionStrings__Default` → adım 1'deki Supabase bağlantı dizesi
+   - `Cors__FrontendOrigin` → adım 3'teki Vercel URL'i (örn. `https://semtskoru.vercel.app`)
+4. Deploy sonrası servis URL'ini not al (örn. `https://semtskoru-api.onrender.com`) —
+   hem Vercel'de hem GitHub Actions secret'ında kullanılacak.
+
+**Not:** Free plan, ~15 dakika istek almayınca container'ı durduruyor; sıradaki istek
+container'ı yeniden başlatıyor (ilk istekte ~30-60sn gecikme olur). Bu, günlük ingestion
+job'ını (Hangfire) etkiler — bkz. aşağıdaki GitHub Actions adımı.
+
+## 3. Vercel (frontend)
+
+1. Vercel'de bu GitHub reposunu import et, **Root Directory**'yi `web` olarak ayarla.
+2. Environment variable ekle: `NEXT_PUBLIC_API_BASE_URL` = adım 2'deki Render API URL'i.
+3. Deploy sonrası Vercel URL'ini Render'daki `Cors__FrontendOrigin`'e geri yaz (adım 2.3).
+
+## 4. GitHub Actions secret (günlük "uyandırma")
+
+`.github/workflows/daily-wake.yml` her gün Render API'sinin `/health` endpoint'ine bir
+istek atıyor. Bu, uykudaki container'ı uyandırıyor; Hangfire'ın recurring-job scheduler'ı
+(process her başladığında) hava kalitesi/yeşil alan/trafik job'larının süresi geçmiş
+olanlarını otomatik kuyruğa alıyor — yani ayrı bir "ingestion tetikle" endpoint'i veya
+token yönetimi gerekmiyor, sadece container'ın günde bir kez ayağa kalkması yeterli.
+
+Repo Settings → Secrets and variables → Actions → yeni secret:
+
+- `API_BASE_URL` = Render API URL'i (örn. `https://semtskoru-api.onrender.com`, sonunda `/` olmadan)
+
+## Sıra
+
+Supabase → Render → Vercel → GitHub secret. Render'ın CORS origin'i Vercel URL'ine,
+Vercel'in API URL'i Render URL'ine bağlı olduğu için ilk deploy'da her ikisini de
+geçici/yanlış girip URL'ler netleşince güncellemek normal.

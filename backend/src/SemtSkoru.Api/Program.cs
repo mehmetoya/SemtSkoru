@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.IO.Converters;
 using Scalar.AspNetCore;
@@ -57,8 +58,21 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+// Render (and similar free-tier hosts) terminate TLS at their edge and forward plain HTTP
+// to the container; without trusting X-Forwarded-Proto, UseHttpsRedirection sees "http" on
+// every request and redirects right back to the same HTTPS URL on every single call.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+});
+
 app.UseHttpsRedirection();
 app.UseCors();
+
+// Cheap liveness ping: a free-tier host that spins the container down after idle time
+// (e.g. Render) wakes it back up on any request, at which point Hangfire's own recurring-job
+// scheduler catches up on whatever was missed while asleep. See .github/workflows/daily-wake.yml.
+app.MapGet("/health", () => Results.Ok());
 
 app.MapNeighborhoodEndpoints();
 

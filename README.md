@@ -95,6 +95,12 @@ cd web && npm test
 cd web && npm run test:e2e
 ```
 
+## Yayına Alma
+
+Barındırma bütçesi olmadığından proje tamamen ücretsiz katmanlar (Vercel + Render +
+Supabase) üzerinde çalışacak şekilde ayarlandı. Adım adım kurulum için bkz.
+[`docs/deployment.md`](docs/deployment.md).
+
 ## Veri Kaynakları ve Lisansları
 
 Her kaynak, kod yazılmadan önce gerçek bir HTTP isteğiyle doğrulandı — bkz. [`docs/data-sources.md`](docs/data-sources.md) tam detay için.

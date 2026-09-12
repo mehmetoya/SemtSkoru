@@ -32,20 +32,24 @@ public sealed class AirQualityApiClient(HttpClient httpClient) : IAirQualityApiC
             return null;
         }
 
-        var latest = items.MaxBy(i => i.ReadTime);
+        // Live-verified (2026-09-12): the station can report a ReadTime slot before its AQI has
+        // been computed yet - AQI comes back null even though the request itself succeeded (HTTP
+        // 200, non-empty list). Taking the raw MaxBy(ReadTime) would then either NRE on a null AQI
+        // or discard an earlier reading in the window that actually has one - skip nulls instead.
+        var latest = items.Where(i => i.AQI is not null).MaxBy(i => i.ReadTime);
         if (latest is null)
         {
             return null;
         }
 
         var readTimeUtc = new DateTimeOffset(latest.ReadTime, TurkeyOffset).ToUniversalTime();
-        return new AirQualityReadingDto(readTimeUtc, latest.AQI.AQIIndex);
+        return new AirQualityReadingDto(readTimeUtc, latest.AQI!.AQIIndex);
     }
 
     private static string Format(DateTimeOffset value) =>
         value.ToOffset(TurkeyOffset).ToString(DateFormat, CultureInfo.InvariantCulture);
 
-    private sealed record ApiItem(DateTime ReadTime, ApiAqi AQI);
+    private sealed record ApiItem(DateTime ReadTime, ApiAqi? AQI);
 
     private sealed record ApiAqi(double AQIIndex);
 }

@@ -70,6 +70,8 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 - [x] Task 17: "Bayat veri" uyarı rozeti (7 günden eski kaynak için)
 - [x] Task 18: README (kurulum, docker-compose ile 5 dakikada çalıştırma), LICENSE (MIT)
 - [x] Task 19: CI (GitHub Actions): dotnet build/test, npm build/test/lint
+- [x] Task 20: Yayın öncesi hijyen ve best-practice denetimi (global.json, .editorconfig, secret temizliği)
+- [x] Task 21: Ücretsiz barındırma kararı ve deployment altyapısı (Vercel + Render + Supabase)
 
 ### Checkpoint: Complete
 - [x] SPEC.md'deki tüm Success Criteria karşılanıyor
@@ -87,7 +89,7 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 
 ## Open Questions
 
-- Barındırma/altyapı seçimi (Docker Compose self-host vs. bulut) — Task 19'dan (CI/deploy) önce netleşmeli.
+- ~~Barındırma/altyapı seçimi (Docker Compose self-host vs. bulut) — Task 19'dan (CI/deploy) önce netleşmeli.~~ **Çözüldü (Task 21).** Bütçe yok — Vercel + Render (free) + Supabase (free) ile tamamen ücretsiz. Bkz. SPEC.md, `docs/deployment.md`.
 - Repo lisansı MIT varsayıldı — Task 18'den önce onay gerekiyor.
 - Arayüz dili yalnızca Türkçe varsayıldı — Task 14'ten önce onay gerekiyor.
 - ~~"SemtSkoru" adı taslak — GitHub'da yayınlamadan önce isim/alan adı kontrolü gerekiyor.~~ **Çözüldü (Task 18).** İki çakışma bulundu, isim **SemtSkoru** oldu (bkz. SPEC.md).

@@ -1,0 +1,19 @@
+name: Daily wake (free-tier ingestion catch-up)
+
+# The API runs on Render's free tier, which stops the container after ~15 minutes of no
+# HTTP traffic. Hangfire's recurring-job scheduler only fires while the process is running,
+# so a container asleep at its scheduled cron time (see Program.cs) would simply miss it.
+# Hitting /health once a day wakes the container; on startup, HangfireServer checks each
+# recurring job's next-execution time against now and immediately enqueues anything overdue,
+# so this ping is enough to keep ingestion running without an always-on (paid) instance.
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC = 06:00 Europe/Istanbul (no DST)
+  workflow_dispatch:
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API health endpoint
+        run: curl -sf --retry 5 --retry-delay 10 --max-time 60 "${{ secrets.API_BASE_URL }}/health"
