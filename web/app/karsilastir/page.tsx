@@ -1,75 +1,24 @@
-"use client";
+import type { Metadata } from "next";
+import { KarsilastirClient } from "../../components/KarsilastirClient";
 
-import { useNeighborhoods } from "../../lib/hooks/useNeighborhoods";
-import { useCompareNeighborhoods } from "../../lib/hooks/useCompareNeighborhoods";
-import { NeighborhoodComparisonTable } from "../../components/NeighborhoodComparisonTable";
-import { NeighborhoodMap } from "../../components/NeighborhoodMap";
-import { useState } from "react";
+export const metadata: Metadata = {
+  title: "İlçe Karşılaştır",
+  description:
+    "İki İstanbul ilçesinin hava kalitesi, yeşil alan ve trafik skorlarını yan yana ve haritada karşılaştır.",
+  alternates: { canonical: "/karsilastir" },
+};
 
 export default function KarsilastirPage() {
-  const { data: neighborhoods } = useNeighborhoods();
-  const [a, setA] = useState<string | undefined>(undefined);
-  const [b, setB] = useState<string | undefined>(undefined);
-
-  const {
-    data: comparison,
-    isPending,
-    isError,
-  } = useCompareNeighborhoods(a, b);
-
-  const nameOf = (id: string | undefined) =>
-    neighborhoods?.find((n) => n.id === id)?.name ?? "";
-
   return (
-    <main className="flex min-h-screen flex-col items-center gap-8 p-12">
-      <h1 className="text-2xl font-semibold text-slate-800">
+    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <h1 className="text-3xl font-bold tracking-tight text-slate-900">
         İlçe Karşılaştır
       </h1>
-
-      <div className="flex gap-4">
-        <select
-          aria-label="Birinci ilçe"
-          value={a ?? ""}
-          onChange={(e) => setA(e.target.value || undefined)}
-          className="rounded border border-slate-300 px-3 py-2"
-        >
-          <option value="">Seçiniz</option>
-          {neighborhoods?.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="İkinci ilçe"
-          value={b ?? ""}
-          onChange={(e) => setB(e.target.value || undefined)}
-          className="rounded border border-slate-300 px-3 py-2"
-        >
-          <option value="">Seçiniz</option>
-          {neighborhoods?.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {a && b && isPending && <p role="status">Yükleniyor…</p>}
-      {isError && (
-        <p className="text-red-700">Karşılaştırma yüklenirken bir hata oluştu.</p>
-      )}
-
-      {comparison && (
-        <NeighborhoodComparisonTable
-          nameA={nameOf(a)}
-          nameB={nameOf(b)}
-          scoreA={comparison.a}
-          scoreB={comparison.b}
-        />
-      )}
-
-      {neighborhoods && <NeighborhoodMap neighborhoods={neighborhoods} />}
+      <p className="mt-2 text-sm text-slate-600">
+        İki ilçe seç (aşağıdan veya haritadan tıklayarak), skorlarını yan yana ve
+        haritada gör.
+      </p>
+      <KarsilastirClient />
     </main>
   );
 }

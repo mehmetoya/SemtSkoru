@@ -23,8 +23,8 @@ export function DataFreshnessBadge({
     <span
       className={
         isStale
-          ? "rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
-          : "rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
+          ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+          : "rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
       }
     >
       {isStale && "⚠ "}

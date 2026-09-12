@@ -23,13 +23,33 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
 
 const ISTANBUL_CENTER: [number, number] = [29.02, 41.02];
 
+// Selection A / B colors - kept distinct from the score-band traffic-light palette
+// (emerald/amber/red) so map selection state is never confused with a score's status.
+const COLOR_A = "#2563eb";
+const COLOR_B = "#c026d3";
+const COLOR_UNSELECTED = "#94a3b8";
+
+function colorFor(id: string, selectedIds: (string | undefined)[]): string {
+  if (selectedIds[0] === id) return COLOR_A;
+  if (selectedIds[1] === id) return COLOR_B;
+  return COLOR_UNSELECTED;
+}
+
 export function NeighborhoodMap({
   neighborhoods,
+  selectedIds = [],
+  onSelectDistrict,
 }: {
   neighborhoods: NeighborhoodSummary[];
+  selectedIds?: (string | undefined)[];
+  onSelectDistrict?: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const onSelectRef = useRef(onSelectDistrict);
+  useEffect(() => {
+    onSelectRef.current = onSelectDistrict;
+  });
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -42,7 +62,26 @@ export function NeighborhoodMap({
     });
     mapRef.current = map;
 
+    map.on("click", "district-fill", (e) => {
+      const id = e.features?.[0]?.properties?.id;
+      if (typeof id === "string") onSelectRef.current?.(id);
+    });
+    map.on("mouseenter", "district-fill", () => {
+      map.getCanvas().style.cursor = onSelectRef.current ? "pointer" : "";
+    });
+    map.on("mouseleave", "district-fill", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
+    // MapLibre sizes its canvas from the container's dimensions at construction time and
+    // never re-checks them on its own - if the container is still narrower than its final
+    // layout width at that instant (verified live: it consistently was, leaving roughly
+    // a third of the card empty), the map stays stuck at that stale size forever.
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(containerRef.current);
+
     return () => {
+      resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
     };
@@ -57,7 +96,7 @@ export function NeighborhoodMap({
         type: "FeatureCollection",
         features: neighborhoods.map((n) => ({
           type: "Feature",
-          properties: { id: n.id, name: n.name },
+          properties: { id: n.id, name: n.name, color: colorFor(n.id, selectedIds) },
           geometry: n.boundary,
         })),
       };
@@ -77,19 +116,27 @@ export function NeighborhoodMap({
           id: "district-fill",
           type: "fill",
           source: "district-boundaries",
-          paint: { "fill-color": "#2563eb", "fill-opacity": 0.15 },
+          paint: { "fill-color": ["get", "color"], "fill-opacity": 0.25 },
         });
         map.addLayer({
           id: "district-outline",
           type: "line",
           source: "district-boundaries",
-          paint: { "line-color": "#2563eb", "line-width": 2 },
+          paint: { "line-color": ["get", "color"], "line-width": 2 },
         });
       }
 
+      // Only the two selected districts are the point of the map once a selection
+      // exists - fit tightly to them instead of always showing all three at once.
+      const selected = new Set(selectedIds.filter((id): id is string => !!id));
+      const relevant =
+        selected.size > 0
+          ? featureCollection.features.filter((f) => selected.has(f.properties!.id))
+          : featureCollection.features;
+
       const bounds = new maplibregl.LngLatBounds();
       let hasBounds = false;
-      for (const feature of featureCollection.features) {
+      for (const feature of relevant) {
         if (feature.geometry.type !== "Polygon") continue;
         for (const ring of feature.geometry.coordinates) {
           for (const [lng, lat] of ring) {
@@ -98,7 +145,7 @@ export function NeighborhoodMap({
           }
         }
       }
-      if (hasBounds) map.fitBounds(bounds, { padding: 40 });
+      if (hasBounds) map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
     };
 
     if (map.isStyleLoaded()) {
@@ -106,7 +153,7 @@ export function NeighborhoodMap({
     } else {
       map.once("load", applyBoundaries);
     }
-  }, [neighborhoods]);
+  }, [neighborhoods, selectedIds]);
 
   return (
     <div

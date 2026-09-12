@@ -1,28 +1,72 @@
 # SemtSkoru
 
-İstanbul'da bir ilçenin ulaşım, hava kalitesi ve yeşil alan koşullarını açık belediye verisiyle 0-100 arası skorlara çevirip iki ilçeyi yan yana karşılaştırmanı sağlayan açık kaynak bir web uygulaması.
+![CI](https://github.com/mehmetoya/SemtSkoru/actions/workflows/ci.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
+![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
+![PostGIS](https://img.shields.io/badge/PostgreSQL-PostGIS-336791?logo=postgresql&logoColor=white)
 
-"Nereye taşınmalıyım, hangi ilçe daha uygun?" sorusuna, uydurma değil gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisiyle cevap verir. MVP kapsamı üç ilçeyle sınırlı: **Kadıköy, Üsküdar, Beşiktaş**.
+**"Nereye taşınmalıyım?"** sorusuna gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisiyle cevap veren açık kaynak bir web uygulaması. Bir ilçenin hava kalitesi, yeşil alan erişimi ve trafik/ulaşım durumunu 0-100 arası skorlara çevirir, iki ilçeyi yan yana karşılaştırır. MVP kapsamı üç ilçeyle sınırlı: **Kadıköy, Üsküdar, Beşiktaş**.
 
 ## Özellikler
 
 - Bir ilçenin Hava Kalitesi / Yeşil Alan / Ulaşım skorlarını ve genel skorunu görüntüleme
-- İki ilçeyi yan yana karşılaştırma, sınırlarını haritada görme
+- İki ilçeyi yan yana karşılaştırma, sınırlarını interaktif haritada görme
 - Her skor kartında verinin hangi kaynaktan geldiği ve ne zamana ait olduğu açıkça görünür
-- Bir veri kaynağı beklenenden eski kaldığında ("bayat veri") veya doğası gereği canlı olmadığında ("tarihsel veri") UI'da açıkça işaretlenir — hiçbir veri "canlı" diye sunulmaz, öyle olmadığı sürece
+- Bir veri kaynağı beklenenden eski kaldığında ("bayat veri") veya doğası gereği canlı olmadığında ("tarihsel veri") UI'da açıkça işaretlenir — hiçbir veri, öyle olmadığı sürece "canlı" diye sunulmaz
 
 ## Mimari
 
-```
-Belediye API/CSV/GeoJSON → Hangfire ingestion job → normalize → PostgreSQL+PostGIS → Scoring API → Next.js
-```
-
 Dış veri kaynaklarına yalnızca backend'in ingestion katmanı erişir; frontend hiçbir zaman doğrudan İBB'ye istek atmaz. Her ingest edilen kayıt kaynak adı/URL/lisans/yayın tarihi/son senkronizasyon zamanı metadata'sı taşır.
 
-**Backend** — ASP.NET Core (.NET 10), Clean Architecture (Domain → Application → Infrastructure → Api):
-PostgreSQL+PostGIS, EF Core, Hangfire (zamanlanmış ingestion), NetTopologySuite (coğrafi hesaplar), Scalar (API dokümantasyonu).
+```mermaid
+flowchart LR
+    subgraph Kaynaklar["Açık Veri Kaynakları"]
+        AQ["İBB Hava Kalitesi<br/>(canlı API)"]
+        GS["İBB Yeşil Alan<br/>(GeoJSON)"]
+        TR["İBB Trafik<br/>(Ocak 2025 CSV)"]
+        OSM["OpenStreetMap<br/>(ilçe sınırları)"]
+    end
 
-**Frontend** — Next.js (App Router) + TypeScript, MapLibre GL JS (OpenStreetMap raster tile'ları), TanStack Query, Tailwind CSS.
+    subgraph Backend[".NET Backend — Clean Architecture"]
+        ING["Hangfire<br/>Ingestion Jobs"] --> DB[("PostgreSQL<br/>+ PostGIS")]
+        DB --> SCORE["Scoring Servisi<br/>(Application)"]
+        SCORE --> API["ASP.NET Core API"]
+    end
+
+    AQ --> ING
+    GS --> ING
+    TR --> ING
+    OSM -. "seed, tek sefer" .-> DB
+
+    API --> FE["Next.js Frontend"]
+    FE --> USER((Kullanıcı))
+```
+
+**Backend** — ASP.NET Core (.NET 10), Clean Architecture (Domain → Application → Infrastructure → Api): dış katmanlar iç katmanlara bağımlı, tersi değil.
+
+**Frontend** — Next.js (App Router) + TypeScript, sunucu tarafında hiçbir zaman doğrudan veri kaynağına gitmez, yalnızca backend API'sini tüketir.
+
+## Tech Stack
+
+| Katman | Teknoloji | Neden |
+|---|---|---|
+| Backend framework | ASP.NET Core (.NET 10) | Minimal API'ler, native OpenAPI desteği |
+| Mimari | Clean Architecture | Domain hiçbir dış bağımlılığa sahip değil; kaynak/DB değişimi izole |
+| ORM | EF Core + Npgsql | PostGIS geometry tipleriyle native entegrasyon |
+| Coğrafi veri | PostgreSQL + PostGIS, NetTopologySuite | İlçe sınırları, mesafe hesapları (Haversine) |
+| Zamanlanmış işler | Hangfire (+ Postgres storage) | Günlük/haftalık/aylık ingestion job'ları |
+| API dokümantasyonu | Scalar (OpenAPI) | Sıfır ekstra paket, .NET'in native `AddOpenApi()`'si üzerine |
+| Frontend framework | Next.js 16 (App Router) + TypeScript (strict) | Sunucu/istemci bileşen ayrımı, dosya tabanlı routing |
+| Data fetching | TanStack Query | Cache, loading/error state yönetimi |
+| Harita | MapLibre GL JS + OSM raster tile'ları | Ücretsiz, açık kaynak, vendor lock-in yok |
+| Stil | Tailwind CSS 4 | Utility-first, hızlı iterasyon |
+| Test (backend) | xUnit, Testcontainers | Gerçek Postgres+PostGIS'e karşı integration test |
+| Test (frontend) | Vitest, React Testing Library, Playwright | Component + gerçek tarayıcıda e2e |
+| CI/CD | GitHub Actions | PR'larda build+test, `main`'e push'ta otomatik |
+| Barındırma | Vercel + Render + Supabase | Tamamen ücretsiz katmanlar (bkz. [Yayına Alma](#yayına-alma)) |
+
+## Proje Yapısı
 
 ```
 /backend
@@ -33,6 +77,7 @@ PostgreSQL+PostGIS, EF Core, Hangfire (zamanlanmış ingestion), NetTopologySuit
     SemtSkoru.Infrastructure/  → EF Core, dış API client'ları, Hangfire ingestion job'ları
     SemtSkoru.Api/             → ASP.NET Core Web API, endpoint'ler
   tests/                          → xUnit (Domain/Application unit, Api Testcontainers integration)
+  Dockerfile                      → Render deploy'u için multi-stage build
 /web
   app/                            → Next.js sayfaları (arama, ilçe detay, karşılaştırma)
   components/                     → Skor kartı, karşılaştırma tablosu, harita, bayat-veri rozeti
@@ -40,12 +85,11 @@ PostgreSQL+PostGIS, EF Core, Hangfire (zamanlanmış ingestion), NetTopologySuit
   e2e/                            → Playwright kritik yol testi
 docs/
   data-sources.md                 → Her veri kaynağının canlı doğrulanmış endpoint/lisans/güncellik bilgisi
-.env.example                      → Yerel Postgres şifresi şablonu (bkz. Kurulum)
-.editorconfig                     → Backend/frontend genelinde tutarlı stil kuralları
+  deployment.md                   → Ücretsiz katmanlarla adım adım yayına alma
+render.yaml                       → Render Blueprint (Docker web service tanımı)
+.github/workflows/                → CI (build+test) ve daily-wake (free-tier ingestion catch-up)
 SPEC.md, tasks/plan.md, tasks/todo.md → Ürün spesifikasyonu ve uygulama planı
 ```
-
-> Proje, yayına hazırlanırken bulunan isim çakışmaları nedeniyle başlangıçtaki adından **SemtSkoru**'ya değiştirildi; kod tabanındaki namespace'ler de buna göre güncellendi (bkz. SPEC.md "İsim notu").
 
 ## Kurulum (yaklaşık 5 dakika)
 
@@ -73,7 +117,7 @@ dotnet run --project src/SemtSkoru.Api
 ```
 
 ```bash
-# 3. Frontend (yeni bir terminalde)
+# 4. Frontend (yeni bir terminalde)
 cd web
 npm install
 npm run dev
@@ -85,7 +129,7 @@ Migration'lar Kadıköy/Üsküdar/Beşiktaş'ı gerçek sınır verisiyle (OpenS
 ## Testler
 
 ```bash
-# Backend: 52 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
+# Backend: 53 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
 cd backend && dotnet test
 
 # Frontend: unit/component testleri (Vitest + React Testing Library)
@@ -97,9 +141,21 @@ cd web && npm run test:e2e
 
 ## Yayına Alma
 
-Barındırma bütçesi olmadığından proje tamamen ücretsiz katmanlar (Vercel + Render +
-Supabase) üzerinde çalışacak şekilde ayarlandı. Adım adım kurulum için bkz.
-[`docs/deployment.md`](docs/deployment.md).
+Barındırma bütçesi olmadığından proje tamamen ücretsiz katmanlar üzerinde çalışır: Vercel (frontend), Render (API, Docker), Supabase (Postgres+PostGIS). Redis prod'a dahil değil — kod hiçbir yerde kullanmıyor.
+
+```mermaid
+flowchart TB
+    DEV["Geliştirici"] -->|"git push"| GH["GitHub: main"]
+    GH --> CI["GitHub Actions CI<br/>build + test"]
+    GH -->|"otomatik deploy"| VERCEL["Vercel<br/>Next.js Frontend"]
+    GH -->|"otomatik deploy"| RENDER["Render Free<br/>ASP.NET Core API + Hangfire"]
+    RENDER <-->|"Session Pooler"| SUPABASE[("Supabase Free<br/>Postgres + PostGIS")]
+    CRON["GitHub Actions<br/>daily-wake.yml"] -->|"günlük GET /health"| RENDER
+    VERCEL -->|"fetch /api/*"| RENDER
+    KULLANICI((Kullanıcı)) --> VERCEL
+```
+
+Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur; `daily-wake.yml` günde bir kez uyandırır, Hangfire süresi geçmiş ingestion job'larını kendiliğinden kuyruğa alır. Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
 
 ## Veri Kaynakları ve Lisansları
 
@@ -116,18 +172,13 @@ Harita verileri © [OpenStreetMap katkıda bulunanları](https://www.openstreetm
 
 ## Lisans
 
-MIT — bkz. [LICENSE](LICENSE). (Yukarıdaki açık veri kaynaklarının kendi lisansları ayrıca geçerlidir; ODbL atıf zorunluluğu için bkz. yukarısı.)
+MIT — bkz. [LICENSE](LICENSE). Yukarıdaki açık veri kaynaklarının kendi lisansları ayrıca geçerlidir; ODbL atıf zorunluluğu için bkz. yukarısı.
 
 ## Claude Code ile geliştirildi
 
-Bu proje AI coding agent'larıyla (Claude Code), [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) yaşam döngüsü (spec → plan → build → test → review → ship) kullanılarak geliştirildi.
+Bu proje AI coding agent'larıyla (Claude Code), [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) yaşam döngüsü (spec → plan → build → test → review → ship) kullanılarak geliştirildi. İçerik (v0.6.9, MIT lisanslı, bkz. [.claude/agent-skills-LICENSE](.claude/agent-skills-LICENSE)) `.claude/` dizinine vendor edildi — bu repoyu Claude Code'da açan herkes otomatik alır, ekstra kurulum gerekmez:
 
-[addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) içeriği (v0.6.9, MIT lisanslı, bkz. [.claude/agent-skills-LICENSE](.claude/agent-skills-LICENSE)) bu ortamın plugin/marketplace sistemini desteklememesi nedeniyle doğrudan `.claude/` dizinine vendor edildi:
-
-- `.claude/skills/` — 25 yaşam döngüsü skill'i (spec, plan, build, test, review, ship ve daha fazlası)
+- `.claude/skills/` — yaşam döngüsü skill'leri (spec, plan, build, test, review, ship ve daha fazlası) + [supabase/agent-skills](https://github.com/supabase/agent-skills)
 - `.claude/agents/` — 4 reviewer persona (`code-reviewer`, `security-auditor`, `test-engineer`, `web-performance-auditor`)
-- `.claude/commands/` — 9 slash komut (`/spec`, `/plan`, `/build`, `/test`, `/constraints`, `/review`, `/code-simplify`, `/ship`, `/webperf`)
-- `.claude/references/` — skill'lerin kullandığı ortak kontrol listeleri (güvenlik, performans, erişilebilirlik, test, gözlemlenebilirlik, definition of done, orkestrasyon kalıpları)
-- `.claude/hooks/session-start.sh` — her oturum başında skill-discovery meta-skill'ini yükler
-
-Bu repoyu Claude Code'da açan herkes bunu otomatik olarak alır — kurulum adımı veya plugin onayı gerekmez.
+- `.claude/commands/` — slash komutlar (`/spec`, `/plan`, `/build`, `/test`, `/constraints`, `/review`, `/code-simplify`, `/ship`, `/webperf`)
+- `.claude/references/` — skill'lerin kullandığı ortak kontrol listeleri (güvenlik, performans, erişilebilirlik, test, gözlemlenebilirlik)
