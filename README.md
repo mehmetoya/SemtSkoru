@@ -100,7 +100,7 @@ SPEC.md, tasks/plan.md, tasks/todo.md → Ürün spesifikasyonu ve uygulama plan
 cp .env.example .env
 # .env içindeki POSTGRES_PASSWORD değerini kendi şifrenizle değiştirin
 
-# 2. Postgres+PostGIS ve Redis'i ayağa kaldır
+# 2. Postgres+PostGIS'i ayağa kaldır
 docker compose up -d
 
 # 3. Backend: connection string'i user-secrets'a kaydet (.env'deki şifreyle aynı olmalı),
@@ -129,7 +129,7 @@ Migration'lar İstanbul'un 39 ilçesini gerçek sınır verisiyle (OpenStreetMap
 ## Testler
 
 ```bash
-# Backend: 53 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
+# Backend: 56 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
 cd backend && dotnet test
 
 # Frontend: unit/component testleri (Vitest + React Testing Library)
@@ -141,7 +141,7 @@ cd web && npm run test:e2e
 
 ## Yayına Alma
 
-Barındırma bütçesi olmadığından proje tamamen ücretsiz katmanlar üzerinde çalışır: Vercel (frontend), Render (API, Docker), Supabase (Postgres+PostGIS). Redis prod'a dahil değil — kod hiçbir yerde kullanmıyor.
+Barındırma bütçesi olmadığından proje tamamen ücretsiz katmanlar üzerinde çalışır: Vercel (frontend), Render (API, Docker), Supabase (Postgres+PostGIS).
 
 ```mermaid
 flowchart TB

@@ -6,7 +6,7 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 
 ## Architecture Decisions
 
-- **Backend:** ASP.NET Core (.NET 8), Clean Architecture (Domain → Application → Infrastructure → Api bağımlılık yönü). PostgreSQL+PostGIS, EF Core, Hangfire (ingestion job'ları), Redis (skor cache), NetTopologySuite (coğrafi hesaplar).
+- **Backend:** ASP.NET Core (.NET 8 — plan taslağında; gerçekte .NET 10 kullanıldı, bkz. SPEC.md), Clean Architecture (Domain → Application → Infrastructure → Api bağımlılık yönü). PostgreSQL+PostGIS, EF Core, Hangfire (ingestion job'ları), NetTopologySuite (coğrafi hesaplar). (Redis skor cache'i planlanmıştı, hiç implemente edilmedi — bkz. Open Questions.)
 - **Frontend:** Next.js (App Router) + TypeScript, MapLibre GL JS, TanStack Query, Tailwind.
 - **Dış API'ler asla frontend'den çağrılmaz** — her zaman `ingestion job → Postgres → Scoring API → Next.js`.
 - **Veri kaynağı doğrulaması ingestion kodundan ÖNCE yapılır** (Phase 2) — SPEC.md Open Question #1-2'yi kod yazmadan önce kapatmak için. Bu en yüksek riskli varsayım; erken başarısız olup erken öğrenmek daha ucuz.
@@ -90,6 +90,6 @@ SPEC.md'de tanımlanan MVP'yi (3 mahalle — Kadıköy, Üsküdar, Beşiktaş �
 ## Open Questions
 
 - ~~Barındırma/altyapı seçimi (Docker Compose self-host vs. bulut) — Task 19'dan (CI/deploy) önce netleşmeli.~~ **Çözüldü (Task 21).** Bütçe yok — Vercel + Render (free) + Supabase (free) ile tamamen ücretsiz. Bkz. SPEC.md, `docs/deployment.md`.
-- Repo lisansı MIT varsayıldı — Task 18'den önce onay gerekiyor.
-- Arayüz dili yalnızca Türkçe varsayıldı — Task 14'ten önce onay gerekiyor.
+- ~~Repo lisansı MIT varsayıldı — Task 18'den önce onay gerekiyor.~~ **Çözüldü (Task 18).** MIT onaylandı.
+- ~~Arayüz dili yalnızca Türkçe varsayıldı — Task 14'ten önce onay gerekiyor.~~ **Çözüldü (fiilen Task 1-17 boyunca).** Türkçe onaylandı.
 - ~~"SemtSkoru" adı taslak — GitHub'da yayınlamadan önce isim/alan adı kontrolü gerekiyor.~~ **Çözüldü (Task 18).** İki çakışma bulundu, isim **SemtSkoru** oldu (bkz. SPEC.md).

@@ -26,10 +26,10 @@
 - PostgreSQL + PostGIS (coğrafi veri ve mesafe sorguları)
 - Entity Framework Core
 - Hangfire (zamanlanmış veri çekme/senkronizasyon işleri)
-- Redis (skor ve ilçe sorgu önbelleği)
 - NetTopologySuite (mesafe/coğrafi hesaplamalar)
-- OpenTelemetry (izlenebilirlik/observability)
-- Swagger / Scalar (API dokümantasyonu)
+- Scalar (API dokümantasyonu, .NET'in native `AddOpenApi()`'si üzerine)
+
+(İlk taslakta ayrıca Redis (skor cache) ve OpenTelemetry planlanmıştı — hiçbiri hiç implemente edilmedi; bkz. Open Question #3'ün Redis notu.)
 
 **Frontend** — Next.js (App Router) + TypeScript:
 - MapLibre GL JS (OpenStreetMap tabanlı, ücretsiz harita tile'ları)

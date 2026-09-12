@@ -18,6 +18,13 @@ export default function KarsilastirPage() {
         İki ilçe seç (aşağıdan veya haritadan tıklayarak), skorlarını yan yana ve
         haritada gör.
       </p>
+      <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">39 ilçe</span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">
+          Hava kalitesi verisi: 18/39 ilçe
+        </span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">İBB Açık Veri Portalı</span>
+      </div>
       <KarsilastirClient />
     </main>
   );

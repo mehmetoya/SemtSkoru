@@ -6,6 +6,15 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { NeighborhoodSummary } from "../lib/types";
 import { getScoreBand } from "../lib/score-band";
 
+// MapLibre resolves its Web Worker script from its own bundled module's import.meta.url;
+// under Next.js/Turbopack that URL doesn't match /^https?:/, so resolution silently fails
+// and the worker ends up trying to import the page's own HTML, erroring immediately. Every
+// GeoJSON source then hangs forever (live-verified: isSourceLoaded never reaches true, so
+// the choropleth fill/outline layers get added but never actually render). Pointing it at a
+// copy of the worker script served as a static asset (see scripts/copy-maplibre-worker.mjs)
+// sidesteps the broken auto-detection with a real, always-http(s) URL.
+maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
+
 // Raw OSM raster tiles, per SPEC.md's "OpenStreetMap tabanlı, ücretsiz harita tile'ları"
 // choice. tile.openstreetmap.org's usage policy discourages heavy production traffic
 // without caching/a paid tile provider -- fine for this MVP's scale, revisit before growth.
@@ -53,10 +62,12 @@ export function NeighborhoodMap({
   neighborhoods,
   selectedIds = [],
   onSelectDistrict,
+  className = "h-96 w-full",
 }: {
   neighborhoods: NeighborhoodSummary[];
   selectedIds?: (string | undefined)[];
   onSelectDistrict?: (id: string) => void;
+  className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -183,10 +194,6 @@ export function NeighborhoodMap({
   }, [neighborhoods, selectedIds]);
 
   return (
-    <div
-      ref={containerRef}
-      data-testid="neighborhood-map"
-      className="h-96 w-full rounded-lg"
-    />
+    <div ref={containerRef} data-testid="neighborhood-map" className={className} />
   );
 }

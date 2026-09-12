@@ -1,4 +1,6 @@
-import type { NeighborhoodScore } from "../lib/types";
+import type { DimensionScore, NeighborhoodScore } from "../lib/types";
+import { DIMENSION_METHODOLOGY } from "../lib/dimension-info";
+import { DataFreshnessBadge } from "./DataFreshnessBadge";
 import { ScoreBar } from "./ScoreBar";
 
 const DIMENSIONS = [
@@ -6,6 +8,41 @@ const DIMENSIONS = [
   { key: "greenSpace", label: "Yeşil Alan" },
   { key: "transportation", label: "Ulaşım" },
 ] as const;
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// The colored dot carries A/B identity via aria-label (an attribute, not rendered
+// text) so a district name never repeats as a text node once per dimension row -
+// the hero header above is the one place a name is spelled out.
+function IdentityRow({
+  colorClass,
+  name,
+  dimension,
+}: {
+  colorClass: string;
+  name: string;
+  dimension: DimensionScore;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span
+        role="img"
+        aria-label={`${name} göstergesi`}
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${colorClass}`}
+      />
+      <div className="min-w-0 flex-1">
+        <ScoreBar score={dimension.score} />
+      </div>
+      <DataFreshnessBadge freshness={dimension.freshness} />
+    </div>
+  );
+}
 
 export function NeighborhoodComparisonTable({
   nameA,
@@ -18,45 +55,69 @@ export function NeighborhoodComparisonTable({
   scoreA: NeighborhoodScore;
   scoreB: NeighborhoodScore;
 }) {
+  const delta =
+    scoreA.overall !== null && scoreB.overall !== null
+      ? scoreB.overall - scoreA.overall
+      : null;
+
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <table className="w-full min-w-xl border-collapse text-left">
-        <thead>
-          <tr>
-            <th className="border-b border-slate-200 pb-3 pr-4"></th>
-            <th className="border-b border-slate-200 pb-3 pr-4 text-base font-bold text-slate-900">
-              {nameA}
-            </th>
-            <th className="border-b border-slate-200 pb-3 pr-4 text-base font-bold text-slate-900">
-              {nameB}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="py-3 pr-4 font-medium text-slate-700">Genel Skor</td>
-            <td className="py-3 pr-4 text-2xl font-extrabold text-slate-900">
-              {scoreA.overall ?? "—"}
-            </td>
-            <td className="py-3 pr-4 text-2xl font-extrabold text-slate-900">
-              {scoreB.overall ?? "—"}
-            </td>
-          </tr>
-          {DIMENSIONS.map(({ key, label }) => (
-            <tr key={key}>
-              <td className="border-t border-slate-100 py-3 pr-4 font-medium text-slate-700">
-                {label}
-              </td>
-              <td className="border-t border-slate-100 py-3 pr-4">
-                <ScoreBar score={scoreA[key].score} />
-              </td>
-              <td className="border-t border-slate-100 py-3 pr-4">
-                <ScoreBar score={scoreB[key].score} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div
+      data-testid="comparison-result"
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+    >
+      <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+        Genel Skor
+      </p>
+      <div className="mt-2 flex items-center justify-between gap-3 border-b border-slate-100 pb-5">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-blue-700">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
+            <span className="truncate">{nameA}</span>
+          </p>
+          <p className="mt-1 text-3xl font-extrabold text-slate-900">{scoreA.overall ?? "—"}</p>
+        </div>
+        {delta !== null && delta !== 0 && (
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            {delta > 0 ? `▲ ${nameB} +${delta}` : `▲ ${nameA} +${-delta}`}
+          </span>
+        )}
+        <div className="min-w-0 text-right">
+          <p className="flex items-center justify-end gap-1.5 text-xs font-semibold uppercase tracking-wide text-fuchsia-700">
+            <span className="truncate">{nameB}</span>
+            <span className="h-2 w-2 shrink-0 rounded-full bg-fuchsia-600" aria-hidden="true" />
+          </p>
+          <p className="mt-1 text-3xl font-extrabold text-slate-900">{scoreB.overall ?? "—"}</p>
+        </div>
+      </div>
+
+      <div>
+        {DIMENSIONS.map(({ key, label }) => {
+          const dimA = scoreA[key];
+          const dimB = scoreB[key];
+          const citation = dimA.sourceName ? dimA : dimB.sourceName ? dimB : null;
+
+          return (
+            <div key={key} className="border-b border-slate-100 py-4 last:border-0">
+              <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
+              <div className="space-y-2">
+                <IdentityRow colorClass="bg-blue-600" name={nameA} dimension={dimA} />
+                <IdentityRow colorClass="bg-fuchsia-600" name={nameB} dimension={dimB} />
+              </div>
+              {citation && citation.publishedAt && (
+                <p className="mt-2 text-xs text-slate-400">
+                  Kaynak: {citation.sourceName} · {formatDate(citation.publishedAt)}
+                </p>
+              )}
+              <details className="mt-2 text-xs text-slate-500">
+                <summary className="cursor-pointer select-none font-medium text-slate-400 hover:text-slate-600">
+                  Nasıl hesaplanıyor?
+                </summary>
+                <p className="mt-1 max-w-prose">{DIMENSION_METHODOLOGY[key]}</p>
+              </details>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

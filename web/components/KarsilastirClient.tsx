@@ -4,6 +4,7 @@ import { useNeighborhoods } from "../lib/hooks/useNeighborhoods";
 import { useCompareNeighborhoods } from "../lib/hooks/useCompareNeighborhoods";
 import { NeighborhoodComparisonTable } from "./NeighborhoodComparisonTable";
 import { NeighborhoodMap } from "./NeighborhoodMap";
+import { DistrictPicker } from "./DistrictPicker";
 import { useState } from "react";
 
 export function KarsilastirClient() {
@@ -34,107 +35,77 @@ export function KarsilastirClient() {
     }
   }
 
-  const selectClass =
-    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 sm:w-48";
-
   return (
-    <>
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="district-a" className="text-xs font-medium text-slate-500">
-            Birinci ilçe
-          </label>
-          <select
-            id="district-a"
-            aria-label="Birinci ilçe"
-            value={a ?? ""}
-            onChange={(e) => setA(e.target.value || undefined)}
-            className={selectClass}
-          >
-            <option value="">Seçiniz</option>
-            {neighborhoods
-              ?.filter((n) => n.id !== b)
-              .map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.name}
-                </option>
-              ))}
-          </select>
+    <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      {/* Map first in source order (keyboard/reader users reach the primary content
+          before the picker controls), but sits below the pickers on small screens
+          where a giant map before any selection wastes the first scroll. */}
+      <div className="order-2 lg:order-1">
+        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Birinci ilçe
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-fuchsia-600" /> İkinci ilçe
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> İyi
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Orta
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Düşük
+          </span>
+          <span>Haritadan bir ilçeye tıklayarak da seçebilirsin.</span>
         </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="district-b" className="text-xs font-medium text-slate-500">
-            İkinci ilçe
-          </label>
-          <select
-            id="district-b"
-            aria-label="İkinci ilçe"
-            value={b ?? ""}
-            onChange={(e) => setB(e.target.value || undefined)}
-            className={selectClass}
-          >
-            <option value="">Seçiniz</option>
-            {neighborhoods
-              ?.filter((n) => n.id !== a)
-              .map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.name}
-                </option>
-              ))}
-          </select>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+          <NeighborhoodMap
+            neighborhoods={neighborhoods ?? []}
+            selectedIds={[a, b]}
+            onSelectDistrict={handleSelectDistrict}
+            className="h-96 w-full lg:h-150"
+          />
         </div>
       </div>
 
-      {a && b && isPending && (
-        <p role="status" className="mt-8 text-sm text-slate-500">
-          Yükleniyor…
-        </p>
-      )}
-      {isError && (
-        <p className="mt-8 text-sm text-red-700">
-          Karşılaştırma yüklenirken bir hata oluştu.
-        </p>
-      )}
+      <div className="order-1 flex flex-col gap-4 lg:order-2 lg:sticky lg:top-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <DistrictPicker
+            label="Birinci ilçe"
+            accent="a"
+            neighborhoods={neighborhoods ?? []}
+            excludeId={b}
+            value={a}
+            onChange={setA}
+          />
+          <DistrictPicker
+            label="İkinci ilçe"
+            accent="b"
+            neighborhoods={neighborhoods ?? []}
+            excludeId={a}
+            value={b}
+            onChange={setB}
+          />
+        </div>
 
-      {comparison && (
-        <div className="mt-8">
+        {a && b && isPending && (
+          <p role="status" className="text-sm text-slate-500">
+            Yükleniyor…
+          </p>
+        )}
+        {isError && (
+          <p className="text-sm text-red-700">Karşılaştırma yüklenirken bir hata oluştu.</p>
+        )}
+        {comparison && (
           <NeighborhoodComparisonTable
             nameA={nameOf(a)}
             nameB={nameOf(b)}
             scoreA={comparison.a}
             scoreB={comparison.b}
           />
-        </div>
-      )}
-
-      {neighborhoods && (
-        <div className="mt-8">
-          <div className="mb-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Birinci ilçe
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-fuchsia-600" /> İkinci ilçe
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> İyi
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Orta
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Düşük
-            </span>
-            <span>Haritadan bir ilçeye tıklayarak da seçebilirsin.</span>
-          </div>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-            <NeighborhoodMap
-              neighborhoods={neighborhoods}
-              selectedIds={[a, b]}
-              onSelectDistrict={handleSelectDistrict}
-            />
-          </div>
-        </div>
-      )}
-    </>
+        )}
+      </div>
+    </div>
   );
 }

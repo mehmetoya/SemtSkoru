@@ -3,6 +3,7 @@ using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.IO.Converters;
+using Npgsql;
 using Scalar.AspNetCore;
 using SemtSkoru.Api.Endpoints;
 using SemtSkoru.Application.Scoring;
@@ -13,10 +14,17 @@ using SemtSkoru.Infrastructure.Scoring;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
+var rawConnectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException(
         "ConnectionStrings:Default ayarlı değil. Yerel geliştirme için README'deki " +
         "'dotnet user-secrets set' adımını çalıştırın.");
+
+// Supabase's free-tier Session Pooler hard-caps concurrent client connections at 15
+// total; live-verified a deploy crash ("EMAXCONNSESSION ... limited to pool_size: 15")
+// because EF Core's and Hangfire's independent ADO.NET pools each default to a max of
+// 100. Both use this same capped string, so they share Npgsql's process-wide pool for
+// it and can never together approach the server-side limit.
+var connectionString = new NpgsqlConnectionStringBuilder(rawConnectionString) { MaxPoolSize = 8 }.ConnectionString;
 
 // Frontend (Next.js) and backend run on different ports/origins in dev; without this,
 // every browser fetch from web/ silently fails CORS (curl/jsdom tests never surfaced it --
@@ -48,7 +56,10 @@ builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringServi
 
 builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
-builder.Services.AddHangfireServer();
+// Default worker count is Environment.ProcessorCount * 5, which can be misleadingly
+// high in a container with a small CPU quota; kept low since this app's recurring
+// jobs never run concurrently with each other and each worker can hold a connection.
+builder.Services.AddHangfireServer(options => options.WorkerCount = 2);
 
 var app = builder.Build();
 
@@ -72,7 +83,10 @@ app.UseCors();
 // Cheap liveness ping: a free-tier host that spins the container down after idle time
 // (e.g. Render) wakes it back up on any request, at which point Hangfire's own recurring-job
 // scheduler catches up on whatever was missed while asleep. See .github/workflows/daily-wake.yml.
+// /health/live is the same check under the path an external uptime monitor (UptimeRobot)
+// was already configured to poll - added as an alias rather than asking that config to change.
 app.MapGet("/health", () => Results.Ok());
+app.MapGet("/health/live", () => Results.Ok());
 
 app.MapNeighborhoodEndpoints();
 

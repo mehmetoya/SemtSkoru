@@ -9,11 +9,11 @@ tasarlandı. Üç ayrı sağlayıcı, üç ayrı sorumluluk:
 | API (.NET) | [Render](https://render.com) — Free Web Service | Docker deploy'u destekliyor, kalıcı ücretsiz |
 | Veritabanı (Postgres+PostGIS) | [Supabase](https://supabase.com) — Free | Yönetilen Postgres, PostGIS uzantısı dahil |
 
-Redis burada **yok** — `docker-compose.yml`'deki Redis servisi hâlâ duruyor ama kod
-hiçbir yerde gerçekten kullanmıyor (`grep -r Redis backend/src` boş dönüyor; SPEC.md'nin
-"skor cache" planı hiç implemente edilmedi). Bu yüzden prod için Upstash gibi ek bir
-ücretsiz Redis katmanı eklemedik — olmayan bir şeyi barındırmanın anlamı yok. Redis'i
-gerçekten kullanan bir cache eklenirse bu doküman güncellenmeli.
+Redis burada **yok** — SPEC.md'nin ilk taslağındaki "skor cache" planı hiç implemente
+edilmedi (`grep -r Redis backend/src` boş dönüyor) ve `docker-compose.yml`'deki kullanılmayan
+Redis servisi de bu yüzden kaldırıldı. Bu yüzden prod için Upstash gibi ek bir ücretsiz
+Redis katmanı eklemedik — olmayan bir şeyi barındırmanın anlamı yok. Redis'i gerçekten
+kullanan bir cache eklenirse hem `docker-compose.yml`'e hem bu dokümana geri eklenmeli.
 
 ## 1. Supabase (veritabanı)
 
