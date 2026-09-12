@@ -8,14 +8,27 @@ public static class NeighborhoodEndpoints
 {
     public static void MapNeighborhoodEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/neighborhoods", async (AppDbContext db, CancellationToken ct) =>
+        app.MapGet("/api/neighborhoods", async (AppDbContext db, INeighborhoodScoringService scoringService, CancellationToken ct) =>
         {
             var neighborhoods = await db.Neighborhoods
                 .OrderBy(n => n.Name)
-                .Select(n => new NeighborhoodSummaryDto(n.Id, n.Name, n.Boundary))
+                .Select(n => new { n.Id, n.Name, n.Boundary })
                 .ToListAsync(ct);
 
-            return Results.Ok(neighborhoods);
+            // Bulk-scored (a handful of queries total, not one round trip per neighborhood) -
+            // live-verified that 39 sequential GetScoreAsync calls took ~21s end to end against
+            // the real Render->Supabase cross-cloud connection, which the frontend's 5-minute
+            // ISR cache doesn't fully hide (the page generating that cache entry still pays it).
+            var scores = await scoringService.GetAllScoresAsync(ct);
+            var result = neighborhoods
+                .Select(n => new NeighborhoodSummaryDto(
+                    n.Id,
+                    n.Name,
+                    n.Boundary,
+                    scores.GetValueOrDefault(n.Id)?.Overall?.Value))
+                .ToList();
+
+            return Results.Ok(result);
         });
 
         app.MapGet("/api/neighborhoods/{id}/score", async (string id, INeighborhoodScoringService scoringService, CancellationToken ct) =>

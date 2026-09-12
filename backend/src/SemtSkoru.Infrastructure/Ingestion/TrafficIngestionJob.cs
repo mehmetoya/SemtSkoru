@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.Geometries.Prepared;
 using SemtSkoru.Domain;
 using SemtSkoru.Infrastructure.ExternalApis;
 using SemtSkoru.Infrastructure.Persistence;
@@ -35,16 +36,27 @@ public sealed class TrafficIngestionJob(
         var envelopes = neighborhoods.ToDictionary(n => n.Id, n => n.Boundary.EnvelopeInternal);
         var sums = neighborhoods.ToDictionary(n => n.Id, _ => (Sum: 0.0, Count: 0));
 
+        // Prepared geometries precompute an internal spatial index for a FIXED geometry that's
+        // tested against many different points - exactly this case (39 boundaries x ~1.76M CSV
+        // rows). Plain Geometry.Contains() runs a full DE-9IM relate on every call; live-verified
+        // this was the actual bottleneck once districts grew from 3 to 39: raw curl pulls the
+        // 140MB file in ~4s, but the un-prepared version of this loop consumed it so slowly
+        // (~0.45 MB/s) that the source connection was dropped mid-download before completing.
+        var preparedBoundaries = neighborhoods.ToDictionary(
+            n => n.Id,
+            n => PreparedGeometryFactory.Prepare(n.Boundary));
+
         try
         {
             await foreach (var row in client.GetTrafficRowsAsync(ct))
             {
                 var point = new Coordinate(row.Longitude, row.Latitude);
+                var pointGeometry = new Point(point);
 
                 foreach (var neighborhood in neighborhoods)
                 {
                     if (!envelopes[neighborhood.Id].Contains(point) ||
-                        !neighborhood.Boundary.Contains(new Point(point)))
+                        !preparedBoundaries[neighborhood.Id].Contains(pointGeometry))
                     {
                         continue;
                     }

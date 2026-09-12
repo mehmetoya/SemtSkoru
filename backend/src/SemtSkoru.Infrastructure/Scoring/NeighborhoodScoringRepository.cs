@@ -18,4 +18,16 @@ public sealed class NeighborhoodScoringRepository(AppDbContext db) : INeighborho
 
     public async Task<TrafficReading?> GetLatestTrafficAsync(string neighborhoodId, CancellationToken ct) =>
         await db.TrafficReadings.FindAsync([neighborhoodId], ct);
+
+    public async Task<IReadOnlyList<string>> GetAllNeighborhoodIdsAsync(CancellationToken ct) =>
+        await db.Neighborhoods.Select(n => n.Id).ToListAsync(ct);
+
+    public async Task<IReadOnlyDictionary<string, AirQualityReading>> GetAllAirQualityAsync(CancellationToken ct) =>
+        await db.AirQualityReadings.ToDictionaryAsync(r => r.NeighborhoodId, ct);
+
+    public async Task<IReadOnlyDictionary<string, GreenSpaceReading>> GetAllGreenSpaceAsync(CancellationToken ct) =>
+        await db.GreenSpaceReadings.ToDictionaryAsync(r => r.NeighborhoodId, ct);
+
+    public async Task<IReadOnlyDictionary<string, TrafficReading>> GetAllTrafficAsync(CancellationToken ct) =>
+        await db.TrafficReadings.ToDictionaryAsync(r => r.NeighborhoodId, ct);
 }

@@ -3,7 +3,7 @@ using SemtSkoru.Application.Scoring;
 
 namespace SemtSkoru.Api.Endpoints;
 
-public sealed record NeighborhoodSummaryDto(string Id, string Name, Geometry Boundary);
+public sealed record NeighborhoodSummaryDto(string Id, string Name, Geometry Boundary, int? OverallScore);
 
 public sealed record DimensionScoreDto(int? Score, string? Freshness, string? SourceName, DateTimeOffset? PublishedAt)
 {

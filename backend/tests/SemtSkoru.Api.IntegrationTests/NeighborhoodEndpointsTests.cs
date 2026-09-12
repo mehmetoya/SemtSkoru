@@ -62,7 +62,7 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
         Cadence: SourceCadence.Live);
 
     [Fact]
-    public async Task GetNeighborhoods_returns_the_three_seeded_districts()
+    public async Task GetNeighborhoods_returns_all_39_seeded_districts()
     {
         var client = _factory.CreateClient();
 
@@ -71,7 +71,7 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
         response.EnsureSuccessStatusCode();
         var neighborhoods = await response.Content.ReadFromJsonAsync<List<NeighborhoodSummaryDto>>(GeoJsonOptions);
         Assert.NotNull(neighborhoods);
-        Assert.Equal(3, neighborhoods.Count);
+        Assert.Equal(39, neighborhoods.Count);
         var kadikoy = Assert.Single(neighborhoods, n => n.Id == "kadikoy" && n.Name == "Kadıköy");
         Assert.True(kadikoy.Boundary.IsValid);
         Assert.True(kadikoy.Boundary.Area > 0);

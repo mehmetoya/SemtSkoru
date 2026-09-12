@@ -2,6 +2,7 @@ import type { DimensionScore, NeighborhoodScore } from "../lib/types";
 import { getScoreBand, SCORE_BAND_STYLES } from "../lib/score-band";
 import { DIMENSION_METHODOLOGY } from "../lib/dimension-info";
 import { DataFreshnessBadge } from "./DataFreshnessBadge";
+import { DistrictShapeIcon } from "./DistrictShapeIcon";
 import { ScoreBar } from "./ScoreBar";
 
 const DIMENSIONS = [
@@ -59,9 +60,11 @@ function DimensionRow({
 
 export function NeighborhoodScoreCard({
   name,
+  boundary,
   score,
 }: {
   name: string;
+  boundary: GeoJSON.Geometry;
   score: NeighborhoodScore;
 }) {
   const overallBand = getScoreBand(score.overall);
@@ -70,7 +73,10 @@ export function NeighborhoodScoreCard({
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{name}</h1>
+        <div className="flex items-center gap-3">
+          <DistrictShapeIcon boundary={boundary} className={`h-12 w-12 shrink-0 ${overallStyles.text}`} />
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{name}</h1>
+        </div>
         <div
           className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full ${overallStyles.bg}`}
         >

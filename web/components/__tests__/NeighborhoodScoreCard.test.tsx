@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { SAMPLE_BOUNDARY } from "../../lib/test-utils";
 import { NeighborhoodScoreCard } from "../NeighborhoodScoreCard";
 import type { NeighborhoodScore } from "../../lib/types";
 
@@ -29,7 +30,7 @@ describe("NeighborhoodScoreCard", () => {
       isComplete: true,
     };
 
-    render(<NeighborhoodScoreCard name="Kadıköy" score={score} />);
+    render(<NeighborhoodScoreCard name="Kadıköy" boundary={SAMPLE_BOUNDARY} score={score} />);
 
     expect(screen.getByText("Kadıköy")).toBeInTheDocument();
     expect(screen.getByText("94")).toBeInTheDocument();
@@ -59,7 +60,7 @@ describe("NeighborhoodScoreCard", () => {
       isComplete: false,
     };
 
-    render(<NeighborhoodScoreCard name="Beşiktaş" score={score} />);
+    render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />);
 
     expect(screen.getByText("Beşiktaş")).toBeInTheDocument();
     expect(screen.getByText("Veri yok")).toBeInTheDocument();
@@ -88,7 +89,7 @@ describe("NeighborhoodScoreCard", () => {
       isComplete: false,
     };
 
-    render(<NeighborhoodScoreCard name="Beşiktaş" score={score} />);
+    render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />);
 
     const labels = screen.getAllByText(/Hava Kalitesi|Yeşil Alan|Ulaşım/);
     expect(labels.map((el) => el.textContent)).toEqual([

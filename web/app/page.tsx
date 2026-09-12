@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { fetchNeighborhoods, fetchNeighborhoodScore } from "../lib/api-client";
+import { fetchNeighborhoods } from "../lib/api-client";
 import { NeighborhoodListCard } from "../components/NeighborhoodListCard";
 import { SITE_URL } from "../lib/site";
 
@@ -12,7 +12,7 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "SemtSkoru — İstanbul İlçe Yaşam Skoru",
   description:
-    "Kadıköy, Üsküdar ve Beşiktaş için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğunu gerçek İBB açık verisiyle 0-100 arası skorlara çeviren açık kaynak araç.",
+    "İstanbul'un 39 ilçesi için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğunu gerçek İBB açık verisiyle 0-100 arası skorlara çeviren açık kaynak araç.",
   alternates: { canonical: "/" },
 };
 
@@ -25,16 +25,12 @@ export default async function Home() {
     listError = true;
   }
 
-  const scores = await Promise.all(
-    neighborhoods.map((n) => fetchNeighborhoodScore(n.id).catch(() => null)),
-  );
-
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Dataset",
     name: "SemtSkoru İlçe Yaşam Skorları",
     description:
-      "İstanbul ilçeleri için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu skorları; İBB Açık Veri Portalı ve OpenStreetMap kaynaklı.",
+      "İstanbul'un 39 ilçesi için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu skorları; İBB Açık Veri Portalı ve OpenStreetMap kaynaklı.",
     url: SITE_URL,
     license: "https://data.ibb.gov.tr/pages/lisans/",
     creator: { "@type": "Organization", name: "İstanbul Büyükşehir Belediyesi Açık Veri Portalı" },
@@ -42,7 +38,7 @@ export default async function Home() {
   };
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -65,13 +61,14 @@ export default async function Home() {
       )}
 
       {!listError && (
-        <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {neighborhoods.map((neighborhood, i) => (
+        <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {neighborhoods.map((neighborhood) => (
             <NeighborhoodListCard
               key={neighborhood.id}
               id={neighborhood.id}
               name={neighborhood.name}
-              score={scores[i]}
+              boundary={neighborhood.boundary}
+              overallScore={neighborhood.overallScore}
             />
           ))}
         </ul>

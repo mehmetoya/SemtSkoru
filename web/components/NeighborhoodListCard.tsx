@@ -1,17 +1,19 @@
 import Link from "next/link";
-import type { NeighborhoodScore } from "../lib/types";
 import { getScoreBand, SCORE_BAND_LABELS, SCORE_BAND_STYLES } from "../lib/score-band";
+import { DistrictShapeIcon } from "./DistrictShapeIcon";
 
 export function NeighborhoodListCard({
   id,
   name,
-  score,
+  boundary,
+  overallScore,
 }: {
   id: string;
   name: string;
-  score: NeighborhoodScore | null;
+  boundary: GeoJSON.Geometry;
+  overallScore: number | null;
 }) {
-  const band = getScoreBand(score?.overall);
+  const band = getScoreBand(overallScore);
   const styles = SCORE_BAND_STYLES[band];
 
   return (
@@ -23,16 +25,19 @@ export function NeighborhoodListCard({
         >
           {name}
         </Link>
+        <DistrictShapeIcon boundary={boundary} className={`h-10 w-10 shrink-0 ${styles.text}`} />
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <p className={`text-sm font-medium ${styles.text}`}>
+          {overallScore === null ? "Skor yüklenemedi" : `Genel skor: ${SCORE_BAND_LABELS[band]}`}
+        </p>
         <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${styles.bg} ${styles.text}`}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${styles.bg} ${styles.text}`}
           aria-hidden="true"
         >
-          {score?.overall ?? "—"}
+          {overallScore ?? "—"}
         </div>
       </div>
-      <p className={`mt-2 text-sm font-medium ${styles.text}`}>
-        {score ? `Genel skor: ${SCORE_BAND_LABELS[band]}` : "Skor yüklenemedi"}
-      </p>
     </li>
   );
 }

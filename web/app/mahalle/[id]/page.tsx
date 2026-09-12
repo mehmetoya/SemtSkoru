@@ -3,25 +3,25 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchNeighborhoods, fetchNeighborhoodScore } from "../../../lib/api-client";
 import { NeighborhoodScoreCard } from "../../../components/NeighborhoodScoreCard";
-import type { NeighborhoodScore } from "../../../lib/types";
+import type { NeighborhoodScore, NeighborhoodSummary } from "../../../lib/types";
 import { SITE_URL } from "../../../lib/site";
 
 export const revalidate = 300;
 
-async function findName(id: string): Promise<string | undefined> {
+async function findNeighborhood(id: string): Promise<NeighborhoodSummary | undefined> {
   const neighborhoods = await fetchNeighborhoods();
-  return neighborhoods.find((n) => n.id === id)?.name;
+  return neighborhoods.find((n) => n.id === id);
 }
 
 export async function generateMetadata({
   params,
 }: PageProps<"/mahalle/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const name = await findName(id);
-  if (!name) return {};
+  const neighborhood = await findNeighborhood(id);
+  if (!neighborhood) return {};
 
-  const title = `${name} Yaşam Skoru`;
-  const description = `${name} için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu skorları - gerçek İBB açık verisiyle, kaynak ve güncellik tarihiyle birlikte.`;
+  const title = `${neighborhood.name} Yaşam Skoru`;
+  const description = `${neighborhood.name} için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu skorları - gerçek İBB açık verisiyle, kaynak ve güncellik tarihiyle birlikte.`;
   return {
     title,
     description,
@@ -34,8 +34,8 @@ export default async function MahallePage({
   params,
 }: PageProps<"/mahalle/[id]">) {
   const { id } = await params;
-  const name = await findName(id);
-  if (!name) notFound();
+  const neighborhood = await findNeighborhood(id);
+  if (!neighborhood) notFound();
 
   let score: NeighborhoodScore | null = null;
   try {
@@ -49,7 +49,7 @@ export default async function MahallePage({
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "İlçeler", item: SITE_URL },
-      { "@type": "ListItem", position: 2, name, item: `${SITE_URL}/mahalle/${id}` },
+      { "@type": "ListItem", position: 2, name: neighborhood.name, item: `${SITE_URL}/mahalle/${id}` },
     ],
   };
 
@@ -67,7 +67,7 @@ export default async function MahallePage({
       </Link>
       <div className="mt-4">
         {score ? (
-          <NeighborhoodScoreCard name={name} score={score} />
+          <NeighborhoodScoreCard name={neighborhood.name} boundary={neighborhood.boundary} score={score} />
         ) : (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 sm:p-8">
             Skor yüklenirken bir hata oluştu.

@@ -108,12 +108,21 @@ export function KarsilastirClient() {
 
       {neighborhoods && (
         <div className="mt-8">
-          <div className="mb-2 flex items-center gap-4 text-xs text-slate-500">
+          <div className="mb-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Birinci ilçe
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-fuchsia-600" /> İkinci ilçe
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> İyi
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Orta
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Düşük
             </span>
             <span>Haritadan bir ilçeye tıklayarak da seçebilirsin.</span>
           </div>

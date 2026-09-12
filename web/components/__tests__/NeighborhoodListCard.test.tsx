@@ -1,22 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { NeighborhoodListCard } from "../NeighborhoodListCard";
-import type { NeighborhoodScore } from "../../lib/types";
-
-function score(overall: number | null): NeighborhoodScore {
-  return {
-    neighborhoodId: "kadikoy",
-    airQuality: { score: overall, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
-    greenSpace: { score: overall, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
-    transportation: { score: overall, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
-    overall,
-    isComplete: overall !== null,
-  };
-}
+import { SAMPLE_BOUNDARY } from "../../lib/test-utils";
 
 describe("NeighborhoodListCard", () => {
   it("links to the district's detail page and shows its score band", () => {
-    render(<NeighborhoodListCard id="kadikoy" name="Kadıköy" score={score(82)} />);
+    render(
+      <NeighborhoodListCard
+        id="kadikoy"
+        name="Kadıköy"
+        boundary={SAMPLE_BOUNDARY}
+        overallScore={82}
+      />,
+    );
 
     const link = screen.getByRole("link", { name: "Kadıköy" });
     expect(link).toHaveAttribute("href", "/mahalle/kadikoy");
@@ -25,7 +21,14 @@ describe("NeighborhoodListCard", () => {
   });
 
   it("shows a fallback when the score failed to load", () => {
-    render(<NeighborhoodListCard id="kadikoy" name="Kadıköy" score={null} />);
+    render(
+      <NeighborhoodListCard
+        id="kadikoy"
+        name="Kadıköy"
+        boundary={SAMPLE_BOUNDARY}
+        overallScore={null}
+      />,
+    );
 
     expect(screen.getByText("Skor yüklenemedi")).toBeInTheDocument();
   });

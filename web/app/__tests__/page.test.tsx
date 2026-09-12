@@ -5,9 +5,9 @@ import { jsonResponse, SAMPLE_BOUNDARY } from "../../lib/test-utils";
 import type { NeighborhoodSummary } from "../../lib/types";
 
 const NEIGHBORHOODS: NeighborhoodSummary[] = [
-  { id: "kadikoy", name: "Kadıköy", boundary: SAMPLE_BOUNDARY },
-  { id: "uskudar", name: "Üsküdar", boundary: SAMPLE_BOUNDARY },
-  { id: "besiktas", name: "Beşiktaş", boundary: SAMPLE_BOUNDARY },
+  { id: "kadikoy", name: "Kadıköy", boundary: SAMPLE_BOUNDARY, overallScore: 80 },
+  { id: "uskudar", name: "Üsküdar", boundary: SAMPLE_BOUNDARY, overallScore: 62 },
+  { id: "besiktas", name: "Beşiktaş", boundary: SAMPLE_BOUNDARY, overallScore: null },
 ];
 
 // Home is an async Server Component (no hooks, no client-only APIs), so awaiting it and
@@ -20,22 +20,7 @@ describe("Home", () => {
   });
 
   it("lists the three districts, each linking to its score page", async () => {
-    vi.mocked(fetch).mockImplementation((input) => {
-      const url = String(input);
-      if (url.endsWith("/api/neighborhoods")) {
-        return Promise.resolve(jsonResponse(NEIGHBORHOODS));
-      }
-      return Promise.resolve(
-        jsonResponse({
-          neighborhoodId: "x",
-          airQuality: { score: 80, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
-          greenSpace: { score: 80, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
-          transportation: { score: 80, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
-          overall: 80,
-          isComplete: true,
-        }),
-      );
-    });
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(NEIGHBORHOODS));
 
     render(await Home());
 

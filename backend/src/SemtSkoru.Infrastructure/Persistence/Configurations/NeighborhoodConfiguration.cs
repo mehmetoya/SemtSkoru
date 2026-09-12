@@ -15,8 +15,10 @@ public class NeighborhoodConfiguration : IEntityTypeConfiguration<Neighborhood>
         builder.Property(n => n.Id).HasMaxLength(64);
         builder.Property(n => n.Name).IsRequired().HasMaxLength(200);
 
+        // Generic Geometry, not Polygon: Adalar and Şile are multi-island districts
+        // (MultiPolygon) - see 20260912201522_AddRemainingIstanbulDistricts.
         builder.Property(n => n.Boundary)
-            .HasColumnType("geometry(Polygon, 4326)")
+            .HasColumnType("geometry(Geometry, 4326)")
             .IsRequired();
     }
 }

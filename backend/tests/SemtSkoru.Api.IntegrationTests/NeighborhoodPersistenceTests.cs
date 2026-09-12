@@ -27,17 +27,20 @@ public class NeighborhoodPersistenceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Migration_seeds_the_three_target_districts_with_valid_boundaries()
+    public async Task Migration_seeds_all_39_istanbul_districts_with_valid_boundaries()
     {
         await using var context = CreateContext();
 
         var neighborhoods = await context.Neighborhoods.ToListAsync();
 
-        Assert.Equal(3, neighborhoods.Count);
+        Assert.Equal(39, neighborhoods.Count);
         Assert.All(neighborhoods, n => Assert.NotNull(n.Boundary));
         Assert.All(neighborhoods, n => Assert.True(n.Boundary.IsValid));
         Assert.Contains(neighborhoods, n => n.Id == "kadikoy" && n.Name == "Kadıköy");
         Assert.Contains(neighborhoods, n => n.Id == "uskudar" && n.Name == "Üsküdar");
         Assert.Contains(neighborhoods, n => n.Id == "besiktas" && n.Name == "Beşiktaş");
+        // Adalar and Şile are multi-island districts (MultiPolygon), unlike the other 37.
+        Assert.Contains(neighborhoods, n => n.Id == "adalar" && n.Name == "Adalar");
+        Assert.Contains(neighborhoods, n => n.Id == "sile" && n.Name == "Şile");
     }
 }

@@ -6,7 +6,7 @@
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
 ![PostGIS](https://img.shields.io/badge/PostgreSQL-PostGIS-336791?logo=postgresql&logoColor=white)
 
-**"Nereye taşınmalıyım?"** sorusuna gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisiyle cevap veren açık kaynak bir web uygulaması. Bir ilçenin hava kalitesi, yeşil alan erişimi ve trafik/ulaşım durumunu 0-100 arası skorlara çevirir, iki ilçeyi yan yana karşılaştırır. MVP kapsamı üç ilçeyle sınırlı: **Kadıköy, Üsküdar, Beşiktaş**.
+**"Nereye taşınmalıyım?"** sorusuna gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisiyle cevap veren açık kaynak bir web uygulaması. Bir ilçenin hava kalitesi, yeşil alan erişimi ve trafik/ulaşım durumunu 0-100 arası skorlara çevirir, iki ilçeyi yan yana karşılaştırır. İstanbul'un tüm **39 ilçesini** kapsar — hava kalitesi verisi yalnızca gerçek bir İBB istasyonu bulunan 18 ilçede mevcuttur, kalan 21 ilçede bu boyut dürüstçe "Veri yok" olarak işaretlenir (bkz. [`docs/data-sources.md`](docs/data-sources.md)).
 
 ## Özellikler
 
@@ -124,7 +124,7 @@ npm run dev
 # Uygulama: http://localhost:3000
 ```
 
-Migration'lar Kadıköy/Üsküdar/Beşiktaş'ı gerçek sınır verisiyle (OpenStreetMap) otomatik olarak seed eder. Skorlar, arka planda çalışan Hangfire ingestion job'ları (hava kalitesi günlük, yeşil alan haftalık, trafik aylık) gerçek veriyi çektikçe dolar; job'ları hemen tetiklemek isterseniz API'nin Hangfire panosundan (`/hangfire`, sadece Development ortamında) manuel çalıştırabilirsiniz.
+Migration'lar İstanbul'un 39 ilçesini gerçek sınır verisiyle (OpenStreetMap) otomatik olarak seed eder. Skorlar, arka planda çalışan Hangfire ingestion job'ları (hava kalitesi günlük, yeşil alan haftalık, trafik aylık) gerçek veriyi çektikçe dolar; job'ları hemen tetiklemek isterseniz API'nin Hangfire panosundan (`/hangfire`, sadece Development ortamında) manuel çalıştırabilirsiniz.
 
 ## Testler
 

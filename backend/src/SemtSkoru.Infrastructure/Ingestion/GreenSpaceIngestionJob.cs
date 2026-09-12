@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SemtSkoru.Domain;
@@ -7,7 +8,7 @@ using SemtSkoru.Infrastructure.Persistence;
 namespace SemtSkoru.Infrastructure.Ingestion;
 
 /// <summary>
-/// For each MVP district, finds the nearest "Park"-typed green space (within the same
+/// For each seeded district, finds the nearest "Park"-typed green space (within the same
 /// district, per the İBB dataset's own ILCE tagging) to the district's boundary centroid.
 /// Scheduled weekly via Hangfire (see Program.cs) — this data changes far less often than
 /// air quality, and the source file is a ~53 MB city-wide download.
@@ -25,13 +26,7 @@ public sealed class GreenSpaceIngestionJob(
     // Dataset's own metadata_modified date at the time it was verified — see docs/data-sources.md, section 2.
     private static readonly DateTimeOffset SourcePublishedAt = new(2025, 7, 17, 0, 0, 0, TimeSpan.Zero);
 
-    // İBB's ILCE property is the uppercase Turkish district name — resolved in Task 4/verified in Task 8.
-    private static readonly IReadOnlyDictionary<string, string> IlceByNeighborhoodId = new Dictionary<string, string>
-    {
-        ["kadikoy"] = "KADIKÖY",
-        ["uskudar"] = "ÜSKÜDAR",
-        ["besiktas"] = "BEŞİKTAŞ",
-    };
+    private static readonly CultureInfo Turkish = new("tr-TR");
 
     public async Task RunAsync(CancellationToken ct)
     {
@@ -51,11 +46,11 @@ public sealed class GreenSpaceIngestionJob(
 
         foreach (var neighborhood in neighborhoods)
         {
-            if (!IlceByNeighborhoodId.TryGetValue(neighborhood.Id, out var ilce))
-            {
-                continue;
-            }
-
+            // İBB's ILCE property is the uppercase Turkish district name. A Turkish-culture
+            // uppercase of the district's own display name (dotted İ/dotless I handled
+            // correctly by "tr-TR") produces an exact match - live-verified against all 39
+            // real ILCE values (see docs/data-sources.md), so no lookup table is needed.
+            var ilce = neighborhood.Name.ToUpper(Turkish);
             var districtParks = parks.Where(p => p.District == ilce).ToList();
             if (districtParks.Count == 0)
             {

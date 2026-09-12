@@ -101,11 +101,57 @@ GET https://nominatim.openstreetmap.org/search?q={ilçe},+İstanbul,+Türkiye&fo
 
 ---
 
+## 5. Faz 2 — 39 İlçeye Genişleme (Doğrulama, 2026-09-13)
+
+3 hedef ilçeden İstanbul'un tüm 39 ilçesine genişlerken, her kaynağın gerçekten
+39 ilçeyi kapsayıp kapsamadığı canlı olarak test edildi — varsayılmadı.
+
+**Yeşil alan — ✅ 39/39 doğrulandı.** Bölüm 2'deki GeoJSON tekrar indirilip
+`ILCE` alanının tüm benzersiz değerleri çıkarıldı: tam 39 değer, İstanbul'un
+resmi 39 ilçesiyle birebir eşleşiyor, her ilçede en az 1 `TUR=Park` etiketli
+kayıt var (Şile 98 ile en fazla, Arnavutköy/Esenyurt/Güngören 1'er ile en az).
+
+**Trafik — ✅ veri seti şehir geneli, kod zaten genel.** CSV'nin kendisi ilçe
+sınırlaması içermiyor (bölüm 3b'de zaten belgelenmişti); `TrafficIngestionJob`
+de sabit bir ilçe listesi değil, DB'deki `Neighborhood` tablosunun tamamını
+okuyor. Tek gerçek engel 36 ilçenin sınır poligonunun eksik olmasıydı, aşağıda
+çözüldü. **Performans notu:** 39 ilçeye çıkınca `Geometry.Contains()`'in
+düz (prepared olmayan) hali, 1.76M satırlık CSV'yi işlerken kaynağın
+bağlantısını zaman aşımına uğratacak kadar yavaşladı (canlı doğrulandı: `curl`
+dosyayı 4 saniyede çekiyor, düzeltme öncesi ingestion job'ı ~2 dakikada
+%60'ta kesiliyordu) — `NetTopologySuite.Geometries.Prepared.PreparedGeometryFactory`
+ile düzeltildi, düzeltme sonrası tam çalışma ~5 saniye.
+
+**Hava kalitesi — ❌ 18/39 ile sınırlı, doğrulandı.** `GetAQIStations` canlı
+çağrıldı: 28 istasyon, her istasyonun gerçek `Location` koordinatı (nokta) 39
+ilçe poligonuna karşı test edildi (`AirQualityIngestionJob`'da aynı trafik
+tekniğiyle) — yalnızca 18 ilçenin sınırları içinde bir istasyon var. Ayrıca
+istasyon *adına* veya `Adress` serbest metin alanına göre eşleştirmenin
+güvenilmez olduğu canlı olarak doğrulandı: "Kartal" adlı istasyon aslında
+Pendik'te kayıtlı, `Adress` formatı tutarsız ("İstanbul / X - Turkey" /
+"İstanbul - X" / mobil birim için "İBB HAKİM") — bu yüzden istasyon-ilçe
+eşlemesi artık gerçek koordinat + nokta-poligon testiyle yapılıyor, isim/adres
+metniyle değil. Kalan 21 ilçe için kullanıcı onayıyla dürüstçe "Veri yok"
+gösteriliyor.
+
+**İlçe sınırları (36 yeni) — aynı yöntem, ölçeklendirildi.** Bölüm 4'teki
+yöntem (Nominatim, `polygon_geojson=1`, 1 istek/saniye, anlamlı `User-Agent`)
+36 ilçe için tekrarlandı. 35/36 ilk denemede doğru sonuç verdi; **Kağıthane**
+istisnaydı — düz isim sorgusu (`Kağıthane, İstanbul, Türkiye`) Nominatim'in
+en iyi eşleşmesi olarak bir tren istasyonu (Point geometri) döndürdü, idari
+sınır değil. Gerçek OSM relation'ı (`R1765894`, "Kâğıthane" — OSM'nin kendi
+yazımı, İBB'nin "Kağıthane" yazımından farklı) elle bulunup doğrudan
+`/lookup?osm_ids=R1765894` ile çekildi. Adalar ve Şile gerçek çoklu-ada
+ilçeler (MultiPolygon) — `Neighborhood.Boundary` kolonu bu yüzden
+`geometry(Polygon,4326)`'dan `geometry(Geometry,4326)`'ya genişletildi.
+
+---
+
 ## Özet Tablo
 
-| Boyut | Kaynak | Canlı mı? | Auth | Lisans | Karar |
-|---|---|---|---|---|---|
-| Hava kalitesi | api.ibb.gov.tr/havakalitesi | ✅ Saatlik | Yok | İBB Açık Veri Lisansı | Doğrudan kullan |
-| Yeşil alan | data.ibb.gov.tr GeoJSON | ⚠️ Yıllık | Yok | İBB Açık Veri Lisansı | Doğrudan kullan |
-| Trafik | data.ibb.gov.tr CSV (Ocak 2025) | ❌ Bayat (~20 ay) | Yok | İBB Açık Veri Lisansı | Kullan, UI'da "tarihsel" etiketiyle |
-| İlçe sınırı | OpenStreetMap/Nominatim | N/A (statik seed) | Yok (rate-limit'li) | ODbL (atıf gerekli) | Seed-time'da çek, sakla |
+| Boyut | Kaynak | Canlı mı? | 39 ilçe kapsıyor mu? | Auth | Lisans | Karar |
+|---|---|---|---|---|---|---|
+| Hava kalitesi | api.ibb.gov.tr/havakalitesi | ✅ Saatlik | ❌ Yalnızca 18/39 (istasyonu olan) | Yok | İBB Açık Veri Lisansı | Doğrudan kullan; kalan 21 ilçe "Veri yok" |
+| Yeşil alan | data.ibb.gov.tr GeoJSON | ⚠️ Yıllık | ✅ 39/39 | Yok | İBB Açık Veri Lisansı | Doğrudan kullan |
+| Trafik | data.ibb.gov.tr CSV (Ocak 2025) | ❌ Bayat (~20 ay) | ✅ 38/39 (Adalar'da yol trafiği yok) | Yok | İBB Açık Veri Lisansı | Kullan, UI'da "tarihsel" etiketiyle |
+| İlçe sınırı | OpenStreetMap/Nominatim | N/A (statik seed) | ✅ 39/39 | Yok (rate-limit'li) | ODbL (atıf gerekli) | Seed-time'da çek, sakla |

@@ -10,7 +10,11 @@
 
 **Tek cümlelik vaat:** "İstanbul'da bir ilçenin ulaşım, hava kalitesi ve yeşil alan koşullarını tek ekranda karşılaştır."
 
-**Kapsam dışı (v1):** Türkiye geneli (yalnızca İstanbul'da başlanacak), profil bazlı ağırlıklandırma (uzaktan çalışan/aile/öğrenci vb.), günlük yaşam/amenities skoru, kullanıcı hesapları, 3 ilçe dışına çıkmak.
+**Kapsam dışı (v1):** Türkiye geneli (yalnızca İstanbul'da başlanacak), profil bazlı ağırlıklandırma (uzaktan çalışan/aile/öğrenci vb.), günlük yaşam/amenities skoru, kullanıcı hesapları.
+
+~~3 ilçe dışına çıkmak~~ **Faz 2'de kaldırıldı.** Kullanıcı onayıyla İstanbul'un tüm 39 ilçesine genişlendi — bkz. "39 ilçe notu" aşağıda.
+
+**39 ilçe notu (Faz 2'de eklendi):** Kadıköy/Üsküdar/Beşiktaş dışındaki 36 ilçenin sınır poligonu, aynı yöntemle (OSM/Nominatim, bir kereye mahsus çekilip migration'a gömülü) eklendi. Yeşil alan ve trafik verisi gerçekten 39 ilçenin tamamını kapsıyor (canlı doğrulandı — bkz. `docs/data-sources.md`). Hava kalitesi **kapsamıyor**: İBB'nin toplam 28 istasyonu yalnızca 18 ilçeyi kapsıyor; kalan 21 ilçe için hava kalitesi boyutu dürüstçe "Veri yok" gösteriliyor (tahmin/enterpolasyon yapılmadı — kullanıcı onayıyla).
 
 **Terminoloji notu (Task 4'te düzeltildi):** İlk taslakta Kadıköy/Üsküdar/Beşiktaş "mahalle" olarak anılıyordu; bunlar aslında birer **ilçe** (her biri onlarca resmi mahalle içerir). Task 4 araştırmasında İBB'nin hava kalitesi istasyonlarının da tam bu ilçe adlarıyla eşleştiği görüldü, bu yüzden kullanıcı onayıyla karşılaştırma birimi ilçe olarak netleştirildi. Kod tabanındaki `Neighborhood` tipi adı değiştirilmedi (İngilizce'de "neighborhood" bu ölçekte de doğal kullanım) — sadece Türkçe ürün metni düzeltildi.
 
@@ -120,12 +124,12 @@ export function NeighborhoodScoreCard({ neighborhoodId }: { neighborhoodId: stri
 ## Boundaries
 
 - **Always:** Her veri kaydında kaynak adı/lisans/son güncelleme tarihi metadata'sını tut ve bunu kullanıcıya UI'da göster; dış API'leri yalnızca backend ingestion katmanından çağır; bir veri kaynağı 7 günden uzun süredir güncellenmemişse UI'da "bayat veri" uyarısı göster.
-- **Ask first:** Ücretli/limitli üçüncü taraf servis eklemeden önce (harita tile sağlayıcı, hosting, vb.); veritabanı şema değişiklikleri; 3 ilçe sınırını genişletmeden önce; v2 kapsamına (profil ağırlıklandırma, amenities skoru, Türkiye geneli) başlamadan önce.
+- **Ask first:** Ücretli/limitli üçüncü taraf servis eklemeden önce (harita tile sağlayıcı, hosting, vb.); veritabanı şema değişiklikleri; ~~3 ilçe sınırını genişletmeden önce~~ (Faz 2'de onaylandı, bkz. yukarısı); v2 kapsamına (profil ağırlıklandırma, amenities skoru, Türkiye geneli) başlamadan önce.
 - **Never:** Kullanıcı hesabı/PII toplama (MVP'de yok); lisans/kullanım şartı doğrulanmamış bir veri kaynağını entegre etme; kaynağın kendisi garanti etmiyorsa veriyi "canlı/gerçek zamanlı" diye sunma.
 
 ## Success Criteria
 
-- Kullanıcı Kadıköy, Üsküdar, Beşiktaş arasından bir ilçe arayıp Ulaşım / Yeşil Alan / Hava Kalitesi skorlarını (0-100) görebilir.
+- Kullanıcı İstanbul'un 39 ilçesinden birini arayıp Ulaşım / Yeşil Alan / Hava Kalitesi skorlarını (0-100) görebilir (hava kalitesi yalnızca istasyonu olan 18 ilçede; kalanında dürüstçe "Veri yok").
 - Kullanıcı iki ilçeyi yan yana karşılaştırabilir.
 - Her skor kartında veri kaynağı adı ve son güncelleme tarihi görünür.
 - Ingestion job'ları günde en az bir kez çalışır; veri tazeliği izlenir ve bayat veri UI'da işaretlenir.
@@ -140,3 +144,4 @@ export function NeighborhoodScoreCard({ neighborhoodId }: { neighborhoodId: stri
 5. ~~Arayüz dili MVP'de yalnızca Türkçe varsayıldı — onay bekliyor.~~ **Çözüldü (fiilen Task 1-17 boyunca).** Tüm UI metni, hata mesajları ve dokümantasyon Türkçe; onaylandı (Task 18).
 6. ~~Proje adı taslak — GitHub'da yayınlamadan önce isim/alan adı çakışması kontrol edilmeli.~~ **Çözüldü (Task 18).** İki gerçek çakışma bulundu (`semtpusulasi.com`, `kentpusulasi.com`); kullanıcı onayıyla ürün adı **SemtSkoru** oldu. Bkz. yukarıdaki "İsim notu".
 7. Mahalle sınırları için resmi bir İBB veri seti bulunamadı (Task 4) — OpenStreetMap (Nominatim) ilçe sınırları kullanılıyor; ODbL lisansı gereği README'de OSM atıfı yapıldı (Task 18).
+8. ~~3 ilçe dışına çıkılırsa hava kalitesi/trafik verisi tüm ilçeleri kapsar mı, bilinmiyordu.~~ **Çözüldü (Faz 2).** Canlı doğrulandı: yeşil alan ve trafik 39/39 ilçeyi kapsıyor; hava kalitesi yalnızca 18/39'u kapsıyor (İBB'nin 28 istasyonu var, hepsi ilçeye eşit dağılmıyor) — kalan 21 ilçe kullanıcı onayıyla dürüstçe "Veri yok" gösteriliyor, tahmin/enterpolasyon yapılmıyor.

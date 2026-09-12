@@ -4,6 +4,7 @@ export interface NeighborhoodSummary {
   id: string;
   name: string;
   boundary: GeoJSON.Geometry;
+  overallScore: number | null;
 }
 
 export interface DimensionScore {

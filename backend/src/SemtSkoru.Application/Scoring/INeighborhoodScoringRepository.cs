@@ -16,4 +16,17 @@ public interface INeighborhoodScoringRepository
     Task<GreenSpaceReading?> GetLatestGreenSpaceAsync(string neighborhoodId, CancellationToken ct);
 
     Task<TrafficReading?> GetLatestTrafficAsync(string neighborhoodId, CancellationToken ct);
+
+    // Bulk variants for scoring every neighborhood at once (GET /api/neighborhoods) - each is a
+    // single query regardless of neighborhood count. Live-verified this matters: with 39
+    // districts, doing the four single-id queries above once per neighborhood took ~21s end to
+    // end against a cross-cloud Render->Supabase connection (Render and Supabase round trips
+    // are not free, unlike a co-located dev Postgres) before this was added.
+    Task<IReadOnlyList<string>> GetAllNeighborhoodIdsAsync(CancellationToken ct);
+
+    Task<IReadOnlyDictionary<string, AirQualityReading>> GetAllAirQualityAsync(CancellationToken ct);
+
+    Task<IReadOnlyDictionary<string, GreenSpaceReading>> GetAllGreenSpaceAsync(CancellationToken ct);
+
+    Task<IReadOnlyDictionary<string, TrafficReading>> GetAllTrafficAsync(CancellationToken ct);
 }

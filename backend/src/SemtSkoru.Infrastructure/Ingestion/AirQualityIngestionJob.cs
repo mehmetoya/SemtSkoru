@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using NetTopologySuite.Geometries;
 using SemtSkoru.Domain;
 using SemtSkoru.Infrastructure.ExternalApis;
 using SemtSkoru.Infrastructure.Persistence;
@@ -6,8 +8,16 @@ using SemtSkoru.Infrastructure.Persistence;
 namespace SemtSkoru.Infrastructure.Ingestion;
 
 /// <summary>
-/// Pulls the latest air quality reading for each of the 3 MVP districts and upserts it,
-/// with full source provenance metadata. Scheduled daily via Hangfire (see Program.cs).
+/// Pulls the latest air quality reading for every seeded district and upserts it, with full
+/// source provenance metadata. Scheduled daily via Hangfire (see Program.cs).
+///
+/// Matches İBB's own stations to districts by real point-in-polygon test against each
+/// district's boundary (same technique as TrafficIngestionJob) rather than by station name or
+/// the station list's own free-text "Adress" field - live-verified (2026-09-12) that both are
+/// unreliable: a station literally named "Kartal" is addressed in Pendik, and "Adress" formats
+/// are inconsistent ("İstanbul / X - Turkey" vs "İstanbul - X" vs, for a mobile unit, "İBB
+/// HAKİM"). Only 28 stations exist city-wide (verified live), covering 18 of 39 districts -
+/// the other 21 legitimately get no reading, never a guessed/interpolated one.
 /// </summary>
 public sealed class AirQualityIngestionJob(
     IAirQualityApiClient client,
@@ -19,41 +29,66 @@ public sealed class AirQualityIngestionJob(
     private const string SourceUrl = "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIByStationId";
     private const string SourceLicense = "İstanbul Büyükşehir Belediyesi Açık Veri Lisansı";
 
-    // Station ids resolved and verified in Task 4 — see docs/data-sources.md, section 1.
-    private static readonly IReadOnlyDictionary<string, string> StationIdByNeighborhoodId =
-        new Dictionary<string, string>
-        {
-            ["kadikoy"] = "ecafeb15-905e-4257-a25a-72accf287e2a",
-            ["uskudar"] = "a30101a6-349c-4f0d-b965-a68f2c6781e9",
-            ["besiktas"] = "179cd958-11aa-4e7a-8fa4-6eb2c852c2f6",
-        };
-
     public async Task RunAsync(CancellationToken ct)
     {
-        foreach (var (neighborhoodId, stationId) in StationIdByNeighborhoodId)
-        {
-            await IngestOneAsync(neighborhoodId, stationId, ct);
-        }
-    }
+        var neighborhoods = await db.Neighborhoods.ToListAsync(ct);
 
-    private async Task IngestOneAsync(string neighborhoodId, string stationId, CancellationToken ct)
-    {
-        AirQualityReadingDto? reading;
+        IReadOnlyList<AirQualityStationDto> stations;
         try
         {
-            reading = await client.GetLatestReadingAsync(stationId, ct);
+            stations = await client.GetStationsAsync(ct);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Air quality fetch failed for neighborhood {NeighborhoodId}", neighborhoodId);
+            logger.LogWarning(ex, "Failed to fetch air quality station list; skipping this run");
             return;
         }
 
-        if (reading is null)
+        foreach (var neighborhood in neighborhoods)
+        {
+            var matchingStations = stations
+                .Where(s => neighborhood.Boundary.Contains(new Point(s.Longitude, s.Latitude)))
+                .ToList();
+
+            if (matchingStations.Count == 0)
+            {
+                logger.LogInformation("No air quality station found within neighborhood {NeighborhoodId}", neighborhood.Id);
+                continue;
+            }
+
+            await IngestOneAsync(neighborhood.Id, matchingStations, ct);
+        }
+    }
+
+    private async Task IngestOneAsync(string neighborhoodId, IReadOnlyList<AirQualityStationDto> stations, CancellationToken ct)
+    {
+        var readings = new List<AirQualityReadingDto>();
+        foreach (var station in stations)
+        {
+            try
+            {
+                var reading = await client.GetLatestReadingAsync(station.Id, ct);
+                if (reading is not null)
+                {
+                    readings.Add(reading);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Air quality fetch failed for station {StationId} in neighborhood {NeighborhoodId}", station.Id, neighborhoodId);
+            }
+        }
+
+        if (readings.Count == 0)
         {
             logger.LogWarning("Air quality source returned no data for neighborhood {NeighborhoodId}", neighborhoodId);
             return;
         }
+
+        // A district with multiple real stations gets the average of all of them rather than
+        // an arbitrary pick - more representative, and no real reading is discarded.
+        var averageAqi = readings.Average(r => r.AqiIndex);
+        var latestReadTime = readings.Max(r => r.ReadTime);
 
         var now = timeProvider.GetUtcNow();
         var metadata = new DataSourceMetadata(
@@ -61,7 +96,7 @@ public sealed class AirQualityIngestionJob(
             SourceUrl,
             SourceLicense,
             FetchedAt: now,
-            PublishedAt: reading.ReadTime,
+            PublishedAt: latestReadTime,
             LastSuccessfulSyncAt: now,
             Cadence: SourceCadence.Live);
 
@@ -71,15 +106,15 @@ public sealed class AirQualityIngestionJob(
             db.AirQualityReadings.Add(new AirQualityReading
             {
                 NeighborhoodId = neighborhoodId,
-                AqiIndex = reading.AqiIndex,
-                ReadingTime = reading.ReadTime,
+                AqiIndex = averageAqi,
+                ReadingTime = latestReadTime,
                 Source = metadata,
             });
         }
         else
         {
-            existing.AqiIndex = reading.AqiIndex;
-            existing.ReadingTime = reading.ReadTime;
+            existing.AqiIndex = averageAqi;
+            existing.ReadingTime = latestReadTime;
             existing.Source = metadata;
         }
 

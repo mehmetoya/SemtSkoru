@@ -101,6 +101,32 @@ public class NeighborhoodScoringServiceTests
         Assert.Equal(100, result.AirQuality.Value!.Value.Value);
         Assert.Equal(DataFreshnessStatus.Stale, result.AirQuality.Freshness);
     }
+
+    [Fact]
+    public async Task GetAllScoresAsync_scores_every_neighborhood_from_the_bulk_lookups()
+    {
+        var repository = new FakeScoringRepository(exists: true)
+        {
+            AllIds = ["kadikoy", "besiktas"],
+            AllAirQuality = new Dictionary<string, AirQualityReading>
+            {
+                ["kadikoy"] = new() { NeighborhoodId = "kadikoy", AqiIndex = 50, Source = LiveSource(Now) }, // -> 83
+            },
+            AllGreenSpace = new Dictionary<string, GreenSpaceReading>
+            {
+                ["kadikoy"] = new() { NeighborhoodId = "kadikoy", NearestParkDistanceMeters = 0, Source = LiveSource(Now) }, // -> 100
+            },
+            AllTraffic = new Dictionary<string, TrafficReading>(),
+        };
+
+        var results = await CreateService(repository).GetAllScoresAsync(CancellationToken.None);
+
+        Assert.Equal(2, results.Count);
+        Assert.True(results["kadikoy"].IsComplete == false); // no traffic data
+        Assert.Equal(92, results["kadikoy"].Overall!.Value.Value); // round((83+100)/2)
+        Assert.False(results["besiktas"].AirQuality.HasData);
+        Assert.Null(results["besiktas"].Overall);
+    }
 }
 
 file sealed class FakeTimeProvider(DateTimeOffset now) : TimeProvider
@@ -114,6 +140,11 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
     public GreenSpaceReading? GreenSpace { get; set; }
     public TrafficReading? Traffic { get; set; }
 
+    public IReadOnlyList<string> AllIds { get; set; } = [];
+    public IReadOnlyDictionary<string, AirQualityReading> AllAirQuality { get; set; } = new Dictionary<string, AirQualityReading>();
+    public IReadOnlyDictionary<string, GreenSpaceReading> AllGreenSpace { get; set; } = new Dictionary<string, GreenSpaceReading>();
+    public IReadOnlyDictionary<string, TrafficReading> AllTraffic { get; set; } = new Dictionary<string, TrafficReading>();
+
     public Task<bool> NeighborhoodExistsAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(exists);
 
     public Task<AirQualityReading?> GetLatestAirQualityAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(AirQuality);
@@ -121,4 +152,12 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
     public Task<GreenSpaceReading?> GetLatestGreenSpaceAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(GreenSpace);
 
     public Task<TrafficReading?> GetLatestTrafficAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(Traffic);
+
+    public Task<IReadOnlyList<string>> GetAllNeighborhoodIdsAsync(CancellationToken ct) => Task.FromResult(AllIds);
+
+    public Task<IReadOnlyDictionary<string, AirQualityReading>> GetAllAirQualityAsync(CancellationToken ct) => Task.FromResult(AllAirQuality);
+
+    public Task<IReadOnlyDictionary<string, GreenSpaceReading>> GetAllGreenSpaceAsync(CancellationToken ct) => Task.FromResult(AllGreenSpace);
+
+    public Task<IReadOnlyDictionary<string, TrafficReading>> GetAllTrafficAsync(CancellationToken ct) => Task.FromResult(AllTraffic);
 }

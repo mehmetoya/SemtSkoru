@@ -16,6 +16,40 @@ public sealed class NeighborhoodScoringService(
         var now = timeProvider.GetUtcNow();
 
         var airQuality = await repository.GetLatestAirQualityAsync(neighborhoodId, ct);
+        var greenSpace = await repository.GetLatestGreenSpaceAsync(neighborhoodId, ct);
+        var traffic = await repository.GetLatestTrafficAsync(neighborhoodId, ct);
+
+        return BuildResult(neighborhoodId, airQuality, greenSpace, traffic, now);
+    }
+
+    public async Task<IReadOnlyDictionary<string, NeighborhoodScoreResult>> GetAllScoresAsync(CancellationToken ct)
+    {
+        var now = timeProvider.GetUtcNow();
+
+        var ids = await repository.GetAllNeighborhoodIdsAsync(ct);
+        var airQuality = await repository.GetAllAirQualityAsync(ct);
+        var greenSpace = await repository.GetAllGreenSpaceAsync(ct);
+        var traffic = await repository.GetAllTrafficAsync(ct);
+
+        var results = new Dictionary<string, NeighborhoodScoreResult>(ids.Count);
+        foreach (var id in ids)
+        {
+            airQuality.TryGetValue(id, out var air);
+            greenSpace.TryGetValue(id, out var green);
+            traffic.TryGetValue(id, out var traf);
+            results[id] = BuildResult(id, air, green, traf, now);
+        }
+
+        return results;
+    }
+
+    private static NeighborhoodScoreResult BuildResult(
+        string neighborhoodId,
+        AirQualityReading? airQuality,
+        GreenSpaceReading? greenSpace,
+        TrafficReading? traffic,
+        DateTimeOffset now)
+    {
         var airQualityScore = airQuality is null
             ? DimensionScore.NoData
             : new DimensionScore(
@@ -24,7 +58,6 @@ public sealed class NeighborhoodScoringService(
                 airQuality.Source.SourceName,
                 airQuality.Source.PublishedAt);
 
-        var greenSpace = await repository.GetLatestGreenSpaceAsync(neighborhoodId, ct);
         var greenSpaceScore = greenSpace is null
             ? DimensionScore.NoData
             : new DimensionScore(
@@ -33,7 +66,6 @@ public sealed class NeighborhoodScoringService(
                 greenSpace.Source.SourceName,
                 greenSpace.Source.PublishedAt);
 
-        var traffic = await repository.GetLatestTrafficAsync(neighborhoodId, ct);
         var transportationScore = traffic is null
             ? DimensionScore.NoData
             : new DimensionScore(

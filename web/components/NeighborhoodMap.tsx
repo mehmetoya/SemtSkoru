@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { NeighborhoodSummary } from "../lib/types";
+import { getScoreBand } from "../lib/score-band";
 
 // Raw OSM raster tiles, per SPEC.md's "OpenStreetMap tabanlı, ücretsiz harita tile'ları"
 // choice. tile.openstreetmap.org's usage policy discourages heavy production traffic
@@ -27,12 +28,25 @@ const ISTANBUL_CENTER: [number, number] = [29.02, 41.02];
 // (emerald/amber/red) so map selection state is never confused with a score's status.
 const COLOR_A = "#2563eb";
 const COLOR_B = "#c026d3";
-const COLOR_UNSELECTED = "#94a3b8";
+const COLOR_NO_DATA = "#94a3b8";
 
-function colorFor(id: string, selectedIds: (string | undefined)[]): string {
+// Same bands as lib/score-band.ts's SCORE_BAND_STYLES, as raw hex - MapLibre's fill-color
+// paint property can't consume Tailwind classes.
+const BAND_FILL: Record<string, string> = {
+  good: "#10b981",
+  moderate: "#f59e0b",
+  poor: "#ef4444",
+  unknown: COLOR_NO_DATA,
+};
+
+function colorFor(
+  id: string,
+  overallScore: number | null,
+  selectedIds: (string | undefined)[],
+): string {
   if (selectedIds[0] === id) return COLOR_A;
   if (selectedIds[1] === id) return COLOR_B;
-  return COLOR_UNSELECTED;
+  return BAND_FILL[getScoreBand(overallScore)];
 }
 
 export function NeighborhoodMap({
@@ -96,7 +110,11 @@ export function NeighborhoodMap({
         type: "FeatureCollection",
         features: neighborhoods.map((n) => ({
           type: "Feature",
-          properties: { id: n.id, name: n.name, color: colorFor(n.id, selectedIds) },
+          properties: {
+            id: n.id,
+            name: n.name,
+            color: colorFor(n.id, n.overallScore, selectedIds),
+          },
           geometry: n.boundary,
         })),
       };
@@ -116,7 +134,7 @@ export function NeighborhoodMap({
           id: "district-fill",
           type: "fill",
           source: "district-boundaries",
-          paint: { "fill-color": ["get", "color"], "fill-opacity": 0.25 },
+          paint: { "fill-color": ["get", "color"], "fill-opacity": 0.45 },
         });
         map.addLayer({
           id: "district-outline",
@@ -137,11 +155,20 @@ export function NeighborhoodMap({
       const bounds = new maplibregl.LngLatBounds();
       let hasBounds = false;
       for (const feature of relevant) {
-        if (feature.geometry.type !== "Polygon") continue;
-        for (const ring of feature.geometry.coordinates) {
-          for (const [lng, lat] of ring) {
-            bounds.extend([lng, lat]);
-            hasBounds = true;
+        // Adalar and Şile are real multi-island districts (MultiPolygon) - skipping them
+        // here would leave their bounds contribution out entirely, not just under-fit.
+        const polygons =
+          feature.geometry.type === "Polygon"
+            ? [feature.geometry.coordinates]
+            : feature.geometry.type === "MultiPolygon"
+              ? feature.geometry.coordinates
+              : [];
+        for (const rings of polygons) {
+          for (const ring of rings) {
+            for (const [lng, lat] of ring) {
+              bounds.extend([lng, lat]);
+              hasBounds = true;
+            }
           }
         }
       }

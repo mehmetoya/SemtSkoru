@@ -11,9 +11,9 @@ describe("useNeighborhoods", () => {
 
   it("starts pending and resolves with the neighborhoods from the API", async () => {
     const neighborhoods: NeighborhoodSummary[] = [
-      { id: "kadikoy", name: "Kadıköy", boundary: SAMPLE_BOUNDARY },
-      { id: "uskudar", name: "Üsküdar", boundary: SAMPLE_BOUNDARY },
-      { id: "besiktas", name: "Beşiktaş", boundary: SAMPLE_BOUNDARY },
+      { id: "kadikoy", name: "Kadıköy", boundary: SAMPLE_BOUNDARY, overallScore: 80 },
+      { id: "uskudar", name: "Üsküdar", boundary: SAMPLE_BOUNDARY, overallScore: 62 },
+      { id: "besiktas", name: "Beşiktaş", boundary: SAMPLE_BOUNDARY, overallScore: null },
     ];
     vi.mocked(fetch).mockResolvedValue(jsonResponse(neighborhoods));
 
