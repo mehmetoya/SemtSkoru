@@ -15,7 +15,7 @@ export function ScoreBar({ score }: { score: number | null }) {
 
   return (
     <div className={`flex items-center gap-3 ${score === null ? "opacity-50" : ""}`}>
-      <div className="h-2 max-w-40 flex-1 rounded-full bg-slate-100">
+      <div className="h-2 max-w-40 flex-1 rounded-full bg-slate-100 dark:bg-slate-800">
         {score !== null && (
           <div
             className={`h-2 rounded-full ${BAND_FILL[band]}`}
@@ -23,7 +23,7 @@ export function ScoreBar({ score }: { score: number | null }) {
           />
         )}
       </div>
-      <span className="w-8 shrink-0 text-right text-sm font-bold text-slate-900">
+      <span className="w-8 shrink-0 text-right text-sm font-bold text-slate-900 dark:text-slate-100">
         {score ?? "—"}
       </span>
       <span

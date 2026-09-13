@@ -17,11 +17,11 @@ export function NeighborhoodListCard({
   const styles = SCORE_BAND_STYLES[band];
 
   return (
-    <li className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md">
+    <li className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
       <div className="flex items-center justify-between gap-4">
         <Link
           href={`/mahalle/${id}`}
-          className="text-lg font-semibold text-slate-900 group-hover:text-blue-700"
+          className="text-lg font-semibold text-slate-900 group-hover:text-blue-700 dark:text-slate-100 dark:group-hover:text-blue-400"
         >
           {name}
         </Link>

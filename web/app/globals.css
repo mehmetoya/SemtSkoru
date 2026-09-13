@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* Manual toggle (SiteHeader's ThemeToggle) wins over prefers-color-scheme: the `dark`
+   class on <html> is what every `dark:` utility below responds to, set before first
+   paint by ThemeScript. */
+@custom-variant dark (&:where(.dark, .dark *));

@@ -11,19 +11,19 @@ export const metadata: Metadata = {
 export default function KarsilastirPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+      <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
         İlçe Karşılaştır
       </h1>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
         İki ilçe seç (aşağıdan veya haritadan tıklayarak), skorlarını yan yana ve
         haritada gör.
       </p>
-      <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">39 ilçe</span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">
+      <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">39 ilçe</span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">
           Hava kalitesi verisi: 18/39 ilçe
         </span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">İBB Açık Veri Portalı</span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">İBB Açık Veri Portalı</span>
       </div>
       <KarsilastirClient />
     </main>

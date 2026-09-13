@@ -38,6 +38,9 @@ const ISTANBUL_CENTER: [number, number] = [29.02, 41.02];
 const COLOR_A = "#2563eb";
 const COLOR_B = "#c026d3";
 const COLOR_NO_DATA = "#94a3b8";
+// Once both A and B are picked, every other district fades to this neutral gray
+// (plus lower opacity below) so the two being compared are what actually stands out.
+const COLOR_MUTED = "#cbd5e1";
 
 // Same bands as lib/score-band.ts's SCORE_BAND_STYLES, as raw hex - MapLibre's fill-color
 // paint property can't consume Tailwind classes.
@@ -53,8 +56,10 @@ function colorFor(
   overallScore: number | null,
   selectedIds: (string | undefined)[],
 ): string {
-  if (selectedIds[0] === id) return COLOR_A;
-  if (selectedIds[1] === id) return COLOR_B;
+  const [a, b] = selectedIds;
+  if (a === id) return COLOR_A;
+  if (b === id) return COLOR_B;
+  if (a && b) return COLOR_MUTED;
   return BAND_FILL[getScoreBand(overallScore)];
 }
 
@@ -117,6 +122,8 @@ export function NeighborhoodMap({
     if (!map || neighborhoods.length === 0) return;
 
     const applyBoundaries = () => {
+      const bothSelected = Boolean(selectedIds[0] && selectedIds[1]);
+
       const featureCollection: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
         features: neighborhoods.map((n) => ({
@@ -125,6 +132,7 @@ export function NeighborhoodMap({
             id: n.id,
             name: n.name,
             color: colorFor(n.id, n.overallScore, selectedIds),
+            muted: bothSelected && n.id !== selectedIds[0] && n.id !== selectedIds[1],
           },
           geometry: n.boundary,
         })),
@@ -145,13 +153,20 @@ export function NeighborhoodMap({
           id: "district-fill",
           type: "fill",
           source: "district-boundaries",
-          paint: { "fill-color": ["get", "color"], "fill-opacity": 0.45 },
+          paint: {
+            "fill-color": ["get", "color"],
+            "fill-opacity": ["case", ["get", "muted"], 0.12, 0.45],
+          },
         });
         map.addLayer({
           id: "district-outline",
           type: "line",
           source: "district-boundaries",
-          paint: { "line-color": ["get", "color"], "line-width": 2 },
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": 2,
+            "line-opacity": ["case", ["get", "muted"], 0.4, 1],
+          },
         });
       }
 

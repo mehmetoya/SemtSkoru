@@ -22,8 +22,8 @@ export const SCORE_BAND_STYLES: Record<
   ScoreBand,
   { text: string; bg: string; dot: string }
 > = {
-  good: { text: "text-emerald-800", bg: "bg-emerald-50", dot: "bg-emerald-500" },
-  moderate: { text: "text-amber-800", bg: "bg-amber-50", dot: "bg-amber-500" },
-  poor: { text: "text-red-800", bg: "bg-red-50", dot: "bg-red-500" },
-  unknown: { text: "text-slate-500", bg: "bg-slate-100", dot: "bg-slate-300" },
+  good: { text: "text-emerald-800 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-950/50", dot: "bg-emerald-500" },
+  moderate: { text: "text-amber-800 dark:text-amber-300", bg: "bg-amber-50 dark:bg-amber-950/50", dot: "bg-amber-500" },
+  poor: { text: "text-red-800 dark:text-red-300", bg: "bg-red-50 dark:bg-red-950/50", dot: "bg-red-500" },
+  unknown: { text: "text-slate-500 dark:text-slate-400", bg: "bg-slate-100 dark:bg-slate-800", dot: "bg-slate-300 dark:bg-slate-600" },
 };

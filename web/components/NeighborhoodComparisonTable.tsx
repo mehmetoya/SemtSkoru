@@ -65,29 +65,33 @@ export function NeighborhoodComparisonTable({
       data-testid="comparison-result"
       className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
     >
-      <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
-        Genel Skor
-      </p>
-      <div className="mt-2 flex items-center justify-between gap-3 border-b border-slate-100 pb-5">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-blue-700">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
-            <span className="truncate">{nameA}</span>
-          </p>
-          <p className="mt-1 text-3xl font-extrabold text-slate-900">{scoreA.overall ?? "—"}</p>
+      <div className="border-b border-slate-100 pb-5">
+        <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Genel Skor
+        </p>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-blue-700">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
+              <span>{nameA}</span>
+            </p>
+            <p className="mt-1 text-3xl font-extrabold text-slate-900">{scoreA.overall ?? "—"}</p>
+          </div>
+          <div className="min-w-0 flex-1 text-right">
+            <p className="flex items-center justify-end gap-1.5 text-xs font-semibold uppercase tracking-wide text-fuchsia-700">
+              <span>{nameB}</span>
+              <span className="h-2 w-2 shrink-0 rounded-full bg-fuchsia-600" aria-hidden="true" />
+            </p>
+            <p className="mt-1 text-3xl font-extrabold text-slate-900">{scoreB.overall ?? "—"}</p>
+          </div>
         </div>
         {delta !== null && delta !== 0 && (
-          <span className="shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-            {delta > 0 ? `▲ ${nameB} +${delta}` : `▲ ${nameA} +${-delta}`}
-          </span>
-        )}
-        <div className="min-w-0 text-right">
-          <p className="flex items-center justify-end gap-1.5 text-xs font-semibold uppercase tracking-wide text-fuchsia-700">
-            <span className="truncate">{nameB}</span>
-            <span className="h-2 w-2 shrink-0 rounded-full bg-fuchsia-600" aria-hidden="true" />
+          <p className="mt-3 text-center">
+            <span className="inline-block whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              {delta > 0 ? `▲ ${nameB} +${delta}` : `▲ ${nameA} +${-delta}`}
+            </span>
           </p>
-          <p className="mt-1 text-3xl font-extrabold text-slate-900">{scoreB.overall ?? "—"}</p>
-        </div>
+        )}
       </div>
 
       <div>

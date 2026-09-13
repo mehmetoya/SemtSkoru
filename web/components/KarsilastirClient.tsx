@@ -41,7 +41,7 @@ export function KarsilastirClient() {
           before the picker controls), but sits below the pickers on small screens
           where a giant map before any selection wastes the first scroll. */}
       <div className="order-2 lg:order-1">
-        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
+        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Birinci ilçe
           </span>
@@ -59,7 +59,7 @@ export function KarsilastirClient() {
           </span>
           <span>Haritadan bir ilçeye tıklayarak da seçebilirsin.</span>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm dark:border-slate-800">
           <NeighborhoodMap
             neighborhoods={neighborhoods ?? []}
             selectedIds={[a, b]}
@@ -90,12 +90,12 @@ export function KarsilastirClient() {
         </div>
 
         {a && b && isPending && (
-          <p role="status" className="text-sm text-slate-500">
+          <p role="status" className="text-sm text-slate-500 dark:text-slate-400">
             Yükleniyor…
           </p>
         )}
         {isError && (
-          <p className="text-sm text-red-700">Karşılaştırma yüklenirken bir hata oluştu.</p>
+          <p className="text-sm text-red-700 dark:text-red-400">Karşılaştırma yüklenirken bir hata oluştu.</p>
         )}
         {comparison && (
           <NeighborhoodComparisonTable

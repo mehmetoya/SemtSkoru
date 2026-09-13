@@ -85,8 +85,12 @@ app.UseCors();
 // scheduler catches up on whatever was missed while asleep. See .github/workflows/daily-wake.yml.
 // /health/live is the same check under the path an external uptime monitor (UptimeRobot)
 // was already configured to poll - added as an alias rather than asking that config to change.
-app.MapGet("/health", () => Results.Ok());
-app.MapGet("/health/live", () => Results.Ok());
+// Both verbs are mapped explicitly: Minimal APIs don't auto-answer HEAD for a GET-only
+// route the way MVC controllers do, and UptimeRobot's monitor sends HEAD - live-verified
+// (2026-09-12) that a GET-only mapping here 405s every HEAD check.
+var healthHandler = () => Results.Ok();
+app.MapMethods("/health", ["GET", "HEAD"], healthHandler);
+app.MapMethods("/health/live", ["GET", "HEAD"], healthHandler);
 
 app.MapNeighborhoodEndpoints();
 
