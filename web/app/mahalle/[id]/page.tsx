@@ -61,7 +61,7 @@ export default async function MahallePage({
       />
       <Link
         href="/"
-        className="text-sm font-medium text-slate-500 hover:text-slate-900"
+        className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
       >
         ← Tüm ilçeler
       </Link>
@@ -69,7 +69,7 @@ export default async function MahallePage({
         {score ? (
           <NeighborhoodScoreCard name={neighborhood.name} boundary={neighborhood.boundary} score={score} />
         ) : (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 sm:p-8">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 sm:p-8 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             Skor yüklenirken bir hata oluştu.
           </div>
         )}

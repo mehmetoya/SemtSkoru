@@ -51,6 +51,9 @@ builder.Services.AddScoped<GreenSpaceIngestionJob>();
 builder.Services.AddHttpClient<ITrafficDataClient, TrafficDataClient>(c => c.Timeout = TimeSpan.FromMinutes(5));
 builder.Services.AddScoped<TrafficIngestionJob>();
 
+builder.Services.AddHttpClient<IParkingApiClient, ParkingApiClient>();
+builder.Services.AddScoped<ParkingIngestionJob>();
+
 builder.Services.AddScoped<INeighborhoodScoringRepository, NeighborhoodScoringRepository>();
 builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringService>();
 
@@ -112,6 +115,13 @@ recurringJobs.AddOrUpdate<TrafficIngestionJob>(
     "traffic-ingestion",
     job => job.RunAsync(CancellationToken.None),
     Cron.Monthly());
+
+// Daily, matching air quality's cadence - parking occupancy is a fast-changing, live signal,
+// not a slow-moving one like green space or the frozen traffic snapshot.
+recurringJobs.AddOrUpdate<ParkingIngestionJob>(
+    "parking-ingestion",
+    job => job.RunAsync(CancellationToken.None),
+    Cron.Daily());
 
 app.Run();
 

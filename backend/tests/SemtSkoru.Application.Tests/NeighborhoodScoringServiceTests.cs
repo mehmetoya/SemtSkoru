@@ -37,6 +37,7 @@ public class NeighborhoodScoringServiceTests
             AirQuality = new AirQualityReading { NeighborhoodId = "kadikoy", AqiIndex = 50, Source = LiveSource(Now) }, // -> 83
             GreenSpace = new GreenSpaceReading { NeighborhoodId = "kadikoy", NearestParkDistanceMeters = 0, Source = LiveSource(Now) }, // -> 100
             Traffic = new TrafficReading { NeighborhoodId = "kadikoy", AverageSpeedKmh = 50, Source = LiveSource(Now) }, // -> 100
+            Parking = new ParkingReading { NeighborhoodId = "kadikoy", AverageAvailabilityRatio = 1.0, Source = LiveSource(Now) }, // -> 100
         };
 
         var result = await CreateService(repository).GetScoreAsync("kadikoy", CancellationToken.None);
@@ -46,7 +47,8 @@ public class NeighborhoodScoringServiceTests
         Assert.Equal(83, result.AirQuality.Value!.Value.Value);
         Assert.Equal(100, result.GreenSpace.Value!.Value.Value);
         Assert.Equal(100, result.Transportation.Value!.Value.Value);
-        Assert.Equal(94, result.Overall!.Value.Value); // round(94.33) == 94
+        Assert.Equal(100, result.Parking.Value!.Value.Value);
+        Assert.Equal(96, result.Overall!.Value.Value); // round((83+100+100+100)/4) == round(95.75) == 96
         Assert.Equal("İBB Hava Kalitesi", result.AirQuality.SourceName);
         Assert.Equal(Now, result.AirQuality.PublishedAt);
     }
@@ -59,6 +61,7 @@ public class NeighborhoodScoringServiceTests
             AirQuality = new AirQualityReading { NeighborhoodId = "besiktas", AqiIndex = 0, Source = LiveSource(Now) }, // -> 100
             GreenSpace = null, // no park found for this district yet
             Traffic = new TrafficReading { NeighborhoodId = "besiktas", AverageSpeedKmh = 50, Source = LiveSource(Now) }, // -> 100
+            Parking = new ParkingReading { NeighborhoodId = "besiktas", AverageAvailabilityRatio = 1.0, Source = LiveSource(Now) }, // -> 100
         };
 
         var result = await CreateService(repository).GetScoreAsync("besiktas", CancellationToken.None);
@@ -70,7 +73,7 @@ public class NeighborhoodScoringServiceTests
         Assert.Null(result.GreenSpace.Freshness);
         Assert.Null(result.GreenSpace.SourceName);
         Assert.Null(result.GreenSpace.PublishedAt);
-        Assert.Equal(100, result.Overall!.Value.Value); // average of the two available dimensions
+        Assert.Equal(100, result.Overall!.Value.Value); // average of the three available dimensions
     }
 
     [Fact]
@@ -117,6 +120,7 @@ public class NeighborhoodScoringServiceTests
                 ["kadikoy"] = new() { NeighborhoodId = "kadikoy", NearestParkDistanceMeters = 0, Source = LiveSource(Now) }, // -> 100
             },
             AllTraffic = new Dictionary<string, TrafficReading>(),
+            AllParking = new Dictionary<string, ParkingReading>(),
         };
 
         var results = await CreateService(repository).GetAllScoresAsync(CancellationToken.None);
@@ -139,11 +143,13 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
     public AirQualityReading? AirQuality { get; set; }
     public GreenSpaceReading? GreenSpace { get; set; }
     public TrafficReading? Traffic { get; set; }
+    public ParkingReading? Parking { get; set; }
 
     public IReadOnlyList<string> AllIds { get; set; } = [];
     public IReadOnlyDictionary<string, AirQualityReading> AllAirQuality { get; set; } = new Dictionary<string, AirQualityReading>();
     public IReadOnlyDictionary<string, GreenSpaceReading> AllGreenSpace { get; set; } = new Dictionary<string, GreenSpaceReading>();
     public IReadOnlyDictionary<string, TrafficReading> AllTraffic { get; set; } = new Dictionary<string, TrafficReading>();
+    public IReadOnlyDictionary<string, ParkingReading> AllParking { get; set; } = new Dictionary<string, ParkingReading>();
 
     public Task<bool> NeighborhoodExistsAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(exists);
 
@@ -153,6 +159,8 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
 
     public Task<TrafficReading?> GetLatestTrafficAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(Traffic);
 
+    public Task<ParkingReading?> GetLatestParkingAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(Parking);
+
     public Task<IReadOnlyList<string>> GetAllNeighborhoodIdsAsync(CancellationToken ct) => Task.FromResult(AllIds);
 
     public Task<IReadOnlyDictionary<string, AirQualityReading>> GetAllAirQualityAsync(CancellationToken ct) => Task.FromResult(AllAirQuality);
@@ -160,4 +168,6 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
     public Task<IReadOnlyDictionary<string, GreenSpaceReading>> GetAllGreenSpaceAsync(CancellationToken ct) => Task.FromResult(AllGreenSpace);
 
     public Task<IReadOnlyDictionary<string, TrafficReading>> GetAllTrafficAsync(CancellationToken ct) => Task.FromResult(AllTraffic);
+
+    public Task<IReadOnlyDictionary<string, ParkingReading>> GetAllParkingAsync(CancellationToken ct) => Task.FromResult(AllParking);
 }

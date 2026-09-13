@@ -52,6 +52,20 @@ public static class DimensionScoring
         return ToScore(score);
     }
 
+    // İSPARK publishes no standard for "good" parking availability, so MVP treats the raw
+    // average available-capacity ratio (emptyCapacity/capacity, averaged unweighted across a
+    // district's facilities - see ParkingIngestionJob) as directly proportional to livability:
+    // facilities that are, on average, entirely empty score 100 (most available), entirely full
+    // score 0. This is a small, point-in-time sample of off-street İSPARK facilities only - many
+    // districts have just one or two - and says nothing about on-street parking, which İSPARK
+    // does not track, so it should be read as a rough proxy rather than a precise measure.
+    public static Score ScoreParking(double averageAvailabilityRatio)
+    {
+        var clamped = Math.Clamp(averageAvailabilityRatio, 0, 1);
+        var score = clamped * 100;
+        return ToScore(score);
+    }
+
     private static double InterpolateDescending(double value, double fromLow, double fromHigh, double toHigh, double toLow) =>
         toHigh + (value - fromLow) / (fromHigh - fromLow) * (toLow - toHigh);
 

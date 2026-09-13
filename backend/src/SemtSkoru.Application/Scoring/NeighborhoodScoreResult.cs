@@ -7,7 +7,9 @@ public sealed record NeighborhoodScoreResult(
     DimensionScore AirQuality,
     DimensionScore GreenSpace,
     DimensionScore Transportation,
+    DimensionScore Parking,
     Score? Overall)
 {
-    public bool IsComplete => AirQuality.HasData && GreenSpace.HasData && Transportation.HasData;
+    public bool IsComplete =>
+        AirQuality.HasData && GreenSpace.HasData && Transportation.HasData && Parking.HasData;
 }

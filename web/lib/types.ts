@@ -20,6 +20,7 @@ export interface NeighborhoodScore {
   airQuality: DimensionScore;
   greenSpace: DimensionScore;
   transportation: DimensionScore;
+  parking: DimensionScore;
   overall: number | null;
   isComplete: boolean;
 }

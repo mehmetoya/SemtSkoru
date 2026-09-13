@@ -147,6 +147,52 @@ ilçeler (MultiPolygon) — `Neighborhood.Boundary` kolonu bu yüzden
 
 ---
 
+## 6. Otopark (İSPARK) — ✅ Doğrulandı, canlı, 4. boyut
+
+**Kaynak:** İBB İSPARK (İstanbul Büyükşehir Belediyesi'nin işlettiği kapalı/açık otoparklar).
+
+**Endpoint:**
+```
+GET https://api.ibb.gov.tr/ispark/Park
+```
+- Kimlik doğrulama: **yok**
+- Test tarihi: 2026-09-13. Yanıt: JSON dizi, 247 otopark nesnesi. Gerçek alan adları
+  (canlı doğrulandı, tahmin edilmedi): `parkID` (int), `parkName` (string), `lat`/`lng`
+  (string, "POINT" değil düz ondalık metin), `capacity` (int), `emptyCapacity` (int),
+  `workHours` (string), `parkType` (string, ör. "AÇIK OTOPARK"/"KAPALI OTOPARK"),
+  `freeTime` (int), `district` (string, büyük harf ilçe adı), `isOpen` (int, 0/1).
+- `district` alanı zaten İBB'nin kendi büyük harfli ilçe adı — yeşil alan verisindeki
+  `ILCE` alanıyla aynı kural, bu yüzden nokta-poligon testi değil, doğrudan isim eşleştirmesi
+  yeterli (`ParkingIngestionJob`, `GreenSpaceIngestionJob` ile aynı teknik).
+
+**Kapsama testi (39 ilçenin tamamına karşı canlı doğrulandı):** 247 otopark, 34 farklı
+`district` değeri altında toplanıyor. 33'ü ilçenin Türkçe büyük harfli adıyla birebir
+eşleşiyor. Bir gerçek isim uyuşmazlığı bulundu — Kağıthane'nin Nominatim sorunuyla aynı
+türden: **Eyüpsultan'ın 9 otoparkı `district: "EYÜP"` ile etiketli**, ilçenin 2019 öncesi
+adıyla, hiçbir zaman "EYÜPSULTAN" değil. Bu, `ParkingIngestionJob`'da açık bir isim
+takma adı (`EYÜPSULTAN` → `EYÜP`) ile ele alındı — tahmin değil, canlı veriden doğrulanmış
+bir düzeltme. Bu düzeltmeyle birlikte **34/39 ilçe** en az bir otoparka sahip; kalan 5 ilçe
+(**Adalar, Çatalca, Sancaktepe, Silivri, Şile**) için İSPARK'ın hiç tesisi yok — bu ilçelerde
+otopark boyutu dürüstçe "Veri yok" gösteriliyor, tahmin/enterpolasyon yapılmıyor.
+
+**Lisans:** İstanbul Büyükşehir Belediyesi Açık Veri Lisansı.
+
+**Güncellik:** Canlı — yanıt otoparkın o anki doluluk durumunu veriyor, ama nesne başına bir
+zaman damgası yok (hava kalitesinin `ReadTime`'ının aksine); bu yüzden `PublishedAt` çekme
+anının kendisi olarak kaydediliyor.
+
+**Skor formülü:** İlçedeki her otoparkın boş kapasite oranı (`emptyCapacity / capacity`)
+hesaplanıp otoparklar arasında ağırlıksız ortalaması alınıyor (hava kalitesinin çoklu
+istasyon ortalamasıyla aynı yaklaşım) — ortalama %100 boşsa 100 puan, tamamen doluysa 0 puan.
+Bu, yalnızca İSPARK'ın işlettiği otoparkların küçük bir örneklemi; cadde üstü park durumunu
+yansıtmıyor (bkz. `DimensionScoring.ScoreParking` içindeki yorum).
+
+**Karar:** Bu kaynağı doğrudan kullan. `ParkingIngestionJob`, air quality ile aynı günlük
+sıklıkla (doluluk hızlı değişen, canlı bir sinyal) tüm otoparkları çekip ilçe bazında
+normalize edecek.
+
+---
+
 ## Özet Tablo
 
 | Boyut | Kaynak | Canlı mı? | 39 ilçe kapsıyor mu? | Auth | Lisans | Karar |
@@ -154,4 +200,5 @@ ilçeler (MultiPolygon) — `Neighborhood.Boundary` kolonu bu yüzden
 | Hava kalitesi | api.ibb.gov.tr/havakalitesi | ✅ Saatlik | ❌ Yalnızca 18/39 (istasyonu olan) | Yok | İBB Açık Veri Lisansı | Doğrudan kullan; kalan 21 ilçe "Veri yok" |
 | Yeşil alan | data.ibb.gov.tr GeoJSON | ⚠️ Yıllık | ✅ 39/39 | Yok | İBB Açık Veri Lisansı | Doğrudan kullan |
 | Trafik | data.ibb.gov.tr CSV (Ocak 2025) | ❌ Bayat (~20 ay) | ✅ 38/39 (Adalar'da yol trafiği yok) | Yok | İBB Açık Veri Lisansı | Kullan, UI'da "tarihsel" etiketiyle |
+| Otopark | api.ibb.gov.tr/ispark | ✅ Canlı | ❌ Yalnızca 34/39 (tesisi olan) | Yok | İBB Açık Veri Lisansı | Doğrudan kullan; kalan 5 ilçe "Veri yok" |
 | İlçe sınırı | OpenStreetMap/Nominatim | N/A (statik seed) | ✅ 39/39 | Yok (rate-limit'li) | ODbL (atıf gerekli) | Seed-time'da çek, sakla |

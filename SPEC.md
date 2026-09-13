@@ -2,19 +2,21 @@
 
 ## Objective
 
-**Ne yapıyoruz:** İstanbul'daki bir ilçenin ulaşım, hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu açısından yaşanabilirliğini açık belediye/kamu verisinden hesaplayıp 0-100 arası skorlarla gösteren, iki ilçeyi yan yana karşılaştırabilen açık kaynak bir web uygulaması.
+**Ne yapıyoruz:** İstanbul'daki bir ilçenin ulaşım, hava kalitesi, yeşil alan erişimi, trafik yoğunluğu ve otopark erişimi açısından yaşanabilirliğini açık belediye/kamu verisinden hesaplayıp 0-100 arası skorlarla gösteren, iki ilçeyi yan yana karşılaştırabilen açık kaynak bir web uygulaması.
 
 **Neden:** Mevcut açık veri projeleri (örn. otoparkadresi.com) veriyi haritada gösterir ama bir karara dönüştürmez. SemtSkoru "Nereye taşınmalıyım / hangi ilçe daha uygun?" sorusuna doğrudan cevap verir.
 
 **Hedef kullanıcılar:** İstanbul'da ev arayanlar, şehre yeni taşınanlar, uzaktan çalışanlar, öğrenciler/aileler, emlak profesyonelleri.
 
-**Tek cümlelik vaat:** "İstanbul'da bir ilçenin ulaşım, hava kalitesi ve yeşil alan koşullarını tek ekranda karşılaştır."
+**Tek cümlelik vaat:** "İstanbul'da bir ilçenin ulaşım, hava kalitesi, yeşil alan ve otopark koşullarını tek ekranda karşılaştır."
 
 **Kapsam dışı (v1):** Türkiye geneli (yalnızca İstanbul'da başlanacak), profil bazlı ağırlıklandırma (uzaktan çalışan/aile/öğrenci vb.), günlük yaşam/amenities skoru, kullanıcı hesapları.
 
 ~~3 ilçe dışına çıkmak~~ **Faz 2'de kaldırıldı.** Kullanıcı onayıyla İstanbul'un tüm 39 ilçesine genişlendi — bkz. "39 ilçe notu" aşağıda.
 
 **39 ilçe notu (Faz 2'de eklendi):** Kadıköy/Üsküdar/Beşiktaş dışındaki 36 ilçenin sınır poligonu, aynı yöntemle (OSM/Nominatim, bir kereye mahsus çekilip migration'a gömülü) eklendi. Yeşil alan ve trafik verisi gerçekten 39 ilçenin tamamını kapsıyor (canlı doğrulandı — bkz. `docs/data-sources.md`). Hava kalitesi **kapsamıyor**: İBB'nin toplam 28 istasyonu yalnızca 18 ilçeyi kapsıyor; kalan 21 ilçe için hava kalitesi boyutu dürüstçe "Veri yok" gösteriliyor (tahmin/enterpolasyon yapılmadı — kullanıcı onayıyla).
+
+**Otopark notu (4. boyut):** İBB'nin İSPARK (canlı) otopark API'si dördüncü bir boyut olarak eklendi: bir ilçedeki İSPARK otoparklarının ortalama boş kapasite oranı, yaşanabilirlik skoruna çevriliyor. Canlı doğrulandı (bkz. `docs/data-sources.md`): şehir genelinde ~247 otopark var, her biri kendi ilçe adıyla etiketli, ama her ilçede otopark yok — otoparkı olmayan ilçeler için bu boyut da dürüstçe "Veri yok" gösteriliyor (tahmin/enterpolasyon yapılmıyor). Bu, İSPARK'ın işlettiği otoparkların küçük bir örneklemi; cadde üstü park durumunu yansıtmıyor.
 
 **Terminoloji notu (Task 4'te düzeltildi):** İlk taslakta Kadıköy/Üsküdar/Beşiktaş "mahalle" olarak anılıyordu; bunlar aslında birer **ilçe** (her biri onlarca resmi mahalle içerir). Task 4 araştırmasında İBB'nin hava kalitesi istasyonlarının da tam bu ilçe adlarıyla eşleştiği görüldü, bu yüzden kullanıcı onayıyla karşılaştırma birimi ilçe olarak netleştirildi. Kod tabanındaki `Neighborhood` tipi adı değiştirilmedi (İngilizce'de "neighborhood" bu ölçekte de doğal kullanım) — sadece Türkçe ürün metni düzeltildi.
 
@@ -129,7 +131,7 @@ export function NeighborhoodScoreCard({ neighborhoodId }: { neighborhoodId: stri
 
 ## Success Criteria
 
-- Kullanıcı İstanbul'un 39 ilçesinden birini arayıp Ulaşım / Yeşil Alan / Hava Kalitesi skorlarını (0-100) görebilir (hava kalitesi yalnızca istasyonu olan 18 ilçede; kalanında dürüstçe "Veri yok").
+- Kullanıcı İstanbul'un 39 ilçesinden birini arayıp Ulaşım / Yeşil Alan / Hava Kalitesi / Otopark skorlarını (0-100) görebilir (hava kalitesi yalnızca istasyonu olan 18 ilçede, otopark yalnızca İSPARK tesisi olan ilçelerde; kalanında dürüstçe "Veri yok").
 - Kullanıcı iki ilçeyi yan yana karşılaştırabilir.
 - Her skor kartında veri kaynağı adı ve son güncelleme tarihi görünür.
 - Ingestion job'ları günde en az bir kez çalışır; veri tazeliği izlenir ve bayat veri UI'da işaretlenir.

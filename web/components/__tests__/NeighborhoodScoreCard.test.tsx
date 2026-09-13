@@ -26,6 +26,12 @@ describe("NeighborhoodScoreCard", () => {
         sourceName: "İBB Trafik",
         publishedAt: "2025-01-31T00:00:00Z",
       },
+      parking: {
+        score: 88,
+        freshness: "Fresh",
+        sourceName: "İBB İSPARK",
+        publishedAt: "2026-09-13T00:00:00Z",
+      },
       overall: 94,
       isComplete: true,
     };
@@ -56,6 +62,12 @@ describe("NeighborhoodScoreCard", () => {
         sourceName: "İBB Trafik",
         publishedAt: "2025-01-31T00:00:00Z",
       },
+      parking: {
+        score: 100,
+        freshness: "Fresh",
+        sourceName: "İBB İSPARK",
+        publishedAt: "2026-09-13T00:00:00Z",
+      },
       overall: 100,
       isComplete: false,
     };
@@ -84,6 +96,12 @@ describe("NeighborhoodScoreCard", () => {
         freshness: "Fresh",
         sourceName: "s",
         publishedAt: "2025-01-31T00:00:00Z",
+      },
+      parking: {
+        score: 40,
+        freshness: "Fresh",
+        sourceName: "s",
+        publishedAt: "2026-09-13T00:00:00Z",
       },
       overall: 65,
       isComplete: false,

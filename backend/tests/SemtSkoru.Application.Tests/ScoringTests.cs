@@ -38,4 +38,15 @@ public class DimensionScoringTests
     {
         Assert.Equal(expectedScore, DimensionScoring.ScoreTransportation(speedKmh).Value);
     }
+
+    [Theory]
+    [InlineData(0, 0)] // entirely full
+    [InlineData(0.5, 50)]
+    [InlineData(1, 100)] // entirely empty
+    [InlineData(-0.2, 0)] // clamps below range
+    [InlineData(1.2, 100)] // clamps above range (a stale/inconsistent record)
+    public void ScoreParking_scores_higher_availability_higher(double averageAvailabilityRatio, int expectedScore)
+    {
+        Assert.Equal(expectedScore, DimensionScoring.ScoreParking(averageAvailabilityRatio).Value);
+    }
 }

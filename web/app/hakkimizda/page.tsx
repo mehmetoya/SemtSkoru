@@ -31,6 +31,12 @@ const SOURCES = [
     license: "İBB Açık Veri Lisansı",
   },
   {
+    label: "Otopark",
+    source: "İBB İSPARK Açık Veri Portalı (canlı API)",
+    freshness: "Canlı",
+    license: "İBB Açık Veri Lisansı",
+  },
+  {
     label: "İlçe sınırları",
     source: "OpenStreetMap / Nominatim",
     freshness: "Statik (bir kez çekildi)",
@@ -51,8 +57,8 @@ export default function HakkimizdaPage() {
           İstanbul için birçok açık veri projesi veriyi haritada gösterir, ama bir
           karara dönüştürmez. SemtSkoru &quot;Nereye taşınmalıyım, hangi ilçe daha
           uygun?&quot; sorusuna doğrudan cevap vermeyi hedefler: hava kalitesi,
-          yeşil alan erişimi ve trafik yoğunluğunu tek bir 0-100 skora indirip iki
-          ilçeyi doğrudan karşılaştırmanı sağlar.
+          yeşil alan erişimi, trafik yoğunluğu ve otopark erişimini tek bir 0-100
+          skora indirip iki ilçeyi doğrudan karşılaştırmanı sağlar.
         </p>
       </section>
 
@@ -74,6 +80,10 @@ export default function HakkimizdaPage() {
           <div>
             <dt className="font-medium text-slate-900 dark:text-slate-100">Ulaşım</dt>
             <dd className="mt-1 text-sm text-slate-600 dark:text-slate-400">{DIMENSION_METHODOLOGY.transportation}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-slate-900 dark:text-slate-100">Otopark</dt>
+            <dd className="mt-1 text-sm text-slate-600 dark:text-slate-400">{DIMENSION_METHODOLOGY.parking}</dd>
           </div>
         </dl>
         <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">

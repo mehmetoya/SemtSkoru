@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AirQualityReading> AirQualityReadings => Set<AirQualityReading>();
     public DbSet<GreenSpaceReading> GreenSpaceReadings => Set<GreenSpaceReading>();
     public DbSet<TrafficReading> TrafficReadings => Set<TrafficReading>();
+    public DbSet<ParkingReading> ParkingReadings => Set<ParkingReading>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
