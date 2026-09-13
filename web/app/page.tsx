@@ -63,7 +63,7 @@ export default async function Home() {
       />
       <div className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
-          Nereye taşınmalısın?
+          İstanbul&apos;u Verilerle Keşfet
         </h1>
         <p className="mt-3 text-base text-slate-600 dark:text-slate-400">
           İstanbul&apos;un 39 ilçesini hava kalitesi, yeşil alan, ulaşım, otopark,

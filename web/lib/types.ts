@@ -7,6 +7,14 @@ export interface NeighborhoodSummary {
   overallScore: number | null;
 }
 
+// Matches GET /api/neighborhoods/names: just the id/name pairs, no boundary geometry and no
+// scoring join. Use this instead of NeighborhoodSummary/fetchNeighborhoods() when a caller only
+// needs a district's display name (see web/app/mahalle/[id]/kart and web/app/karsilastir/kart).
+export interface NeighborhoodName {
+  id: string;
+  name: string;
+}
+
 export interface DimensionScore {
   score: number | null;
   freshness: DataFreshness | null;

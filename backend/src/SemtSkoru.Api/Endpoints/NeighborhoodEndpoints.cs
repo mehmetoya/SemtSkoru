@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Infrastructure.Persistence;
 
@@ -29,13 +31,27 @@ public static class NeighborhoodEndpoints
                 .ToList();
 
             return Results.Ok(result);
-        });
+        }).RequireRateLimiting(RateLimitPolicies.Standard);
+
+        // Cheap by design: one query, no boundary geometry, no scoring join at all. Exists so
+        // callers that only need a district's display name (the downloadable score-card image
+        // routes in web/app/mahalle/[id]/kart and web/app/karsilastir/kart) don't have to pull
+        // the full scored-and-bounded /api/neighborhoods list just to read one `name`.
+        app.MapGet("/api/neighborhoods/names", async (AppDbContext db, CancellationToken ct) =>
+        {
+            var names = await db.Neighborhoods
+                .OrderBy(n => n.Name)
+                .Select(n => new NeighborhoodNameDto(n.Id, n.Name))
+                .ToListAsync(ct);
+
+            return Results.Ok(names);
+        }).RequireRateLimiting(RateLimitPolicies.Cheap);
 
         app.MapGet("/api/neighborhoods/{id}/score", async (string id, INeighborhoodScoringService scoringService, CancellationToken ct) =>
         {
             var result = await scoringService.GetScoreAsync(id, ct);
             return result is null ? Results.NotFound() : Results.Ok(NeighborhoodScoreDto.From(result));
-        });
+        }).RequireRateLimiting(RateLimitPolicies.Standard);
 
         app.MapGet("/api/neighborhoods/compare", async (string? a, string? b, INeighborhoodScoringService scoringService, CancellationToken ct) =>
         {
@@ -58,6 +74,6 @@ public static class NeighborhoodEndpoints
             }
 
             return Results.Ok(new NeighborhoodComparisonDto(NeighborhoodScoreDto.From(scoreA!), NeighborhoodScoreDto.From(scoreB!)));
-        });
+        }).RequireRateLimiting(RateLimitPolicies.Compare);
     }
 }

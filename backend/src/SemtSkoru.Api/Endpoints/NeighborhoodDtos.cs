@@ -5,6 +5,11 @@ namespace SemtSkoru.Api.Endpoints;
 
 public sealed record NeighborhoodSummaryDto(string Id, string Name, Geometry Boundary, int? OverallScore);
 
+// Deliberately just id+name: callers that only need a district's display name (e.g. the
+// downloadable score-card image routes) shouldn't have to pay for a full boundary fetch plus
+// a 6-dimension scoring pass across all 39 districts just to resolve one label.
+public sealed record NeighborhoodNameDto(string Id, string Name);
+
 public sealed record DimensionScoreDto(int? Score, string? Freshness, string? SourceName, DateTimeOffset? PublishedAt)
 {
     public static DimensionScoreDto From(DimensionScore dimension) =>

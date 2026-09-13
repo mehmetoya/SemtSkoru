@@ -78,6 +78,21 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetNames_returns_id_and_name_pairs_for_all_39_districts_without_scoring()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/neighborhoods/names");
+
+        response.EnsureSuccessStatusCode();
+        var names = await response.Content.ReadFromJsonAsync<List<NeighborhoodNameDto>>();
+        Assert.NotNull(names);
+        Assert.Equal(39, names.Count);
+        Assert.Contains(names, n => n.Id == "kadikoy" && n.Name == "Kadıköy");
+        Assert.Contains(names, n => n.Id == "uskudar" && n.Name == "Üsküdar");
+    }
+
+    [Fact]
     public async Task GetScore_returns_computed_dimension_scores_for_a_known_district_with_partial_data()
     {
         var publishedAt = DateTimeOffset.UtcNow;

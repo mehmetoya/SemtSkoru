@@ -68,9 +68,27 @@ job'ını (Hangfire) etkiler — bkz. aşağıdaki GitHub Actions adımı.
 2. Environment variable ekle: `NEXT_PUBLIC_API_BASE_URL` = adım 2'deki Render API URL'i.
 3. Deploy sonrası Vercel URL'ini Render'daki `Cors__FrontendOrigin`'e geri yaz (adım 2.3).
 
-## 4. GitHub Actions secret (günlük "uyandırma")
+**Önemli:** Vercel'in kendi GitHub App entegrasyonu bu projede **hiç yetkilendirilmedi**
+(canlıda doğrulandı: `gh api repos/<owner>/<repo>/hooks` boş dönüyor — repo üzerinde
+sıfır webhook var, `vercel git connect` de genel bir 400 ile başarısız oluyor). Yani
+Vercel dashboard'unda "connected to GitHub" görmesen de normal — `main`'e her push,
+gerçekte aşağıdaki `.github/workflows/deploy-frontend.yml` üzerinden, Vercel CLI ile
+deploy oluyor. Bunu tekrar "düzeltmeye" çalışıp Vercel'in native entegrasyonuna
+bağlanmayı denemek gerekmiyor; adım 4'teki secret'ı eklemek yeterli ve kalıcı.
 
-`.github/workflows/daily-wake.yml` her gün Render API'sinin `/health` endpoint'ine bir
+## 4. GitHub Actions secret (frontend deploy + günlük "uyandırma")
+
+`.github/workflows/deploy-frontend.yml`, `web/` altında bir değişiklik `main`'e her
+push'landığında Vercel CLI ile (`vercel pull` → `vercel build --prod` → `vercel deploy
+--prebuilt --prod`) otomatik deploy yapıyor. Gerekli tek secret bir Vercel API token'ı
+(proje/org ID'leri workflow dosyasında zaten sabit — `vercel link` ile bir kere alınıp
+gömüldü, secret değiller):
+
+- [vercel.com/account/tokens](https://vercel.com/account/tokens) üzerinden yeni bir
+  token oluştur (Scope: bu projenin ait olduğu takım/hesap).
+- Repo Settings → Secrets and variables → Actions → yeni secret: `VERCEL_TOKEN` = bu token.
+
+Ayrıca, günlük "uyandırma" için `.github/workflows/daily-wake.yml` her gün Render API'sinin `/health` endpoint'ine bir
 istek atıyor. Bu, uykudaki container'ı uyandırıyor; Hangfire'ın recurring-job scheduler'ı
 (process her başladığında) hava kalitesi/yeşil alan/trafik job'larının süresi geçmiş
 olanlarını otomatik kuyruğa alıyor — yani ayrı bir "ingestion tetikle" endpoint'i veya

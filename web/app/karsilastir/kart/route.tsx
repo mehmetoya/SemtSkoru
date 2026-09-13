@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
-import { fetchNeighborhoodComparison, fetchNeighborhoods } from "../../../lib/api-client";
+import { fetchNeighborhoodComparison, fetchNeighborhoodNames } from "../../../lib/api-client";
 import {
   buildComparisonDimensionRows,
   buildOverallDelta,
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   }
 
   const [neighborhoods, comparison] = await Promise.all([
-    fetchNeighborhoods(),
+    fetchNeighborhoodNames(),
     fetchNeighborhoodComparison(a, b).catch(() => null),
   ]);
 

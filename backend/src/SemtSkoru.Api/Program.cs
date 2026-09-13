@@ -1,11 +1,13 @@
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.IO.Converters;
 using Npgsql;
 using Scalar.AspNetCore;
 using SemtSkoru.Api.Endpoints;
+using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Infrastructure.ExternalApis;
 using SemtSkoru.Infrastructure.Ingestion;
@@ -69,6 +71,11 @@ builder.Services.AddScoped<TransitAccessIngestionJob>();
 builder.Services.AddScoped<INeighborhoodScoringRepository, NeighborhoodScoringRepository>();
 builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringService>();
 
+// See RateLimiting/RateLimitingExtensions.cs for the policies and their rationale: every
+// endpoint here is public and unauthenticated (no API keys - out of scope), and DB round trips
+// are the resource actually worth protecting given MaxPoolSize=8 above.
+builder.Services.AddApiRateLimiting();
+
 builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
 // Default worker count is Environment.ProcessorCount * 5, which can be misleadingly
@@ -103,6 +110,7 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 app.UseHttpsRedirection();
 app.UseCors();
+app.UseRateLimiter();
 
 // Cheap liveness ping: a free-tier host that spins the container down after idle time
 // (e.g. Render) wakes it back up on any request, at which point Hangfire's own recurring-job
@@ -112,9 +120,11 @@ app.UseCors();
 // Both verbs are mapped explicitly: Minimal APIs don't auto-answer HEAD for a GET-only
 // route the way MVC controllers do, and UptimeRobot's monitor sends HEAD - live-verified
 // (2026-09-12) that a GET-only mapping here 405s every HEAD check.
+// Exempt from rate limiting (.DisableRateLimiting()): these don't touch the DB, and an uptime
+// monitor or Render's own wake-up ping getting 429'd would be exactly the wrong failure mode.
 var healthHandler = () => Results.Ok();
-app.MapMethods("/health", ["GET", "HEAD"], healthHandler);
-app.MapMethods("/health/live", ["GET", "HEAD"], healthHandler);
+app.MapMethods("/health", ["GET", "HEAD"], healthHandler).DisableRateLimiting();
+app.MapMethods("/health/live", ["GET", "HEAD"], healthHandler).DisableRateLimiting();
 
 app.MapNeighborhoodEndpoints();
 

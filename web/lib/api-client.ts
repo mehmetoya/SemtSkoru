@@ -1,5 +1,6 @@
 import type {
   NeighborhoodComparison,
+  NeighborhoodName,
   NeighborhoodScore,
   NeighborhoodSummary,
 } from "./types";
@@ -18,6 +19,12 @@ async function getJson<T>(path: string): Promise<T> {
 
 export function fetchNeighborhoods(): Promise<NeighborhoodSummary[]> {
   return getJson<NeighborhoodSummary[]>("/api/neighborhoods");
+}
+
+// Cheap alternative to fetchNeighborhoods() for callers that only need id->name lookups (e.g.
+// the score-card image routes): skips boundary geometry and the full scoring pass entirely.
+export function fetchNeighborhoodNames(): Promise<NeighborhoodName[]> {
+  return getJson<NeighborhoodName[]>("/api/neighborhoods/names");
 }
 
 export function fetchNeighborhoodScore(id: string): Promise<NeighborhoodScore> {

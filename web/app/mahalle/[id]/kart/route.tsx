@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { fetchNeighborhoods, fetchNeighborhoodScore } from "../../../../lib/api-client";
+import { fetchNeighborhoodNames, fetchNeighborhoodScore } from "../../../../lib/api-client";
 import {
   buildDimensionRows,
   buildOverall,
@@ -21,7 +21,7 @@ export async function GET(
   const { id } = await params;
 
   const [neighborhoods, score] = await Promise.all([
-    fetchNeighborhoods(),
+    fetchNeighborhoodNames(),
     fetchNeighborhoodScore(id).catch(() => null),
   ]);
   const neighborhood = neighborhoods.find((n) => n.id === id);

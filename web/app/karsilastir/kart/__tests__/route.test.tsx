@@ -5,13 +5,13 @@
 // helpers already covered by lib/__tests__/score-card-image.test.ts.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { jsonResponse, SAMPLE_BOUNDARY } from "../../../../lib/test-utils";
-import type { NeighborhoodScore, NeighborhoodSummary } from "../../../../lib/types";
+import { jsonResponse } from "../../../../lib/test-utils";
+import type { NeighborhoodName, NeighborhoodScore } from "../../../../lib/types";
 import { GET } from "../route";
 
-const NEIGHBORHOODS: NeighborhoodSummary[] = [
-  { id: "kadikoy", name: "Kadıköy", boundary: SAMPLE_BOUNDARY, overallScore: 64 },
-  { id: "uskudar", name: "Üsküdar", boundary: SAMPLE_BOUNDARY, overallScore: 72 },
+const NEIGHBORHOOD_NAMES: NeighborhoodName[] = [
+  { id: "kadikoy", name: "Kadıköy" },
+  { id: "uskudar", name: "Üsküdar" },
 ];
 
 function score(overrides: Partial<NeighborhoodScore> = {}): NeighborhoodScore {
@@ -41,8 +41,8 @@ function mockApi(a: NeighborhoodScore, b: NeighborhoodScore) {
     if (url.includes("/api/neighborhoods/compare")) {
       return jsonResponse({ a, b });
     }
-    if (url.endsWith("/api/neighborhoods")) {
-      return jsonResponse(NEIGHBORHOODS);
+    if (url.endsWith("/api/neighborhoods/names")) {
+      return jsonResponse(NEIGHBORHOOD_NAMES);
     }
     return realFetch(input, init);
   });
@@ -96,7 +96,7 @@ describe("GET /karsilastir/kart", () => {
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       const url = String(input);
       if (url.includes("/api/neighborhoods/compare")) return jsonResponse(null, 404);
-      if (url.endsWith("/api/neighborhoods")) return jsonResponse(NEIGHBORHOODS);
+      if (url.endsWith("/api/neighborhoods/names")) return jsonResponse(NEIGHBORHOOD_NAMES);
       return realFetch(input, init);
     });
 

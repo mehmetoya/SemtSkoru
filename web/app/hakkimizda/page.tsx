@@ -67,12 +67,15 @@ export default function HakkimizdaPage() {
       <section className="mt-8">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Neden SemtSkoru?</h2>
         <p className="mt-3 text-slate-600 dark:text-slate-400">
-          İstanbul için birçok açık veri projesi veriyi haritada gösterir, ama bir
-          karara dönüştürmez. SemtSkoru &quot;Nereye taşınmalıyım, hangi ilçe daha
-          uygun?&quot; sorusuna doğrudan cevap vermeyi hedefler: hava kalitesi,
-          yeşil alan erişimi, trafik yoğunluğu, otopark erişimi, sağlık
-          hizmetlerine erişimi ve toplu taşıma erişimini tek bir 0-100 skora
-          indirip iki ilçeyi doğrudan karşılaştırmanı sağlar.
+          İstanbul için birçok açık veri projesi veriyi haritada gösterir, ama
+          karşılaştırılabilir hale getirmez. SemtSkoru, hava kalitesi, yeşil
+          alan erişimi, trafik yoğunluğu, otopark erişimi, sağlık hizmetlerine
+          erişim ve toplu taşıma erişimini tek bir 0-100 skora indirip
+          İstanbul&apos;un 39 ilçesini gerçek veriyle keşfetmeni ve iki ilçeyi
+          doğrudan karşılaştırmanı sağlar. Kişisel önceliklere göre
+          ağırlıklandırılmış bir &quot;sana en uygun ilçe&quot; önerisi
+          sunmaz — bu bilinçli bir kapsam kararı; her boyutu ayrı ayrı gösterip
+          yorumu sana bırakır.
         </p>
       </section>
 

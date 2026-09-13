@@ -5,8 +5,8 @@
 // (see lib/__tests__/score-card-image.test.ts for those). It needs the Node
 // environment because ImageResponse/Satori don't work under jsdom.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, SAMPLE_BOUNDARY } from "../../../../../lib/test-utils";
-import type { NeighborhoodScore, NeighborhoodSummary } from "../../../../../lib/types";
+import { jsonResponse } from "../../../../../lib/test-utils";
+import type { NeighborhoodName, NeighborhoodScore } from "../../../../../lib/types";
 import { GET } from "../route";
 
 // next/og's Node renderer loads its own resvg/yoga WASM via the global fetch at render
@@ -14,9 +14,7 @@ import { GET } from "../route";
 // call too, so anything that isn't our API needs to fall through to the real fetch.
 const realFetch = fetch;
 
-const NEIGHBORHOODS: NeighborhoodSummary[] = [
-  { id: "kadikoy", name: "Kadıköy", boundary: SAMPLE_BOUNDARY, overallScore: 64 },
-];
+const NEIGHBORHOOD_NAMES: NeighborhoodName[] = [{ id: "kadikoy", name: "Kadıköy" }];
 
 function fullScore(): NeighborhoodScore {
   return {
@@ -53,8 +51,8 @@ function mockApi(score: NeighborhoodScore | null) {
     if (url.includes("/api/neighborhoods/") && url.includes("/score")) {
       return score ? jsonResponse(score) : jsonResponse(null, 404);
     }
-    if (url.endsWith("/api/neighborhoods")) {
-      return jsonResponse(NEIGHBORHOODS);
+    if (url.endsWith("/api/neighborhoods/names")) {
+      return jsonResponse(NEIGHBORHOOD_NAMES);
     }
     return realFetch(input, init);
   });

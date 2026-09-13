@@ -6,12 +6,13 @@
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
 ![PostGIS](https://img.shields.io/badge/PostgreSQL-PostGIS-336791?logo=postgresql&logoColor=white)
 
-**"Nereye taşınmalıyım?"** sorusuna gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisiyle cevap veren açık kaynak bir web uygulaması. Bir ilçenin hava kalitesi, yeşil alan erişimi, trafik/ulaşım durumunu, otopark erişimini, sağlık hizmetlerine erişimini ve toplu taşıma erişimini 0-100 arası skorlara çevirir, iki ilçeyi yan yana karşılaştırır. İstanbul'un tüm **39 ilçesini** kapsar — hava kalitesi verisi yalnızca gerçek bir İBB istasyonu bulunan 18 ilçede, otopark verisi yalnızca gerçek bir İSPARK tesisi bulunan 34 ilçede mevcuttur; kalan ilçelerde bu boyutlar dürüstçe "Veri yok" olarak işaretlenir (sağlık erişimi ve toplu taşıma erişimi verisi ise gerçekten 39 ilçenin tamamını kapsıyor — bkz. [`docs/data-sources.md`](docs/data-sources.md)).
+İstanbul'un 39 ilçesini gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisiyle keşfetmeni sağlayan açık kaynak bir web uygulaması. Bir ilçenin hava kalitesi, yeşil alan erişimi, trafik/ulaşım durumunu, otopark erişimini, sağlık hizmetlerine erişimini ve toplu taşıma erişimini 0-100 arası skorlara çevirir, iki ilçeyi yan yana karşılaştırır. İstanbul'un tüm **39 ilçesini** kapsar — hava kalitesi verisi yalnızca gerçek bir İBB istasyonu bulunan 18 ilçede, otopark verisi yalnızca gerçek bir İSPARK tesisi bulunan 34 ilçede mevcuttur; kalan ilçelerde bu boyutlar dürüstçe "Veri yok" olarak işaretlenir (sağlık erişimi ve toplu taşıma erişimi verisi ise gerçekten 39 ilçenin tamamını kapsıyor — bkz. [`docs/data-sources.md`](docs/data-sources.md)).
 
 ## Özellikler
 
 - Bir ilçenin Hava Kalitesi / Yeşil Alan / Ulaşım / Otopark / Sağlık Erişimi / Toplu Taşıma Erişimi skorlarını ve genel skorunu görüntüleme
 - İki ilçeyi yan yana karşılaştırma, sınırlarını interaktif haritada görme
+- Skor kartını PNG görsel olarak indirme veya native paylaşım menüsüyle (varsa) doğrudan paylaşma
 - Her skor kartında verinin hangi kaynaktan geldiği ve ne zamana ait olduğu açıkça görünür
 - Bir veri kaynağı beklenenden eski kaldığında ("bayat veri") veya doğası gereği canlı olmadığında ("tarihsel veri") UI'da açıkça işaretlenir — hiçbir veri, öyle olmadığı sürece "canlı" diye sunulmaz
 
@@ -53,6 +54,8 @@ flowchart LR
 
 **Frontend** — Next.js (App Router) + TypeScript, sunucu tarafında hiçbir zaman doğrudan veri kaynağına gitmez, yalnızca backend API'sini tüketir.
 
+API, paylaşılan DB bağlantı havuzunu korumak için global bir eşzamanlılık limiti, kötüye kullanıma karşı da endpoint başına IP bazlı sliding-window rate limiting uygular.
+
 ## Tech Stack
 
 | Katman | Teknoloji | Neden |
@@ -93,7 +96,7 @@ docs/
   data-sources.md                 → Her veri kaynağının canlı doğrulanmış endpoint/lisans/güncellik bilgisi
   deployment.md                   → Ücretsiz katmanlarla adım adım yayına alma
 render.yaml                       → Render Blueprint (Docker web service tanımı)
-.github/workflows/                → CI (build+test) ve daily-wake (free-tier ingestion catch-up)
+.github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve daily-wake (free-tier ingestion catch-up)
 SPEC.md, tasks/plan.md, tasks/todo.md → Ürün spesifikasyonu ve uygulama planı
 ```
 
