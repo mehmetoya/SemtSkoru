@@ -7,3 +7,5 @@
 # .NET
 backend/**/bin/
 backend/**/obj/
+.vercel
+.env*

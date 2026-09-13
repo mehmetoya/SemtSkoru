@@ -5,6 +5,7 @@ import { useCompareNeighborhoods } from "../lib/hooks/useCompareNeighborhoods";
 import { NeighborhoodComparisonTable } from "./NeighborhoodComparisonTable";
 import { NeighborhoodMap } from "./NeighborhoodMap";
 import { DistrictPicker } from "./DistrictPicker";
+import { SITE_URL } from "../lib/site";
 import { useState } from "react";
 
 export function KarsilastirClient() {
@@ -97,12 +98,23 @@ export function KarsilastirClient() {
         {isError && (
           <p className="text-sm text-red-700 dark:text-red-400">Karşılaştırma yüklenirken bir hata oluştu.</p>
         )}
-        {comparison && (
+        {comparison && a && b && (
           <NeighborhoodComparisonTable
             nameA={nameOf(a)}
             nameB={nameOf(b)}
             scoreA={comparison.a}
             scoreB={comparison.b}
+            share={{
+              imageUrl: `/karsilastir/kart?a=${a}&b=${b}`,
+              fileName: `semtskoru-karsilastirma-${a}-${b}.png`,
+              shareTitle: `${nameOf(a)} - ${nameOf(b)} Karşılaştırması | SemtSkoru`,
+              shareText: `${nameOf(a)} ve ${nameOf(b)} ilçelerinin SemtSkoru karşılaştırmasını incele.`,
+              // The comparison page itself doesn't persist the a/b selection in the URL,
+              // so (unlike the single-district card, which can safely link back to its
+              // own always-current page) the honest fallback link here is the generated
+              // image itself - a stable, timestamped snapshot of exactly this comparison.
+              fallbackUrl: `${SITE_URL}/karsilastir/kart?a=${a}&b=${b}`,
+            }}
           />
         )}
       </div>

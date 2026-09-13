@@ -25,14 +25,14 @@ export function SiteHeader() {
 
   return (
     <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <Logo className="h-8 w-8" />
           <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
             SemtSkoru
           </span>
         </Link>
-        <nav className="flex items-center gap-5 text-sm">
+        <nav className="flex items-center gap-3 text-sm sm:gap-5">
           <Link href="/" className={linkClass("/")} aria-current={pathname === "/" ? "page" : undefined}>
             İlçeler
           </Link>

@@ -67,7 +67,18 @@ export default async function MahallePage({
       </Link>
       <div className="mt-4">
         {score ? (
-          <NeighborhoodScoreCard name={neighborhood.name} boundary={neighborhood.boundary} score={score} />
+          <NeighborhoodScoreCard
+            name={neighborhood.name}
+            boundary={neighborhood.boundary}
+            score={score}
+            share={{
+              imageUrl: `/mahalle/${id}/kart`,
+              fileName: `semtskoru-${id}.png`,
+              shareTitle: `${neighborhood.name} Yaşam Skoru | SemtSkoru`,
+              shareText: `${neighborhood.name} ilçesinin SemtSkoru yaşam skorunu incele.`,
+              fallbackUrl: `${SITE_URL}/mahalle/${id}`,
+            }}
+          />
         ) : (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 sm:p-8 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             Skor yüklenirken bir hata oluştu.

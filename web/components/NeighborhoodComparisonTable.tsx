@@ -2,6 +2,7 @@ import type { DimensionScore, NeighborhoodScore } from "../lib/types";
 import { DIMENSION_METHODOLOGY } from "../lib/dimension-info";
 import { DataFreshnessBadge } from "./DataFreshnessBadge";
 import { ScoreBar } from "./ScoreBar";
+import { ShareCardButtons } from "./ShareCardButtons";
 
 const DIMENSIONS = [
   { key: "airQuality", label: "Hava Kalitesi" },
@@ -52,11 +53,19 @@ export function NeighborhoodComparisonTable({
   nameB,
   scoreA,
   scoreB,
+  share,
 }: {
   nameA: string;
   nameB: string;
   scoreA: NeighborhoodScore;
   scoreB: NeighborhoodScore;
+  share?: {
+    imageUrl: string;
+    fileName: string;
+    shareTitle: string;
+    shareText: string;
+    fallbackUrl: string;
+  };
 }) {
   const delta =
     scoreA.overall !== null && scoreB.overall !== null
@@ -94,6 +103,11 @@ export function NeighborhoodComparisonTable({
               {delta > 0 ? `▲ ${nameB} +${delta}` : `▲ ${nameA} +${-delta}`}
             </span>
           </p>
+        )}
+        {share && (
+          <div className="mt-4 flex justify-center">
+            <ShareCardButtons {...share} />
+          </div>
         )}
       </div>
 

@@ -4,6 +4,7 @@ import { DIMENSION_METHODOLOGY } from "../lib/dimension-info";
 import { DataFreshnessBadge } from "./DataFreshnessBadge";
 import { DistrictShapeIcon } from "./DistrictShapeIcon";
 import { ScoreBar } from "./ScoreBar";
+import { ShareCardButtons } from "./ShareCardButtons";
 
 const DIMENSIONS = [
   { key: "airQuality", label: "Hava Kalitesi" },
@@ -65,10 +66,18 @@ export function NeighborhoodScoreCard({
   name,
   boundary,
   score,
+  share,
 }: {
   name: string;
   boundary: GeoJSON.Geometry;
   score: NeighborhoodScore;
+  share?: {
+    imageUrl: string;
+    fileName: string;
+    shareTitle: string;
+    shareText: string;
+    fallbackUrl: string;
+  };
 }) {
   const overallBand = getScoreBand(score.overall);
   const overallStyles = SCORE_BAND_STYLES[overallBand];
@@ -88,9 +97,12 @@ export function NeighborhoodScoreCard({
           </span>
         </div>
       </div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-        Genel skor
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          Genel skor
+        </p>
+        {share && <ShareCardButtons {...share} />}
+      </div>
 
       {!score.isComplete && (
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">

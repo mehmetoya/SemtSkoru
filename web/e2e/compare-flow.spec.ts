@@ -14,13 +14,13 @@ test("search for a district, then compare two districts", async ({ page }) => {
   await expect(page.getByText("Genel skor")).toBeVisible();
 
   await page.goto("/karsilastir");
-  await page.getByLabel("Birinci ilçe").selectOption("kadikoy");
-  await page.getByLabel("İkinci ilçe").selectOption("uskudar");
+  await page.getByLabel("Birinci ilçe", { exact: true }).selectOption("kadikoy");
+  await page.getByLabel("İkinci ilçe", { exact: true }).selectOption("uskudar");
 
   const result = page.getByTestId("comparison-result");
   await expect(result).toBeVisible();
-  await expect(result.getByText("Kadıköy")).toBeVisible();
-  await expect(result.getByText("Üsküdar")).toBeVisible();
+  await expect(result.getByText("Kadıköy", { exact: true })).toBeVisible();
+  await expect(result.getByText("Üsküdar", { exact: true })).toBeVisible();
   await expect(result.getByText("Genel Skor")).toBeVisible();
 
   // The map only ever renders in a real browser (WebGL), which is exactly what this
