@@ -6,11 +6,11 @@
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
 ![PostGIS](https://img.shields.io/badge/PostgreSQL-PostGIS-336791?logo=postgresql&logoColor=white)
 
-**"Nereye taşınmalıyım?"** sorusuna gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisiyle cevap veren açık kaynak bir web uygulaması. Bir ilçenin hava kalitesi, yeşil alan erişimi, trafik/ulaşım durumunu ve otopark erişimini 0-100 arası skorlara çevirir, iki ilçeyi yan yana karşılaştırır. İstanbul'un tüm **39 ilçesini** kapsar — hava kalitesi verisi yalnızca gerçek bir İBB istasyonu bulunan 18 ilçede, otopark verisi yalnızca gerçek bir İSPARK tesisi bulunan 34 ilçede mevcuttur; kalan ilçelerde bu boyutlar dürüstçe "Veri yok" olarak işaretlenir (bkz. [`docs/data-sources.md`](docs/data-sources.md)).
+**"Nereye taşınmalıyım?"** sorusuna gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisiyle cevap veren açık kaynak bir web uygulaması. Bir ilçenin hava kalitesi, yeşil alan erişimi, trafik/ulaşım durumunu, otopark erişimini, sağlık hizmetlerine erişimini ve toplu taşıma erişimini 0-100 arası skorlara çevirir, iki ilçeyi yan yana karşılaştırır. İstanbul'un tüm **39 ilçesini** kapsar — hava kalitesi verisi yalnızca gerçek bir İBB istasyonu bulunan 18 ilçede, otopark verisi yalnızca gerçek bir İSPARK tesisi bulunan 34 ilçede mevcuttur; kalan ilçelerde bu boyutlar dürüstçe "Veri yok" olarak işaretlenir (sağlık erişimi ve toplu taşıma erişimi verisi ise gerçekten 39 ilçenin tamamını kapsıyor — bkz. [`docs/data-sources.md`](docs/data-sources.md)).
 
 ## Özellikler
 
-- Bir ilçenin Hava Kalitesi / Yeşil Alan / Ulaşım / Otopark skorlarını ve genel skorunu görüntüleme
+- Bir ilçenin Hava Kalitesi / Yeşil Alan / Ulaşım / Otopark / Sağlık Erişimi / Toplu Taşıma Erişimi skorlarını ve genel skorunu görüntüleme
 - İki ilçeyi yan yana karşılaştırma, sınırlarını interaktif haritada görme
 - Her skor kartında verinin hangi kaynaktan geldiği ve ne zamana ait olduğu açıkça görünür
 - Bir veri kaynağı beklenenden eski kaldığında ("bayat veri") veya doğası gereği canlı olmadığında ("tarihsel veri") UI'da açıkça işaretlenir — hiçbir veri, öyle olmadığı sürece "canlı" diye sunulmaz
@@ -26,6 +26,8 @@ flowchart LR
         GS["İBB Yeşil Alan<br/>(GeoJSON)"]
         TR["İBB Trafik<br/>(Ocak 2025 CSV)"]
         PK["İBB Otopark<br/>(İSPARK canlı API)"]
+        HA["İBB Sağlık İndeksi<br/>(GeoJSON, mahalle bazlı)"]
+        TA["İETT Otobüs Durakları<br/>(GeoJSON, point-in-polygon)"]
         OSM["OpenStreetMap<br/>(ilçe sınırları)"]
     end
 
@@ -39,6 +41,8 @@ flowchart LR
     GS --> ING
     TR --> ING
     PK --> ING
+    HA --> ING
+    TA --> ING
     OSM -. "seed, tek sefer" .-> DB
 
     API --> FE["Next.js Frontend"]
@@ -126,12 +130,12 @@ npm run dev
 # Uygulama: http://localhost:3000
 ```
 
-Migration'lar İstanbul'un 39 ilçesini gerçek sınır verisiyle (OpenStreetMap) otomatik olarak seed eder. Skorlar, arka planda çalışan Hangfire ingestion job'ları (hava kalitesi ve otopark günlük, yeşil alan haftalık, trafik aylık) gerçek veriyi çektikçe dolar; job'ları hemen tetiklemek isterseniz API'nin Hangfire panosundan (`/hangfire`, sadece Development ortamında) manuel çalıştırabilirsiniz.
+Migration'lar İstanbul'un 39 ilçesini gerçek sınır verisiyle (OpenStreetMap) otomatik olarak seed eder. Skorlar, arka planda çalışan Hangfire ingestion job'ları (hava kalitesi ve otopark günlük, yeşil alan/sağlık erişimi/toplu taşıma erişimi haftalık, trafik aylık) gerçek veriyi çektikçe dolar; job'ları hemen tetiklemek isterseniz API'nin Hangfire panosundan (`/hangfire`, sadece Development ortamında) manuel çalıştırabilirsiniz.
 
 ## Testler
 
 ```bash
-# Backend: 67 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
+# Backend: 92 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
 cd backend && dotnet test
 
 # Frontend: unit/component testleri (Vitest + React Testing Library)
@@ -169,6 +173,8 @@ Her kaynak, kod yazılmadan önce gerçek bir HTTP isteğiyle doğrulandı — b
 | Yeşil Alan | İBB Açık Veri Portalı (GeoJSON) | Yıllık | İBB Açık Veri Lisansı |
 | Trafik/Ulaşım | İBB Açık Veri Portalı (Ocak 2025 CSV) | Tarihsel — canlı değil, UI'da açıkça etiketli | İBB Açık Veri Lisansı |
 | Otopark | İBB İSPARK Açık Veri Portalı (canlı API) | Canlı | İBB Açık Veri Lisansı |
+| Sağlık Erişimi | İBB 34 Dakika İstanbul Sağlık İndeksi (GeoJSON) | Durağan — kaynak 2024'ten beri güncellenmedi, haftalık yeniden çekiliyor | İBB Açık Veri Lisansı |
+| Toplu Taşıma Erişimi | İETT Otobüs Durakları Verisi (GeoJSON) | Durağan — altyapı yavaş değişir, haftalık yeniden çekiliyor | İBB Açık Veri Lisansı |
 | İlçe sınırları | OpenStreetMap / Nominatim | Statik (seed-time'da bir kez çekildi) | [ODbL](https://opendatacommons.org/licenses/odbl/) |
 
 Harita verileri © [OpenStreetMap katkıda bulunanları](https://www.openstreetmap.org/copyright), ODbL lisansı altında.

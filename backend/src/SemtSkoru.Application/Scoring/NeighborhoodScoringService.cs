@@ -19,8 +19,10 @@ public sealed class NeighborhoodScoringService(
         var greenSpace = await repository.GetLatestGreenSpaceAsync(neighborhoodId, ct);
         var traffic = await repository.GetLatestTrafficAsync(neighborhoodId, ct);
         var parking = await repository.GetLatestParkingAsync(neighborhoodId, ct);
+        var healthAccess = await repository.GetLatestHealthAccessAsync(neighborhoodId, ct);
+        var transitAccess = await repository.GetLatestTransitAccessAsync(neighborhoodId, ct);
 
-        return BuildResult(neighborhoodId, airQuality, greenSpace, traffic, parking, now);
+        return BuildResult(neighborhoodId, airQuality, greenSpace, traffic, parking, healthAccess, transitAccess, now);
     }
 
     public async Task<IReadOnlyDictionary<string, NeighborhoodScoreResult>> GetAllScoresAsync(CancellationToken ct)
@@ -32,6 +34,8 @@ public sealed class NeighborhoodScoringService(
         var greenSpace = await repository.GetAllGreenSpaceAsync(ct);
         var traffic = await repository.GetAllTrafficAsync(ct);
         var parking = await repository.GetAllParkingAsync(ct);
+        var healthAccess = await repository.GetAllHealthAccessAsync(ct);
+        var transitAccess = await repository.GetAllTransitAccessAsync(ct);
 
         var results = new Dictionary<string, NeighborhoodScoreResult>(ids.Count);
         foreach (var id in ids)
@@ -40,7 +44,9 @@ public sealed class NeighborhoodScoringService(
             greenSpace.TryGetValue(id, out var green);
             traffic.TryGetValue(id, out var traf);
             parking.TryGetValue(id, out var park);
-            results[id] = BuildResult(id, air, green, traf, park, now);
+            healthAccess.TryGetValue(id, out var health);
+            transitAccess.TryGetValue(id, out var transit);
+            results[id] = BuildResult(id, air, green, traf, park, health, transit, now);
         }
 
         return results;
@@ -52,6 +58,8 @@ public sealed class NeighborhoodScoringService(
         GreenSpaceReading? greenSpace,
         TrafficReading? traffic,
         ParkingReading? parking,
+        HealthAccessReading? healthAccess,
+        TransitAccessReading? transitAccess,
         DateTimeOffset now)
     {
         var airQualityScore = airQuality is null
@@ -86,9 +94,28 @@ public sealed class NeighborhoodScoringService(
                 parking.Source.SourceName,
                 parking.Source.PublishedAt);
 
-        var overall = Overall(airQualityScore, greenSpaceScore, transportationScore, parkingScore);
+        var healthAccessScore = healthAccess is null
+            ? DimensionScore.NoData
+            : new DimensionScore(
+                DimensionScoring.ScoreHealthAccess(healthAccess.WeightedHealthIndex),
+                healthAccess.Source.GetFreshness(now),
+                healthAccess.Source.SourceName,
+                healthAccess.Source.PublishedAt);
 
-        return new NeighborhoodScoreResult(neighborhoodId, airQualityScore, greenSpaceScore, transportationScore, parkingScore, overall);
+        var transitAccessScore = transitAccess is null
+            ? DimensionScore.NoData
+            : new DimensionScore(
+                DimensionScoring.ScoreTransitAccess(transitAccess.StopDensityPerKm2),
+                transitAccess.Source.GetFreshness(now),
+                transitAccess.Source.SourceName,
+                transitAccess.Source.PublishedAt);
+
+        var overall = Overall(
+            airQualityScore, greenSpaceScore, transportationScore, parkingScore, healthAccessScore, transitAccessScore);
+
+        return new NeighborhoodScoreResult(
+            neighborhoodId, airQualityScore, greenSpaceScore, transportationScore, parkingScore, healthAccessScore,
+            transitAccessScore, overall);
     }
 
     // Equal-weight average of whatever dimensions have data. SPEC.md explicitly puts

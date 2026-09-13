@@ -10,6 +10,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GreenSpaceReading> GreenSpaceReadings => Set<GreenSpaceReading>();
     public DbSet<TrafficReading> TrafficReadings => Set<TrafficReading>();
     public DbSet<ParkingReading> ParkingReadings => Set<ParkingReading>();
+    public DbSet<HealthAccessReading> HealthAccessReadings => Set<HealthAccessReading>();
+    public DbSet<TransitAccessReading> TransitAccessReadings => Set<TransitAccessReading>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

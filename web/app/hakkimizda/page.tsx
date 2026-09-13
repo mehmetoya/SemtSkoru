@@ -37,6 +37,18 @@ const SOURCES = [
     license: "İBB Açık Veri Lisansı",
   },
   {
+    label: "Sağlık Erişimi",
+    source: "İBB 34 Dakika İstanbul Sağlık İndeksi (GeoJSON)",
+    freshness: "Durağan — kaynak 2024'ten beri güncellenmedi, haftalık yeniden çekiliyor",
+    license: "İBB Açık Veri Lisansı",
+  },
+  {
+    label: "Toplu Taşıma Erişimi",
+    source: "İETT Otobüs Durakları Verisi (GeoJSON)",
+    freshness: "Durağan — altyapı yavaş değişir, haftalık yeniden çekiliyor",
+    license: "İBB Açık Veri Lisansı",
+  },
+  {
     label: "İlçe sınırları",
     source: "OpenStreetMap / Nominatim",
     freshness: "Statik (bir kez çekildi)",
@@ -57,8 +69,9 @@ export default function HakkimizdaPage() {
           İstanbul için birçok açık veri projesi veriyi haritada gösterir, ama bir
           karara dönüştürmez. SemtSkoru &quot;Nereye taşınmalıyım, hangi ilçe daha
           uygun?&quot; sorusuna doğrudan cevap vermeyi hedefler: hava kalitesi,
-          yeşil alan erişimi, trafik yoğunluğu ve otopark erişimini tek bir 0-100
-          skora indirip iki ilçeyi doğrudan karşılaştırmanı sağlar.
+          yeşil alan erişimi, trafik yoğunluğu, otopark erişimi, sağlık
+          hizmetlerine erişimi ve toplu taşıma erişimini tek bir 0-100 skora
+          indirip iki ilçeyi doğrudan karşılaştırmanı sağlar.
         </p>
       </section>
 
@@ -84,6 +97,14 @@ export default function HakkimizdaPage() {
           <div>
             <dt className="font-medium text-slate-900 dark:text-slate-100">Otopark</dt>
             <dd className="mt-1 text-sm text-slate-600 dark:text-slate-400">{DIMENSION_METHODOLOGY.parking}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-slate-900 dark:text-slate-100">Sağlık Erişimi</dt>
+            <dd className="mt-1 text-sm text-slate-600 dark:text-slate-400">{DIMENSION_METHODOLOGY.healthAccess}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-slate-900 dark:text-slate-100">Toplu Taşıma Erişimi</dt>
+            <dd className="mt-1 text-sm text-slate-600 dark:text-slate-400">{DIMENSION_METHODOLOGY.transitAccess}</dd>
           </div>
         </dl>
         <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">

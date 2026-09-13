@@ -21,9 +21,14 @@ public sealed partial class AirQualityApiClient(HttpClient httpClient) : IAirQua
 
     public async Task<AirQualityReadingDto?> GetLatestReadingAsync(string stationId, CancellationToken ct)
     {
+        // Live-verified (2026-09-13): the API only computes AQI on the hour - a query whose
+        // StartDate/EndDate carry the current minute/second (e.g. 14:23:11) gets back readings
+        // snapped to that same off-hour offset every hour, and every one of them has a null AQI.
+        // Truncating to the hour boundary is what actually lines up with real computed data.
         var now = DateTimeOffset.UtcNow;
-        var start = now.AddHours(-6);
-        var url = $"{Endpoint}?StationId={stationId}&StartDate={Format(start)}&EndDate={Format(now)}";
+        var endOfHour = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, 0, 0, now.Offset);
+        var start = endOfHour.AddHours(-6);
+        var url = $"{Endpoint}?StationId={stationId}&StartDate={Format(start)}&EndDate={Format(endOfHour)}";
 
         using var response = await httpClient.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();

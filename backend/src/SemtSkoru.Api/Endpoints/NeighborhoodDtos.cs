@@ -19,6 +19,8 @@ public sealed record NeighborhoodScoreDto(
     DimensionScoreDto GreenSpace,
     DimensionScoreDto Transportation,
     DimensionScoreDto Parking,
+    DimensionScoreDto HealthAccess,
+    DimensionScoreDto TransitAccess,
     int? Overall,
     bool IsComplete)
 {
@@ -28,6 +30,8 @@ public sealed record NeighborhoodScoreDto(
         DimensionScoreDto.From(result.GreenSpace),
         DimensionScoreDto.From(result.Transportation),
         DimensionScoreDto.From(result.Parking),
+        DimensionScoreDto.From(result.HealthAccess),
+        DimensionScoreDto.From(result.TransitAccess),
         result.Overall?.Value,
         result.IsComplete);
 }

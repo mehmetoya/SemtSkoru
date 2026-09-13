@@ -21,6 +21,8 @@ export interface NeighborhoodScore {
   greenSpace: DimensionScore;
   transportation: DimensionScore;
   parking: DimensionScore;
+  healthAccess: DimensionScore;
+  transitAccess: DimensionScore;
   overall: number | null;
   isComplete: boolean;
 }

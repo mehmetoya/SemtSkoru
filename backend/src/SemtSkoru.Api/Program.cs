@@ -54,6 +54,12 @@ builder.Services.AddScoped<TrafficIngestionJob>();
 builder.Services.AddHttpClient<IParkingApiClient, ParkingApiClient>();
 builder.Services.AddScoped<ParkingIngestionJob>();
 
+builder.Services.AddHttpClient<IHealthAccessApiClient, HealthAccessApiClient>();
+builder.Services.AddScoped<HealthAccessIngestionJob>();
+
+builder.Services.AddHttpClient<ITransitAccessApiClient, TransitAccessApiClient>();
+builder.Services.AddScoped<TransitAccessIngestionJob>();
+
 builder.Services.AddScoped<INeighborhoodScoringRepository, NeighborhoodScoringRepository>();
 builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringService>();
 
@@ -122,6 +128,22 @@ recurringJobs.AddOrUpdate<ParkingIngestionJob>(
     "parking-ingestion",
     job => job.RunAsync(CancellationToken.None),
     Cron.Daily());
+
+// Weekly, matching green space's cadence, not parking's/air quality's daily one - İBB's health
+// access index is a slow-changing published index (its GeoJSON resource was last modified
+// 2024-02-01, per İBB's own CKAN metadata), not a live feed.
+recurringJobs.AddOrUpdate<HealthAccessIngestionJob>(
+    "health-access-ingestion",
+    job => job.RunAsync(CancellationToken.None),
+    Cron.Weekly());
+
+// Weekly, matching green space's/health access's cadence - the İETT bus stop dataset's own CKAN
+// metadata shows a recent update (2026-03-18), but physical bus stop infrastructure changes
+// slowly in practice, not a live feed like air quality/parking occupancy.
+recurringJobs.AddOrUpdate<TransitAccessIngestionJob>(
+    "transit-access-ingestion",
+    job => job.RunAsync(CancellationToken.None),
+    Cron.Weekly());
 
 app.Run();
 

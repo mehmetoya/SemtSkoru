@@ -32,6 +32,18 @@ describe("NeighborhoodScoreCard", () => {
         sourceName: "İBB İSPARK",
         publishedAt: "2026-09-13T00:00:00Z",
       },
+      healthAccess: {
+        score: 72,
+        freshness: "Fresh",
+        sourceName: "İBB Sağlık İndeksi",
+        publishedAt: "2024-02-01T00:00:00Z",
+      },
+      transitAccess: {
+        score: 65,
+        freshness: "Fresh",
+        sourceName: "İETT Otobüs Durakları",
+        publishedAt: "2026-03-18T00:00:00Z",
+      },
       overall: 94,
       isComplete: true,
     };
@@ -68,6 +80,18 @@ describe("NeighborhoodScoreCard", () => {
         sourceName: "İBB İSPARK",
         publishedAt: "2026-09-13T00:00:00Z",
       },
+      healthAccess: {
+        score: 100,
+        freshness: "Fresh",
+        sourceName: "İBB Sağlık İndeksi",
+        publishedAt: "2024-02-01T00:00:00Z",
+      },
+      transitAccess: {
+        score: 100,
+        freshness: "Fresh",
+        sourceName: "İETT Otobüs Durakları",
+        publishedAt: "2026-03-18T00:00:00Z",
+      },
       overall: 100,
       isComplete: false,
     };
@@ -102,6 +126,18 @@ describe("NeighborhoodScoreCard", () => {
         freshness: "Fresh",
         sourceName: "s",
         publishedAt: "2026-09-13T00:00:00Z",
+      },
+      healthAccess: {
+        score: 45,
+        freshness: "Fresh",
+        sourceName: "s",
+        publishedAt: "2024-02-01T00:00:00Z",
+      },
+      transitAccess: {
+        score: 50,
+        freshness: "Fresh",
+        sourceName: "s",
+        publishedAt: "2026-03-18T00:00:00Z",
       },
       overall: 65,
       isComplete: false,

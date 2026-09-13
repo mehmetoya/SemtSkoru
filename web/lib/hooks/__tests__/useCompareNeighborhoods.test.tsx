@@ -15,6 +15,8 @@ function emptyScore(neighborhoodId: string) {
     greenSpace: emptyDimension(),
     transportation: emptyDimension(),
     parking: emptyDimension(),
+    healthAccess: emptyDimension(),
+    transitAccess: emptyDimension(),
     overall: null,
     isComplete: false,
   };

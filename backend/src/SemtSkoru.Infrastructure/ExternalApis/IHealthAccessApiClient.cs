@@ -1,0 +1,13 @@
+namespace SemtSkoru.Infrastructure.ExternalApis;
+
+public sealed record HealthMahalleFeatureDto(string District, string MahalleName, double HealthIndex, int Population);
+
+public interface IHealthAccessApiClient
+{
+    /// <summary>
+    /// Returns every mahalle (neighborhood-within-district) feature from İBB's "34 Dakika
+    /// İstanbul Sağlık İndeksi" (health-service access index) dataset, city-wide, with its
+    /// own district tag, raw health index value, and population.
+    /// </summary>
+    Task<IReadOnlyList<HealthMahalleFeatureDto>> GetMahallesAsync(CancellationToken ct);
+}

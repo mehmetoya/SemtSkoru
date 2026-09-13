@@ -193,6 +193,142 @@ normalize edecek.
 
 ---
 
+## 7. Sağlık Erişimi (34 Dakika İstanbul Sağlık İndeksi) — ✅ Doğrulandı, 5. boyut
+
+**Kaynak:** İBB'nin "34 Dakika İstanbul" çok-modlu erişilebilirlik çerçevesinin bir parçası
+olan "34 Dakika İstanbul Sağlık İndeksi" (sağlık hizmetlerine erişimi ölçen indeks).
+
+**Endpoint:**
+```
+GET https://data.ibb.gov.tr/dataset/d68cd520-971c-46c1-98cb-6cb66c940604/resource/d90e11be-d5b3-4df2-ba1f-e4356d336ad7/download/saglik_index.geojson
+```
+- Kimlik doğrulama: **yok**
+- Test tarihi: 2026-09-13. Yanıt: GeoJSON FeatureCollection, 901 Polygon feature — her biri
+  bir **mahalle** (ilçe değil). Gerçek property adları (canlı doğrulandı, tahmin edilmedi):
+  `ILCE_ADI` (string, büyük harf ilçe adı), `MAHALLE_ADI` (string), `KISI_SAYISI`
+  (int, mahalle nüfusu — 901 mahallenin 97'sinde 0), `SAGLIK_INDEX` (float, gerçek gözlemlenen
+  aralık 0 - 82.9086).
+- Ayrıca gerçek bir metodoloji PDF'i var (TR ve EN). EN sürümü okundu: İBB'nin "34 Dakika
+  İstanbul" çerçevesi üç ayrı indeksten oluşuyor — **Diversity Index** (günlük ihtiyaçlara
+  erişim çeşitliliği; "Health" fonksiyonu aile sağlığı merkezleri, hastaneler, eczaneler vb.
+  sayısını içeriyor), **Affordability Index** ve **Walkability Index** — ve yalnızca bu
+  üçünün toplamı olan **Quality of Life Index**'in 0-100 arası olduğu belirtiliyor. PDF,
+  `SAGLIK_INDEX`'in kendisinin 0-100 arası bir skala olduğunu **hiçbir yerde iddia etmiyor**;
+  bu yüzden `DimensionScoring.ScoreHealthAccess` bunu varsaymıyor (aşağıya bkz.).
+
+**Diğer üç mahalle/ilçe eşleştirmeli boyuttan farkı:** Bu veri **mahalle düzeyinde**
+yayınlanıyor, ilçe düzeyinde değil — yeşil alan ve otoparkın aksine (ilçe alanı 1:1 eşleşiyor)
+ve hava kalitesi/trafiğin aksine (ilçe sınırına karşı point-in-polygon testi). Bu yüzden
+`HealthAccessIngestionJob` önce bir aggregation adımı yapıyor: her ilçenin mahallelerini
+`ILCE_ADI`'ya göre grupluyor, sonra `SAGLIK_INDEX`'in **nüfus ağırlıklı ortalamasını**
+hesaplıyor: `Σ(SAGLIK_INDEX_i × KISI_SAYISI_i) / Σ(KISI_SAYISI_i)`, nüfusu 0 olan mahalleler
+hem pay hem paydadan hariç tutuluyor (ıssız/sanayi/orman bölgesi bir mahallenin endeksi,
+ilçenin gerçek ortalamasını sulandırmasın diye).
+
+**Kapsama testi (39 ilçenin tamamına karşı canlı doğrulandı):** 901 mahalle, tam olarak 39
+farklı `ILCE_ADI` değeri altında toplanıyor — İBB'nin bu veri setinde İSPARK'ın
+EYÜP/EYÜPSULTAN türünden bir isim uyuşmazlığı **yok**: her 39 ilçenin Türkçe büyük harfli adı
+(`ToUpper("tr-TR")`) doğrudan bir `ILCE_ADI` değeriyle birebir eşleşiyor (bu veri seti zaten
+"EYÜPSULTAN" kullanıyor, İSPARK'ın kullandığı eski "EYÜP" adını değil). Nüfus ağırlıklı
+ortalama hesaplandığında **39/39 ilçenin tamamında** en az bir nüfuslu mahalle bulundu — hiçbir
+ilçe "Veri yok" durumuna düşmedi (yine de kod, gelecekte bunun değişmesi ihtimaline karşı
+0 nüfuslu-mahalle durumunu düzgünce ele alıyor, bkz. `HealthAccessIngestionJob`).
+
+**Lisans:** İstanbul Büyükşehir Belediyesi Açık Veri Lisansı.
+
+**Güncellik:** İBB'nin kendi CKAN API'sine göre (`data.ibb.gov.tr/api/3/action/package_show`)
+bu GeoJSON kaynağı en son 2024-02-01'de değiştirildi — yeşil alan gibi yavaş değişen,
+periyodik bir kaynak (`SourceCadence.Periodic`), canlı bir akış değil.
+
+**Skor formülü:** İBB, `SAGLIK_INDEX`'in kendisinin 0-100 arası olduğunu hiçbir yerde iddia
+etmiyor (yukarıya bkz.) — mahalle düzeyinde gerçek gözlemlenen aralık 0-82.9, ama ilçe
+düzeyinde, nüfus ağırlıklı ortalama alındığında bu aralık daha da daralıyor. Canlı doğrulandı
+(2026-09-13): gerçek 39 ilçenin nüfus ağırlıklı ortalamaları **10.30 (Şile, en düşük) ile
+79.72 (Fatih, en yüksek)** arasında. MVP, bu *gözlemlenen* aralığı 0-100'e doğrusal olarak
+ölçekliyor (en düşük ilçe 0, en yüksek ilçe 100 puan alır) — yeşil alanın yürüme mesafesi
+varsayımıyla aynı üslupta, dürüstçe belgelenmiş bir MVP varsayımı, resmi bir standart değil
+(bkz. `DimensionScoring.ScoreHealthAccess` içindeki yorum). İleride veri yeniden çekildiğinde
+gerçek uç değerler değişirse, bu sabitlerin de güncellenmesi gerekir.
+
+**Karar:** Bu kaynağı doğrudan kullan. `HealthAccessIngestionJob`, green space ile aynı
+haftalık sıklıkla (yavaş değişen, yayınlanmış bir indeks) tüm mahalleleri çekip ilçe bazında
+nüfus ağırlıklı ortalamaya indirgeyecek.
+
+---
+
+## 8. Toplu Taşıma Erişimi (İETT Otobüs Durakları) — ✅ Doğrulandı, 6. boyut
+
+**Kaynak:** İBB'nin İETT "Otobüs Durakları Verisi" (şehir genelindeki gerçek İETT otobüs
+duraklarının konumu).
+
+**Endpoint:**
+```
+GET https://data.ibb.gov.tr/dataset/af3c70e8-82d6-44e2-84cf-2e364c242227/resource/4f28ec8d-7c2d-477b-873d-d17ce5b5e3be/download/iett-otobus-duraklar..geojson
+```
+- Kimlik doğrulama: **yok**
+- Test tarihi: 2026-09-13. Yanıt: GeoJSON FeatureCollection, **15.486 Point feature** — her biri
+  gerçek bir otobüs durağı, koordinat sırası `[boylam, enlem]` (İstanbul'un gerçek sınırlarına
+  karşı doğrulandı: boylam ~28.6-29.46, enlem ~40.78-41.27). Gerçek property adları (canlı
+  doğrulandı): `ID`, `ADI` (durak adı), `DURAK_KODU`, `DURUMU` (canlı doğrulandı: 15.486
+  durağın **tamamında** "1" — kullanılabilir bir filtre değil), `DURAK_TIPI` (fiziksel durak
+  tipi — bayrak durak, modern durak, cam durak vb.; hepsi gerçek, geçerli duraklar),
+  `ILCEID` (**sayısal** bir ilçe kodu — isme resmi/güvenilir bir eşlemesi yok), `MAHALLEID`,
+  `SON_GUNCELLEME_TARIHI`/`YAPILIS_TARIHI` (durak başına tarih, çoğu eski/durağan),
+  `VERSIYON`, `CEP_VAR`.
+
+**Diğer boyutlardan farkı — string eşleştirme yerine point-in-polygon:** Yeşil alan ve
+otoparkın aksine, bu veri setinin `ILCEID` alanı sayısal bir kod ve resmi/güvenilir bir
+isim eşlemesi yok (canlı doğrulandı — tahmin edilip kullanılmadı). Bu yüzden
+`TransitAccessIngestionJob`, hava kalitesi ve trafiğin kullandığı **aynı point-in-polygon
+tekniğini** kullanıyor: her durağın koordinatı, 39 ilçenin gerçek sınır poligonuna karşı
+test ediliyor. 15.486 nokta × 39 ilçe (~600 bin test, trafiğin ~1.76 milyon satırından
+~100 kat küçük) — canlı ölçüldü: TrafficIngestionJob'ın kullandığı hazırlanmış (prepared)
+geometri tekniği bu ölçekte de aynen uygulanıyor (39ms'de tamamlanıyor; naif bir döngü bile
+~4 saniyede biter, ama tutarlılık ve pay için aynı teknik tercih edildi). Sınırların hiçbiri
+birbiriyle çakışmadığından bir durak en fazla bir ilçeye ait olabiliyor; hiçbir ilçe
+sınırına düşmeyen duraklar (canlı doğrulandı: 15.486'nın 159'u, ~%1 — büyük olasılıkla kıyı/
+deniz kenarı sınır hassasiyeti) hiçbir ilçeye zorla atanmadan sayılmıyor.
+
+**Skor formülü — yoğunluk, ham sayı değil:** Büyük ve kırsal bir ilçe (örn. Çatalca,
+~1.137 km²), sadece daha geniş olduğu için küçük ve merkezi bir ilçeden (örn. Beyoğlu,
+~9 km²) her zaman daha fazla ham durak içerebilir — bu yüzden ham durak sayısını doğrudan
+skorlamak ilçe büyüklüğünü ödüllendirir, toplu taşıma erişimini değil.
+`TransitAccessIngestionJob`, her ilçenin gerçek fiziksel alanını WGS84 sınırından basit bir
+equirectangular yaklaşıklıkla hesaplıyor (x = boylam(rad) × R × cos(ortalama enlem),
+y = enlem(rad) × R, R = 6371.0088 km, ilçenin kendi centroid enlemi kullanılarak) ve
+durak/km² yoğunluğunu skorlanan miktar olarak saklıyor (ham `StopCount` da şeffaflık için
+ayrıca tutuluyor). Canlı nokta kontrolü (2026-09-13): bu yaklaşıklık, Çatalca/Silivri/Şile'yi
+en büyük üç ilçe olarak buluyor (~1.137/859/782 km², gerçek yayınlanmış rakamlara göre
+~1.073/883/757 km²) ve Güngören/Beyoğlu'nu en küçükler arasına koyuyor (~7.3/8.9 km², gerçek
+rakamlara göre ~7.2/8.7 km²) — gerçek rakamlara birkaç yüzde yakın, hiçbir zaman büyüklük
+mertebesinde yanlış değil, yani İstanbul'un küçük enlem aralığı için dürüst (ama yaklaşık)
+bir alan, uydurma bir sayı değil.
+
+**Kapsama testi (39 ilçenin tamamına karşı canlı doğrulandı):** Point-in-polygon eşleştirmesi
+sonucunda **39/39 ilçenin tamamında** en az bir durak bulundu — hiçbir ilçe "Veri yok"
+durumuna düşmedi (yine de kod, gelecekte bunun değişmesi ihtimaline karşı sıfır-durak
+durumunu düzgünce ele alıyor, bkz. `TransitAccessIngestionJob`).
+
+**Lisans:** İstanbul Büyükşehir Belediyesi Açık Veri Lisansı.
+
+**Güncellik:** İBB'nin kendi CKAN API'sine göre bu GeoJSON kaynağı en son 2026-03-18'de
+değiştirildi, ama fiziksel otobüs durağı altyapısı pratikte yavaş değişir — bu yüzden green
+space/health access ile aynı haftalık sıklıkla (`SourceCadence.Periodic`) planlandı, canlı
+bir akış gibi değil.
+
+**Skor aralığı:** Canlı doğrulandı (2026-09-13): gerçek 39 ilçenin durak yoğunluğu **0.28
+durak/km² (Çatalca, en düşük) ile 20.13 durak/km² (Şişli, en yüksek)** arasında. MVP, bu
+*gözlemlenen* aralığı 0-100'e doğrusal olarak ölçekliyor (en düşük ilçe 0, en yüksek ilçe
+100 puan alır) — sağlık erişiminin bounds'larıyla aynı üslupta, dürüstçe belgelenmiş bir MVP
+varsayımı, resmi bir standart değil (bkz. `DimensionScoring.ScoreTransitAccess` içindeki
+yorum).
+
+**Karar:** Bu kaynağı doğrudan kullan. `TransitAccessIngestionJob`, health access/green space
+ile aynı haftalık sıklıkla tüm durakları çekip point-in-polygon ile ilçelere eşleştirecek ve
+durak/km² yoğunluğunu hesaplayacak.
+
+---
+
 ## Özet Tablo
 
 | Boyut | Kaynak | Canlı mı? | 39 ilçe kapsıyor mu? | Auth | Lisans | Karar |
@@ -201,4 +337,6 @@ normalize edecek.
 | Yeşil alan | data.ibb.gov.tr GeoJSON | ⚠️ Yıllık | ✅ 39/39 | Yok | İBB Açık Veri Lisansı | Doğrudan kullan |
 | Trafik | data.ibb.gov.tr CSV (Ocak 2025) | ❌ Bayat (~20 ay) | ✅ 38/39 (Adalar'da yol trafiği yok) | Yok | İBB Açık Veri Lisansı | Kullan, UI'da "tarihsel" etiketiyle |
 | Otopark | api.ibb.gov.tr/ispark | ✅ Canlı | ❌ Yalnızca 34/39 (tesisi olan) | Yok | İBB Açık Veri Lisansı | Doğrudan kullan; kalan 5 ilçe "Veri yok" |
+| Sağlık erişimi | data.ibb.gov.tr GeoJSON (mahalle bazlı) | ⚠️ Durağan (son değişiklik 2024-02-01) | ✅ 39/39 (nüfus ağırlıklı ortalamayla) | Yok | İBB Açık Veri Lisansı | Doğrudan kullan; mahalleden ilçeye aggregate et |
+| Toplu taşıma erişimi | data.ibb.gov.tr GeoJSON (İETT durakları) | ⚠️ Durağan (son değişiklik 2026-03-18) | ✅ 39/39 (point-in-polygon ile) | Yok | İBB Açık Veri Lisansı | Doğrudan kullan; durak/km² yoğunluğunu skorla |
 | İlçe sınırı | OpenStreetMap/Nominatim | N/A (statik seed) | ✅ 39/39 | Yok (rate-limit'li) | ODbL (atıf gerekli) | Seed-time'da çek, sakla |

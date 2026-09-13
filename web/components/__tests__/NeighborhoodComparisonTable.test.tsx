@@ -10,6 +10,8 @@ function score(overrides: Partial<NeighborhoodScore>): NeighborhoodScore {
     greenSpace: { score: 90, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
     transportation: { score: 70, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
     parking: { score: 60, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
+    healthAccess: { score: 55, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
+    transitAccess: { score: 65, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
     overall: 80,
     isComplete: true,
     ...overrides,

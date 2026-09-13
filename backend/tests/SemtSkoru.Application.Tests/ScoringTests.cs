@@ -49,4 +49,26 @@ public class DimensionScoringTests
     {
         Assert.Equal(expectedScore, DimensionScoring.ScoreParking(averageAvailabilityRatio).Value);
     }
+
+    [Theory]
+    [InlineData(10.30, 0)] // observed worst real district (Şile)
+    [InlineData(79.72, 100)] // observed best real district (Fatih)
+    [InlineData(45.01, 50)] // midpoint of the observed range
+    [InlineData(0, 0)] // clamps below the observed range
+    [InlineData(100, 100)] // clamps above the observed range
+    public void ScoreHealthAccess_scores_higher_weighted_index_higher(double weightedHealthIndex, int expectedScore)
+    {
+        Assert.Equal(expectedScore, DimensionScoring.ScoreHealthAccess(weightedHealthIndex).Value);
+    }
+
+    [Theory]
+    [InlineData(0.28, 0)] // observed worst real district (Çatalca)
+    [InlineData(20.13, 100)] // observed best real district (Şişli)
+    [InlineData(10.205, 50)] // midpoint of the observed range
+    [InlineData(0, 0)] // clamps below the observed range
+    [InlineData(50, 100)] // clamps above the observed range
+    public void ScoreTransitAccess_scores_higher_stop_density_higher(double stopDensityPerKm2, int expectedScore)
+    {
+        Assert.Equal(expectedScore, DimensionScoring.ScoreTransitAccess(stopDensityPerKm2).Value);
+    }
 }

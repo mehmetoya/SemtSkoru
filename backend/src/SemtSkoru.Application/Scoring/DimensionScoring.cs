@@ -66,6 +66,50 @@ public static class DimensionScoring
         return ToScore(score);
     }
 
+    // İBB's "34 Dakika İstanbul Sağlık İndeksi" (health-service access index, part of the
+    // wider "34 Dakika İstanbul" Diversity Index's "Health" function - see
+    // docs/data-sources.md) documents no claim that its raw SAGLIK_INDEX is itself a 0-100
+    // scale; only the combined Diversity+Affordability+Walkability "Quality of Life Index" is
+    // (per İBB's own methodology PDF). The raw mahalle-level index ranges 0-82.9 city-wide, but
+    // HealthAccessIngestionJob aggregates it up to a population-weighted district average
+    // first, which live-verified (2026-09-13) real data across all 39 districts narrows to
+    // roughly 10.30 (Şile) - 79.72 (Fatih). MVP linearly rescales that *observed* district-
+    // level range to 0-100 (worst real district = 0, best real district = 100) - a documented,
+    // hedged assumption like ScoreGreenSpace's walking-distance cutoff, not an official
+    // standard, so a future re-fetch that shifts the true extremes would shift every district's
+    // score proportionally rather than silently going out of range.
+    private const double MinObservedWeightedHealthIndex = 10.30; // Şile
+    private const double MaxObservedWeightedHealthIndex = 79.72; // Fatih
+
+    public static Score ScoreHealthAccess(double weightedHealthIndex)
+    {
+        var clamped = Math.Clamp(weightedHealthIndex, MinObservedWeightedHealthIndex, MaxObservedWeightedHealthIndex);
+        var score = (clamped - MinObservedWeightedHealthIndex)
+            / (MaxObservedWeightedHealthIndex - MinObservedWeightedHealthIndex) * 100;
+        return ToScore(score);
+    }
+
+    // İETT publishes no standard for "how many bus stops per km² is good", so, like
+    // ScoreHealthAccess, MVP linearly rescales the *observed* district-level range to 0-100
+    // (worst real district = 0, best real district = 100) rather than inventing an absolute
+    // threshold. Live-verified (2026-09-13) real data across all 39 districts: TransitAccessIngestionJob's
+    // stops-per-km² (equirectangular area approximation, not a raw stop count - a large rural
+    // district would otherwise be unfairly rewarded/penalized just for its size) ranges from
+    // 0.28 (Çatalca, a large sparsely-covered western district) to 20.13 (Şişli, a small dense
+    // central one). Like ScoreHealthAccess's bounds, a future re-fetch that shifts the true
+    // extremes would shift every district's score proportionally rather than silently going out
+    // of range.
+    private const double MinObservedStopDensityPerKm2 = 0.28; // Çatalca
+    private const double MaxObservedStopDensityPerKm2 = 20.13; // Şişli
+
+    public static Score ScoreTransitAccess(double stopDensityPerKm2)
+    {
+        var clamped = Math.Clamp(stopDensityPerKm2, MinObservedStopDensityPerKm2, MaxObservedStopDensityPerKm2);
+        var score = (clamped - MinObservedStopDensityPerKm2)
+            / (MaxObservedStopDensityPerKm2 - MinObservedStopDensityPerKm2) * 100;
+        return ToScore(score);
+    }
+
     private static double InterpolateDescending(double value, double fromLow, double fromHigh, double toHigh, double toLow) =>
         toHigh + (value - fromLow) / (fromHigh - fromLow) * (toLow - toHigh);
 

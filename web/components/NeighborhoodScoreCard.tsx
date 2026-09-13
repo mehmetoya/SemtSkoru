@@ -10,6 +10,8 @@ const DIMENSIONS = [
   { key: "greenSpace", label: "Yeşil Alan" },
   { key: "transportation", label: "Ulaşım" },
   { key: "parking", label: "Otopark" },
+  { key: "healthAccess", label: "Sağlık Erişimi" },
+  { key: "transitAccess", label: "Toplu Taşıma Erişimi" },
 ] as const;
 
 function formatDate(iso: string): string {

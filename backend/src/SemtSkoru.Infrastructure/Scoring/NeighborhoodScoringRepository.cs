@@ -22,6 +22,12 @@ public sealed class NeighborhoodScoringRepository(AppDbContext db) : INeighborho
     public async Task<ParkingReading?> GetLatestParkingAsync(string neighborhoodId, CancellationToken ct) =>
         await db.ParkingReadings.FindAsync([neighborhoodId], ct);
 
+    public async Task<HealthAccessReading?> GetLatestHealthAccessAsync(string neighborhoodId, CancellationToken ct) =>
+        await db.HealthAccessReadings.FindAsync([neighborhoodId], ct);
+
+    public async Task<TransitAccessReading?> GetLatestTransitAccessAsync(string neighborhoodId, CancellationToken ct) =>
+        await db.TransitAccessReadings.FindAsync([neighborhoodId], ct);
+
     public async Task<IReadOnlyList<string>> GetAllNeighborhoodIdsAsync(CancellationToken ct) =>
         await db.Neighborhoods.Select(n => n.Id).ToListAsync(ct);
 
@@ -36,4 +42,10 @@ public sealed class NeighborhoodScoringRepository(AppDbContext db) : INeighborho
 
     public async Task<IReadOnlyDictionary<string, ParkingReading>> GetAllParkingAsync(CancellationToken ct) =>
         await db.ParkingReadings.ToDictionaryAsync(r => r.NeighborhoodId, ct);
+
+    public async Task<IReadOnlyDictionary<string, HealthAccessReading>> GetAllHealthAccessAsync(CancellationToken ct) =>
+        await db.HealthAccessReadings.ToDictionaryAsync(r => r.NeighborhoodId, ct);
+
+    public async Task<IReadOnlyDictionary<string, TransitAccessReading>> GetAllTransitAccessAsync(CancellationToken ct) =>
+        await db.TransitAccessReadings.ToDictionaryAsync(r => r.NeighborhoodId, ct);
 }

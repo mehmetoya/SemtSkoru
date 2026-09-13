@@ -19,6 +19,10 @@ public interface INeighborhoodScoringRepository
 
     Task<ParkingReading?> GetLatestParkingAsync(string neighborhoodId, CancellationToken ct);
 
+    Task<HealthAccessReading?> GetLatestHealthAccessAsync(string neighborhoodId, CancellationToken ct);
+
+    Task<TransitAccessReading?> GetLatestTransitAccessAsync(string neighborhoodId, CancellationToken ct);
+
     // Bulk variants for scoring every neighborhood at once (GET /api/neighborhoods) - each is a
     // single query regardless of neighborhood count. Live-verified this matters: with 39
     // districts, doing the four single-id queries above once per neighborhood took ~21s end to
@@ -33,4 +37,8 @@ public interface INeighborhoodScoringRepository
     Task<IReadOnlyDictionary<string, TrafficReading>> GetAllTrafficAsync(CancellationToken ct);
 
     Task<IReadOnlyDictionary<string, ParkingReading>> GetAllParkingAsync(CancellationToken ct);
+
+    Task<IReadOnlyDictionary<string, HealthAccessReading>> GetAllHealthAccessAsync(CancellationToken ct);
+
+    Task<IReadOnlyDictionary<string, TransitAccessReading>> GetAllTransitAccessAsync(CancellationToken ct);
 }

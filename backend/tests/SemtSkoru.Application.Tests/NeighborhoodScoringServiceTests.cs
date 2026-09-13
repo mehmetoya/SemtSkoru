@@ -38,6 +38,8 @@ public class NeighborhoodScoringServiceTests
             GreenSpace = new GreenSpaceReading { NeighborhoodId = "kadikoy", NearestParkDistanceMeters = 0, Source = LiveSource(Now) }, // -> 100
             Traffic = new TrafficReading { NeighborhoodId = "kadikoy", AverageSpeedKmh = 50, Source = LiveSource(Now) }, // -> 100
             Parking = new ParkingReading { NeighborhoodId = "kadikoy", AverageAvailabilityRatio = 1.0, Source = LiveSource(Now) }, // -> 100
+            HealthAccess = new HealthAccessReading { NeighborhoodId = "kadikoy", WeightedHealthIndex = 79.72, Source = LiveSource(Now) }, // -> 100
+            TransitAccess = new TransitAccessReading { NeighborhoodId = "kadikoy", StopCount = 10, StopDensityPerKm2 = 20.13, Source = LiveSource(Now) }, // -> 100
         };
 
         var result = await CreateService(repository).GetScoreAsync("kadikoy", CancellationToken.None);
@@ -48,7 +50,9 @@ public class NeighborhoodScoringServiceTests
         Assert.Equal(100, result.GreenSpace.Value!.Value.Value);
         Assert.Equal(100, result.Transportation.Value!.Value.Value);
         Assert.Equal(100, result.Parking.Value!.Value.Value);
-        Assert.Equal(96, result.Overall!.Value.Value); // round((83+100+100+100)/4) == round(95.75) == 96
+        Assert.Equal(100, result.HealthAccess.Value!.Value.Value);
+        Assert.Equal(100, result.TransitAccess.Value!.Value.Value);
+        Assert.Equal(97, result.Overall!.Value.Value); // round((83+100+100+100+100+100)/6) == round(97.16) == 97
         Assert.Equal("İBB Hava Kalitesi", result.AirQuality.SourceName);
         Assert.Equal(Now, result.AirQuality.PublishedAt);
     }
@@ -62,6 +66,8 @@ public class NeighborhoodScoringServiceTests
             GreenSpace = null, // no park found for this district yet
             Traffic = new TrafficReading { NeighborhoodId = "besiktas", AverageSpeedKmh = 50, Source = LiveSource(Now) }, // -> 100
             Parking = new ParkingReading { NeighborhoodId = "besiktas", AverageAvailabilityRatio = 1.0, Source = LiveSource(Now) }, // -> 100
+            HealthAccess = new HealthAccessReading { NeighborhoodId = "besiktas", WeightedHealthIndex = 79.72, Source = LiveSource(Now) }, // -> 100
+            TransitAccess = new TransitAccessReading { NeighborhoodId = "besiktas", StopCount = 5, StopDensityPerKm2 = 20.13, Source = LiveSource(Now) }, // -> 100
         };
 
         var result = await CreateService(repository).GetScoreAsync("besiktas", CancellationToken.None);
@@ -73,7 +79,7 @@ public class NeighborhoodScoringServiceTests
         Assert.Null(result.GreenSpace.Freshness);
         Assert.Null(result.GreenSpace.SourceName);
         Assert.Null(result.GreenSpace.PublishedAt);
-        Assert.Equal(100, result.Overall!.Value.Value); // average of the three available dimensions
+        Assert.Equal(100, result.Overall!.Value.Value); // average of the five available dimensions
     }
 
     [Fact]
@@ -121,6 +127,8 @@ public class NeighborhoodScoringServiceTests
             },
             AllTraffic = new Dictionary<string, TrafficReading>(),
             AllParking = new Dictionary<string, ParkingReading>(),
+            AllHealthAccess = new Dictionary<string, HealthAccessReading>(),
+            AllTransitAccess = new Dictionary<string, TransitAccessReading>(),
         };
 
         var results = await CreateService(repository).GetAllScoresAsync(CancellationToken.None);
@@ -144,12 +152,16 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
     public GreenSpaceReading? GreenSpace { get; set; }
     public TrafficReading? Traffic { get; set; }
     public ParkingReading? Parking { get; set; }
+    public HealthAccessReading? HealthAccess { get; set; }
+    public TransitAccessReading? TransitAccess { get; set; }
 
     public IReadOnlyList<string> AllIds { get; set; } = [];
     public IReadOnlyDictionary<string, AirQualityReading> AllAirQuality { get; set; } = new Dictionary<string, AirQualityReading>();
     public IReadOnlyDictionary<string, GreenSpaceReading> AllGreenSpace { get; set; } = new Dictionary<string, GreenSpaceReading>();
     public IReadOnlyDictionary<string, TrafficReading> AllTraffic { get; set; } = new Dictionary<string, TrafficReading>();
     public IReadOnlyDictionary<string, ParkingReading> AllParking { get; set; } = new Dictionary<string, ParkingReading>();
+    public IReadOnlyDictionary<string, HealthAccessReading> AllHealthAccess { get; set; } = new Dictionary<string, HealthAccessReading>();
+    public IReadOnlyDictionary<string, TransitAccessReading> AllTransitAccess { get; set; } = new Dictionary<string, TransitAccessReading>();
 
     public Task<bool> NeighborhoodExistsAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(exists);
 
@@ -161,6 +173,10 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
 
     public Task<ParkingReading?> GetLatestParkingAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(Parking);
 
+    public Task<HealthAccessReading?> GetLatestHealthAccessAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(HealthAccess);
+
+    public Task<TransitAccessReading?> GetLatestTransitAccessAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(TransitAccess);
+
     public Task<IReadOnlyList<string>> GetAllNeighborhoodIdsAsync(CancellationToken ct) => Task.FromResult(AllIds);
 
     public Task<IReadOnlyDictionary<string, AirQualityReading>> GetAllAirQualityAsync(CancellationToken ct) => Task.FromResult(AllAirQuality);
@@ -170,4 +186,8 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
     public Task<IReadOnlyDictionary<string, TrafficReading>> GetAllTrafficAsync(CancellationToken ct) => Task.FromResult(AllTraffic);
 
     public Task<IReadOnlyDictionary<string, ParkingReading>> GetAllParkingAsync(CancellationToken ct) => Task.FromResult(AllParking);
+
+    public Task<IReadOnlyDictionary<string, HealthAccessReading>> GetAllHealthAccessAsync(CancellationToken ct) => Task.FromResult(AllHealthAccess);
+
+    public Task<IReadOnlyDictionary<string, TransitAccessReading>> GetAllTransitAccessAsync(CancellationToken ct) => Task.FromResult(AllTransitAccess);
 }
