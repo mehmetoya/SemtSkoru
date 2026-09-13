@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DIMENSION_METHODOLOGY } from "../../lib/dimension-info";
 import { DataSourceBadge } from "../../components/DataSourceBadge";
 import { SITE_URL } from "../../lib/site";
+import { jsonLdScript } from "../../lib/json-ld";
 
 export const metadata: Metadata = {
   title: "Hakkımızda",
@@ -15,7 +16,7 @@ const SOURCES = [
   {
     label: "Hava Kalitesi",
     source: "İBB Açık Veri Portalı (canlı API)",
-    freshness: "Saatlik",
+    freshness: "Saatlik (kaynakta) — günlük senkronize edilir",
     license: "İBB Açık Veri Lisansı",
   },
   {
@@ -25,7 +26,7 @@ const SOURCES = [
     license: "İBB Açık Veri Lisansı",
   },
   {
-    label: "Trafik / Ulaşım",
+    label: "Ulaşım",
     source: "İBB Açık Veri Portalı (Ocak 2025 CSV)",
     freshness: "Tarihsel — canlı değil, UI'da açıkça etiketli",
     license: "İBB Açık Veri Lisansı",
@@ -172,7 +173,7 @@ export default function HakkimizdaPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLdScript({
             "@context": "https://schema.org",
             "@type": "AboutPage",
             name: "Hakkımızda",

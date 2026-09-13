@@ -4,6 +4,7 @@ import { fetchNeighborhoods } from "../lib/api-client";
 import { NeighborhoodListCard } from "../components/NeighborhoodListCard";
 import { HighlightCard } from "../components/HighlightCard";
 import { SITE_URL } from "../lib/site";
+import { jsonLdScript } from "../lib/json-ld";
 
 // Re-fetched from the API at most every 5 minutes and served from Vercel's cache the rest
 // of the time - real content in the initial HTML (not "Yükleniyor…") for both search/AI
@@ -14,7 +15,7 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "SemtSkoru — İstanbul İlçe Yaşam Skoru",
   description:
-    "İstanbul'un 39 ilçesi için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğunu gerçek İBB açık verisiyle 0-100 arası skorlara çeviren açık kaynak araç.",
+    "İstanbul'un 39 ilçesi için hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimini gerçek İBB açık verisiyle 0-100 arası skorlara çeviren açık kaynak araç.",
   alternates: { canonical: "/" },
 };
 
@@ -40,34 +41,42 @@ export default async function Home() {
     "@type": "Dataset",
     name: "SemtSkoru İlçe Yaşam Skorları",
     description:
-      "İstanbul'un 39 ilçesi için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu skorları; İBB Açık Veri Portalı ve OpenStreetMap kaynaklı.",
+      "İstanbul'un 39 ilçesi için hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimi skorları; İBB Açık Veri Portalı ve OpenStreetMap kaynaklı.",
     url: SITE_URL,
     license: "https://data.ibb.gov.tr/pages/lisans/",
     creator: { "@type": "Organization", name: "İstanbul Büyükşehir Belediyesi Açık Veri Portalı" },
-    variableMeasured: ["Hava Kalitesi", "Yeşil Alan Erişimi", "Trafik Yoğunluğu"],
+    variableMeasured: [
+      "Hava Kalitesi",
+      "Yeşil Alan Erişimi",
+      "Ulaşım",
+      "Otopark",
+      "Sağlık Erişimi",
+      "Toplu Taşıma Erişimi",
+    ],
   };
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       <div className="max-w-2xl">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
           Nereye taşınmalısın?
         </h1>
         <p className="mt-3 text-base text-slate-600 dark:text-slate-400">
-          İstanbul&apos;un 39 ilçesini hava kalitesi, yeşil alan erişimi ve trafik
-          yoğunluğu açısından 0-100 arası skorlara çeviriyoruz — tamamı gerçek İBB
-          Açık Veri Portalı verisiyle, her skorun kaynağı ve güncellik tarihiyle
-          birlikte. Bir ilçe seç, boyut boyut skorlarını ve nasıl hesaplandığını
-          gör; ya da iki ilçeyi yan yana ve haritada karşılaştır.
+          İstanbul&apos;un 39 ilçesini hava kalitesi, yeşil alan, ulaşım, otopark,
+          sağlık ve toplu taşıma erişimi açısından 0-100 arası skorlara
+          çeviriyoruz — tamamı gerçek İBB Açık Veri Portalı verisiyle, her
+          skorun kaynağı ve güncellik tarihiyle birlikte. Bir ilçe seç, boyut
+          boyut skorlarını ve nasıl hesaplandığını gör; ya da iki ilçeyi yan
+          yana ve haritada karşılaştır.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
           <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">39 ilçe</span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">
-            Hava kalitesi verisi: 18/39 ilçe
+            Hava kalitesi verisi: 19/39 ilçe
           </span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">İBB Açık Veri Portalı</span>
         </div>

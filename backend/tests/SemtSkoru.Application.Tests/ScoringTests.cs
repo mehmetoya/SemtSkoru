@@ -24,6 +24,7 @@ public class DimensionScoringTests
     [InlineData(1000, 50)]
     [InlineData(2000, 0)]
     [InlineData(5000, 0)] // clamps beyond the walkable range
+    [InlineData(-100, 100)] // clamps below range (not physically possible, but the formula should still saturate rather than extrapolate)
     public void ScoreGreenSpace_scores_closer_parks_higher(double distanceMeters, int expectedScore)
     {
         Assert.Equal(expectedScore, DimensionScoring.ScoreGreenSpace(distanceMeters).Value);
@@ -34,9 +35,22 @@ public class DimensionScoringTests
     [InlineData(25, 50)]
     [InlineData(50, 100)]
     [InlineData(90, 100)] // clamps above free-flow speed
+    [InlineData(-10, 0)] // clamps below range (not physically possible, but the formula should still saturate rather than extrapolate)
     public void ScoreTransportation_scores_faster_average_speed_higher(double speedKmh, int expectedScore)
     {
         Assert.Equal(expectedScore, DimensionScoring.ScoreTransportation(speedKmh).Value);
+    }
+
+    [Fact]
+    public void ScoreTransportation_rounds_an_exact_midpoint_to_even_not_up()
+    {
+        // 22.25/50*100 = 44.5 exactly. .NET's Math.Round with no explicit mode defaults to
+        // MidpointRounding.ToEven ("banker's rounding"), so this rounds DOWN to 44 (the even
+        // neighbor), not up to 45 as naive "round half up" intuition would suggest. Locking
+        // this in explicitly - every dimension formula shares this same rounding behavior via
+        // DimensionScoring.ToScore, and no other test happens to land on a genuine odd/even
+        // midpoint, so this was previously untested and easy to mistake for an off-by-one bug.
+        Assert.Equal(44, DimensionScoring.ScoreTransportation(22.25).Value);
     }
 
     [Theory]

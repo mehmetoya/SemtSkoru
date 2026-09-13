@@ -25,9 +25,9 @@ export function SiteFooter() {
               </span>
             </Link>
             <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-              İstanbul ilçelerinin hava kalitesi, yeşil alan erişimi ve trafik
-              yoğunluğunu gerçek İBB açık verisiyle 0-100 arası skorlara çeviren
-              açık kaynak bir araç.
+              İstanbul ilçelerinin hava kalitesi, yeşil alan, ulaşım, otopark,
+              sağlık ve toplu taşıma erişimini gerçek İBB açık verisiyle 0-100
+              arası skorlara çeviren açık kaynak bir araç.
             </p>
             <DataSourceBadge className="mt-4" />
           </div>

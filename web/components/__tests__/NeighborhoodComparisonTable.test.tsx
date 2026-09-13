@@ -35,6 +35,31 @@ describe("NeighborhoodComparisonTable", () => {
     expect(screen.getByText("61")).toBeInTheDocument();
   });
 
+  it("labels the delta pill with whichever district is actually ahead", () => {
+    // Locks in the "who's ahead" direction so this can't silently desync from the identical
+    // ternary in web/app/karsilastir/kart/route.tsx (which renders the same comparison as a
+    // downloadable image) - nothing currently asserts this text on either copy.
+    const { rerender } = render(
+      <NeighborhoodComparisonTable
+        nameA="Kadıköy"
+        nameB="Üsküdar"
+        scoreA={score({ overall: 60 })}
+        scoreB={score({ overall: 94 })}
+      />,
+    );
+    expect(screen.getByText("▲ Üsküdar +34")).toBeInTheDocument();
+
+    rerender(
+      <NeighborhoodComparisonTable
+        nameA="Kadıköy"
+        nameB="Üsküdar"
+        scoreA={score({ overall: 94 })}
+        scoreB={score({ overall: 60 })}
+      />,
+    );
+    expect(screen.getByText("▲ Kadıköy +34")).toBeInTheDocument();
+  });
+
   it("shows 'Veri yok' for a dimension with no data instead of crashing", () => {
     render(
       <NeighborhoodComparisonTable

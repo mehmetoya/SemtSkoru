@@ -4,7 +4,7 @@ import { KarsilastirClient } from "../../components/KarsilastirClient";
 export const metadata: Metadata = {
   title: "İlçe Karşılaştır",
   description:
-    "İki İstanbul ilçesinin hava kalitesi, yeşil alan ve trafik skorlarını yan yana ve haritada karşılaştır.",
+    "İki İstanbul ilçesinin hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimi skorlarını yan yana ve haritada karşılaştır.",
   alternates: { canonical: "/karsilastir" },
 };
 
@@ -21,7 +21,7 @@ export default function KarsilastirPage() {
       <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
         <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">39 ilçe</span>
         <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">
-          Hava kalitesi verisi: 18/39 ilçe
+          Hava kalitesi verisi: 19/39 ilçe
         </span>
         <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">İBB Açık Veri Portalı</span>
       </div>

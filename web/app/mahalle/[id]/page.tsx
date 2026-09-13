@@ -5,6 +5,7 @@ import { fetchNeighborhoods, fetchNeighborhoodScore } from "../../../lib/api-cli
 import { NeighborhoodScoreCard } from "../../../components/NeighborhoodScoreCard";
 import type { NeighborhoodScore, NeighborhoodSummary } from "../../../lib/types";
 import { SITE_URL } from "../../../lib/site";
+import { jsonLdScript } from "../../../lib/json-ld";
 
 export const revalidate = 300;
 
@@ -21,7 +22,7 @@ export async function generateMetadata({
   if (!neighborhood) return {};
 
   const title = `${neighborhood.name} Yaşam Skoru`;
-  const description = `${neighborhood.name} için hava kalitesi, yeşil alan erişimi ve trafik yoğunluğu skorları - gerçek İBB açık verisiyle, kaynak ve güncellik tarihiyle birlikte.`;
+  const description = `${neighborhood.name} için hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimi skorları - gerçek İBB açık verisiyle, kaynak ve güncellik tarihiyle birlikte.`;
   return {
     title,
     description,
@@ -57,7 +58,7 @@ export default async function MahallePage({
     <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       <Link
         href="/"

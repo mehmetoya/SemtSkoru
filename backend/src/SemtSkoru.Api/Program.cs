@@ -33,6 +33,12 @@ var corsOrigin = builder.Configuration["Cors:FrontendOrigin"] ?? "http://localho
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(corsOrigin).AllowAnyHeader().AllowAnyMethod()));
 
+// Ensures a future unhandled exception (e.g. a transient DB error under load) renders as a
+// generic ProblemDetails response instead of an ASP.NET Core stack trace, even though no
+// code path is currently known to leak one - a code-level backstop, not a reaction to an
+// observed leak.
+builder.Services.AddProblemDetails();
+
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new GeoJsonConverterFactory()));
@@ -72,10 +78,19 @@ builder.Services.AddHangfireServer(options => options.WorkerCount = 2);
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+}
+else
+{
+    // Not meaningful for server-to-server/API traffic (no browser ever sees this API's own
+    // HTTPS responses directly), but a one-line hardening gap otherwise - the frontend
+    // (Vercel) already sends its own HSTS header for real browser navigation.
+    app.UseHsts();
 }
 
 // Render (and similar free-tier hosts) terminate TLS at their edge and forward plain HTTP

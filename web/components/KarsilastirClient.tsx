@@ -105,7 +105,7 @@ export function KarsilastirClient() {
             scoreA={comparison.a}
             scoreB={comparison.b}
             share={{
-              imageUrl: `/karsilastir/kart?a=${a}&b=${b}`,
+              imageUrl: `/karsilastir/kart?${new URLSearchParams({ a, b })}`,
               fileName: `semtskoru-karsilastirma-${a}-${b}.png`,
               shareTitle: `${nameOf(a)} - ${nameOf(b)} Karşılaştırması | SemtSkoru`,
               shareText: `${nameOf(a)} ve ${nameOf(b)} ilçelerinin SemtSkoru karşılaştırmasını incele.`,
@@ -113,7 +113,7 @@ export function KarsilastirClient() {
               // so (unlike the single-district card, which can safely link back to its
               // own always-current page) the honest fallback link here is the generated
               // image itself - a stable, timestamped snapshot of exactly this comparison.
-              fallbackUrl: `${SITE_URL}/karsilastir/kart?a=${a}&b=${b}`,
+              fallbackUrl: `${SITE_URL}/karsilastir/kart?${new URLSearchParams({ a, b })}`,
             }}
           />
         )}

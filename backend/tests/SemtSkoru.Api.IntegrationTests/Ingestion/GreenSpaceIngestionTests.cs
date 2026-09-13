@@ -76,11 +76,10 @@ public class GreenSpaceIngestionTests : IAsyncLifetime
         new(new GreenSpaceApiClient(new HttpClient(handler)), context, NullLogger<GreenSpaceIngestionJob>.Instance, TimeProvider.System);
 
     [Fact]
-    public async Task RunAsync_picks_the_nearer_park_and_ignores_non_park_features_and_other_districts()
+    public async Task RunAsync_picks_the_nearer_park_and_ignores_non_park_features()
     {
         // Both points sit well inside Kadıköy's real seeded boundary (Task 6), so whatever the
-        // true polygon centroid is, "Near Park" is unambiguously closer than "Far Park" (~150km away)
-        // and both are closer than nothing at all for Beşiktaş, which gets no park feature here.
+        // true polygon centroid is, "Near Park" is unambiguously closer than "Far Park" (~150km away).
         var features = new JsonArray(
             SquareFeature("Near Park", "Park", "KADIKÖY", 29.06, 40.98),
             SquareFeature("Far Park", "Park", "KADIKÖY", 30.5, 42.5),
@@ -101,7 +100,11 @@ public class GreenSpaceIngestionTests : IAsyncLifetime
         var uskudar = Assert.Single(readings, r => r.NeighborhoodId == "uskudar");
         Assert.Equal("Üsküdar Park", uskudar.NearestParkName);
 
-        Assert.DoesNotContain(readings, r => r.NeighborhoodId == "besiktas");
+        // Beşiktaş has no park tagged with its own ILCE in this fixture, but the search is
+        // city-wide, not restricted by district - it should still get the genuinely nearest
+        // real park (Üsküdar Park, across the strait, rather than the ~150km-away "Far Park").
+        var besiktas = Assert.Single(readings, r => r.NeighborhoodId == "besiktas");
+        Assert.Equal("Üsküdar Park", besiktas.NearestParkName);
     }
 
     [Fact]

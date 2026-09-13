@@ -28,7 +28,8 @@ public sealed partial class AirQualityApiClient(HttpClient httpClient) : IAirQua
         var now = DateTimeOffset.UtcNow;
         var endOfHour = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, 0, 0, now.Offset);
         var start = endOfHour.AddHours(-6);
-        var url = $"{Endpoint}?StationId={stationId}&StartDate={Format(start)}&EndDate={Format(endOfHour)}";
+        var url = $"{Endpoint}?StationId={Uri.EscapeDataString(stationId)}" +
+            $"&StartDate={Uri.EscapeDataString(Format(start))}&EndDate={Uri.EscapeDataString(Format(endOfHour))}";
 
         using var response = await httpClient.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
