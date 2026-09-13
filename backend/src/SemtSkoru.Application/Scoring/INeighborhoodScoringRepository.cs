@@ -3,42 +3,35 @@ using SemtSkoru.Domain;
 namespace SemtSkoru.Application.Scoring;
 
 /// <summary>
+/// The six raw readings a score is built from, for one neighborhood - any of them may be
+/// null (no data ingested yet for that dimension). A neighborhood that exists but has no
+/// readings at all is a real, valid state (e.g. right after the boundary seed migration,
+/// before any ingestion job has run) - distinct from the neighborhood not existing, which
+/// GetReadingsAsync/GetAllReadingsAsync represent by the id being absent, not by this
+/// record being populated with all-null fields.
+/// </summary>
+public sealed record NeighborhoodReadings(
+    AirQualityReading? AirQuality,
+    GreenSpaceReading? GreenSpace,
+    TrafficReading? Traffic,
+    ParkingReading? Parking,
+    HealthAccessReading? HealthAccess,
+    TransitAccessReading? TransitAccess);
+
+/// <summary>
 /// Read-only access to the raw ingested readings a score is built from. Implemented against
 /// EF Core/Postgres in Infrastructure; kept as an interface here so scoring logic is unit
 /// testable without a database.
 /// </summary>
 public interface INeighborhoodScoringRepository
 {
-    Task<bool> NeighborhoodExistsAsync(string neighborhoodId, CancellationToken ct);
+    // One query, not "check existence then fetch six dimensions separately" - a neighborhood's
+    // six reading tables are all keyed 1:1 by NeighborhoodId, so a single LEFT JOIN from
+    // Neighborhoods returns exactly one row (or none, if the id doesn't exist) with whichever
+    // dimensions have data already populated and the rest null.
+    Task<NeighborhoodReadings?> GetReadingsAsync(string neighborhoodId, CancellationToken ct);
 
-    Task<AirQualityReading?> GetLatestAirQualityAsync(string neighborhoodId, CancellationToken ct);
-
-    Task<GreenSpaceReading?> GetLatestGreenSpaceAsync(string neighborhoodId, CancellationToken ct);
-
-    Task<TrafficReading?> GetLatestTrafficAsync(string neighborhoodId, CancellationToken ct);
-
-    Task<ParkingReading?> GetLatestParkingAsync(string neighborhoodId, CancellationToken ct);
-
-    Task<HealthAccessReading?> GetLatestHealthAccessAsync(string neighborhoodId, CancellationToken ct);
-
-    Task<TransitAccessReading?> GetLatestTransitAccessAsync(string neighborhoodId, CancellationToken ct);
-
-    // Bulk variants for scoring every neighborhood at once (GET /api/neighborhoods) - each is a
-    // single query regardless of neighborhood count. Live-verified this matters: with 39
-    // districts, doing the four single-id queries above once per neighborhood took ~21s end to
-    // end against a cross-cloud Render->Supabase connection (Render and Supabase round trips
-    // are not free, unlike a co-located dev Postgres) before this was added.
-    Task<IReadOnlyList<string>> GetAllNeighborhoodIdsAsync(CancellationToken ct);
-
-    Task<IReadOnlyDictionary<string, AirQualityReading>> GetAllAirQualityAsync(CancellationToken ct);
-
-    Task<IReadOnlyDictionary<string, GreenSpaceReading>> GetAllGreenSpaceAsync(CancellationToken ct);
-
-    Task<IReadOnlyDictionary<string, TrafficReading>> GetAllTrafficAsync(CancellationToken ct);
-
-    Task<IReadOnlyDictionary<string, ParkingReading>> GetAllParkingAsync(CancellationToken ct);
-
-    Task<IReadOnlyDictionary<string, HealthAccessReading>> GetAllHealthAccessAsync(CancellationToken ct);
-
-    Task<IReadOnlyDictionary<string, TransitAccessReading>> GetAllTransitAccessAsync(CancellationToken ct);
+    // Bulk variant for scoring every neighborhood at once (GET /api/neighborhoods) - one query
+    // regardless of neighborhood count, same LEFT JOIN shape as GetReadingsAsync but unfiltered.
+    Task<IReadOnlyDictionary<string, NeighborhoodReadings>> GetAllReadingsAsync(CancellationToken ct);
 }

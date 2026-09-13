@@ -1,0 +1,22 @@
+name: Keep-warm (free-tier cold-start avoidance + ingestion catch-up)
+
+# The API runs on Render's free tier, which stops the container after ~15 minutes of no
+# HTTP traffic - the next real visitor then eats a ~30-60s cold start. Pinging every 10
+# minutes (comfortably inside that 15-minute window) keeps the container warm around the
+# clock for free: this repo is public, so GitHub Actions minutes for it aren't metered/billed.
+# This also still doubles as the original job's purpose: Hangfire's recurring-job scheduler
+# only fires while the process is running, so a container asleep at its scheduled cron time
+# (see Program.cs) would simply miss it - on startup, HangfireServer checks each recurring
+# job's next-execution time against now and immediately enqueues anything overdue, so any of
+# these pings is enough to keep ingestion running without an always-on (paid) instance.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API health endpoint
+        run: curl -sf --retry 5 --retry-delay 10 --max-time 60 "${{ secrets.API_BASE_URL }}/health"

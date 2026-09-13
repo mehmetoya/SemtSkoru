@@ -96,7 +96,7 @@ docs/
   data-sources.md                 → Her veri kaynağının canlı doğrulanmış endpoint/lisans/güncellik bilgisi
   deployment.md                   → Ücretsiz katmanlarla adım adım yayına alma
 render.yaml                       → Render Blueprint (Docker web service tanımı)
-.github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve daily-wake (free-tier ingestion catch-up)
+.github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve keep-warm (free-tier soğuk başlangıç önleme + ingestion catch-up)
 SPEC.md, tasks/plan.md, tasks/todo.md → Ürün spesifikasyonu ve uygulama planı
 ```
 
@@ -165,12 +165,12 @@ flowchart TB
     GH -->|"otomatik deploy"| VERCEL["Vercel<br/>Next.js Frontend"]
     GH -->|"otomatik deploy"| RENDER["Render Free<br/>ASP.NET Core API + Hangfire"]
     RENDER <-->|"Session Pooler"| SUPABASE[("Supabase Free<br/>Postgres + PostGIS")]
-    CRON["GitHub Actions<br/>daily-wake.yml"] -->|"günlük GET /health"| RENDER
+    CRON["GitHub Actions<br/>keep-warm.yml"] -->|"10 dakikada bir GET /health"| RENDER
     VERCEL -->|"fetch /api/*"| RENDER
     KULLANICI((Kullanıcı)) --> VERCEL
 ```
 
-Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur; `daily-wake.yml` günde bir kez uyandırır, Hangfire süresi geçmiş ingestion job'larını kendiliğinden kuyruğa alır. Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
+Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur; `keep-warm.yml` her 10 dakikada bir uyandırıp soğuk başlangıcı önler, Hangfire da süresi geçmiş ingestion job'larını kendiliğinden kuyruğa alır. Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
 
 ## Veri Kaynakları ve Lisansları
 

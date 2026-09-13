@@ -163,31 +163,20 @@ file sealed class FakeScoringRepository(bool exists) : INeighborhoodScoringRepos
     public IReadOnlyDictionary<string, HealthAccessReading> AllHealthAccess { get; set; } = new Dictionary<string, HealthAccessReading>();
     public IReadOnlyDictionary<string, TransitAccessReading> AllTransitAccess { get; set; } = new Dictionary<string, TransitAccessReading>();
 
-    public Task<bool> NeighborhoodExistsAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(exists);
+    public Task<NeighborhoodReadings?> GetReadingsAsync(string neighborhoodId, CancellationToken ct) =>
+        Task.FromResult(exists ? new NeighborhoodReadings(AirQuality, GreenSpace, Traffic, Parking, HealthAccess, TransitAccess) : null);
 
-    public Task<AirQualityReading?> GetLatestAirQualityAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(AirQuality);
-
-    public Task<GreenSpaceReading?> GetLatestGreenSpaceAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(GreenSpace);
-
-    public Task<TrafficReading?> GetLatestTrafficAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(Traffic);
-
-    public Task<ParkingReading?> GetLatestParkingAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(Parking);
-
-    public Task<HealthAccessReading?> GetLatestHealthAccessAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(HealthAccess);
-
-    public Task<TransitAccessReading?> GetLatestTransitAccessAsync(string neighborhoodId, CancellationToken ct) => Task.FromResult(TransitAccess);
-
-    public Task<IReadOnlyList<string>> GetAllNeighborhoodIdsAsync(CancellationToken ct) => Task.FromResult(AllIds);
-
-    public Task<IReadOnlyDictionary<string, AirQualityReading>> GetAllAirQualityAsync(CancellationToken ct) => Task.FromResult(AllAirQuality);
-
-    public Task<IReadOnlyDictionary<string, GreenSpaceReading>> GetAllGreenSpaceAsync(CancellationToken ct) => Task.FromResult(AllGreenSpace);
-
-    public Task<IReadOnlyDictionary<string, TrafficReading>> GetAllTrafficAsync(CancellationToken ct) => Task.FromResult(AllTraffic);
-
-    public Task<IReadOnlyDictionary<string, ParkingReading>> GetAllParkingAsync(CancellationToken ct) => Task.FromResult(AllParking);
-
-    public Task<IReadOnlyDictionary<string, HealthAccessReading>> GetAllHealthAccessAsync(CancellationToken ct) => Task.FromResult(AllHealthAccess);
-
-    public Task<IReadOnlyDictionary<string, TransitAccessReading>> GetAllTransitAccessAsync(CancellationToken ct) => Task.FromResult(AllTransitAccess);
+    public Task<IReadOnlyDictionary<string, NeighborhoodReadings>> GetAllReadingsAsync(CancellationToken ct)
+    {
+        IReadOnlyDictionary<string, NeighborhoodReadings> result = AllIds.ToDictionary(
+            id => id,
+            id => new NeighborhoodReadings(
+                AllAirQuality.GetValueOrDefault(id),
+                AllGreenSpace.GetValueOrDefault(id),
+                AllTraffic.GetValueOrDefault(id),
+                AllParking.GetValueOrDefault(id),
+                AllHealthAccess.GetValueOrDefault(id),
+                AllTransitAccess.GetValueOrDefault(id)));
+        return Task.FromResult(result);
+    }
 }

@@ -109,11 +109,14 @@ gömüldü, secret değiller):
   token oluştur (Scope: bu projenin ait olduğu takım/hesap).
 - Repo Settings → Secrets and variables → Actions → yeni secret: `VERCEL_TOKEN` = bu token.
 
-Ayrıca, günlük "uyandırma" için `.github/workflows/daily-wake.yml` her gün Render API'sinin `/health` endpoint'ine bir
-istek atıyor. Bu, uykudaki container'ı uyandırıyor; Hangfire'ın recurring-job scheduler'ı
-(process her başladığında) hava kalitesi/yeşil alan/trafik job'larının süresi geçmiş
-olanlarını otomatik kuyruğa alıyor — yani ayrı bir "ingestion tetikle" endpoint'i veya
-token yönetimi gerekmiyor, sadece container'ın günde bir kez ayağa kalkması yeterli.
+Ayrıca, `.github/workflows/keep-warm.yml` her 10 dakikada bir Render API'sinin `/health`
+endpoint'ine bir istek atıyor — repo public olduğundan bu sık ping'in GitHub Actions dakika
+maliyeti yok. Amacı iki katlı: (1) container'ı Render'ın ~15 dakikalık boşta-durdurma
+penceresinin içinde sürekli sıcak tutup gerçek ziyaretçilerin ~30-60sn'lik soğuk başlangıç
+gecikmesi yaşamasını önlemek, (2) Hangfire'ın recurring-job scheduler'ının (process her
+başladığında) hava kalitesi/yeşil alan/trafik job'larının süresi geçmiş olanlarını otomatik
+kuyruğa almasını sağlamak — yani ayrı bir "ingestion tetikle" endpoint'i veya token yönetimi
+gerekmiyor.
 
 Repo Settings → Secrets and variables → Actions → yeni secret:
 

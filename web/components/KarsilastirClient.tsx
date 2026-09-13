@@ -1,12 +1,29 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useNeighborhoods } from "../lib/hooks/useNeighborhoods";
 import { useCompareNeighborhoods } from "../lib/hooks/useCompareNeighborhoods";
 import { NeighborhoodComparisonTable } from "./NeighborhoodComparisonTable";
-import { NeighborhoodMap } from "./NeighborhoodMap";
 import { DistrictPicker } from "./DistrictPicker";
 import { SITE_URL } from "../lib/site";
 import { useState } from "react";
+
+// MapLibre GL is a large library (~1MB parsed) that only this page needs and that only ever
+// runs in the browser (it draws to a <canvas> via WebGL and touches `window` at import time -
+// see NeighborhoodMap.tsx's setWorkerUrl call). Loading it through next/dynamic with ssr:false
+// keeps it out of both the server render and this component's own chunk, so it fetches and
+// parses in parallel with (not blocking) everything else on this page becoming interactive.
+const NeighborhoodMap = dynamic(
+  () => import("./NeighborhoodMap").then((mod) => mod.NeighborhoodMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-96 w-full animate-pulse items-center justify-center bg-slate-100 text-sm text-slate-400 lg:h-150 dark:bg-slate-800 dark:text-slate-500">
+        Harita yükleniyor…
+      </div>
+    ),
+  },
+);
 
 export function KarsilastirClient() {
   const { data: neighborhoods } = useNeighborhoods();

@@ -8,45 +8,29 @@ public sealed class NeighborhoodScoringService(
 {
     public async Task<NeighborhoodScoreResult?> GetScoreAsync(string neighborhoodId, CancellationToken ct)
     {
-        if (!await repository.NeighborhoodExistsAsync(neighborhoodId, ct))
+        var readings = await repository.GetReadingsAsync(neighborhoodId, ct);
+        if (readings is null)
         {
             return null;
         }
 
         var now = timeProvider.GetUtcNow();
-
-        var airQuality = await repository.GetLatestAirQualityAsync(neighborhoodId, ct);
-        var greenSpace = await repository.GetLatestGreenSpaceAsync(neighborhoodId, ct);
-        var traffic = await repository.GetLatestTrafficAsync(neighborhoodId, ct);
-        var parking = await repository.GetLatestParkingAsync(neighborhoodId, ct);
-        var healthAccess = await repository.GetLatestHealthAccessAsync(neighborhoodId, ct);
-        var transitAccess = await repository.GetLatestTransitAccessAsync(neighborhoodId, ct);
-
-        return BuildResult(neighborhoodId, airQuality, greenSpace, traffic, parking, healthAccess, transitAccess, now);
+        return BuildResult(
+            neighborhoodId, readings.AirQuality, readings.GreenSpace, readings.Traffic, readings.Parking,
+            readings.HealthAccess, readings.TransitAccess, now);
     }
 
     public async Task<IReadOnlyDictionary<string, NeighborhoodScoreResult>> GetAllScoresAsync(CancellationToken ct)
     {
         var now = timeProvider.GetUtcNow();
+        var allReadings = await repository.GetAllReadingsAsync(ct);
 
-        var ids = await repository.GetAllNeighborhoodIdsAsync(ct);
-        var airQuality = await repository.GetAllAirQualityAsync(ct);
-        var greenSpace = await repository.GetAllGreenSpaceAsync(ct);
-        var traffic = await repository.GetAllTrafficAsync(ct);
-        var parking = await repository.GetAllParkingAsync(ct);
-        var healthAccess = await repository.GetAllHealthAccessAsync(ct);
-        var transitAccess = await repository.GetAllTransitAccessAsync(ct);
-
-        var results = new Dictionary<string, NeighborhoodScoreResult>(ids.Count);
-        foreach (var id in ids)
+        var results = new Dictionary<string, NeighborhoodScoreResult>(allReadings.Count);
+        foreach (var (id, readings) in allReadings)
         {
-            airQuality.TryGetValue(id, out var air);
-            greenSpace.TryGetValue(id, out var green);
-            traffic.TryGetValue(id, out var traf);
-            parking.TryGetValue(id, out var park);
-            healthAccess.TryGetValue(id, out var health);
-            transitAccess.TryGetValue(id, out var transit);
-            results[id] = BuildResult(id, air, green, traf, park, health, transit, now);
+            results[id] = BuildResult(
+                id, readings.AirQuality, readings.GreenSpace, readings.Traffic, readings.Parking,
+                readings.HealthAccess, readings.TransitAccess, now);
         }
 
         return results;
