@@ -31,7 +31,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function MahallePage({
+export default async function NeighborhoodPage({
   params,
 }: PageProps<"/mahalle/[id]">) {
   const { id } = await params;

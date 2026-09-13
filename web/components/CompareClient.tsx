@@ -25,7 +25,7 @@ const NeighborhoodMap = dynamic(
   },
 );
 
-export function KarsilastirClient() {
+export function CompareClient() {
   const { data: neighborhoods } = useNeighborhoods();
   const [a, setA] = useState<string | undefined>(undefined);
   const [b, setB] = useState<string | undefined>(undefined);

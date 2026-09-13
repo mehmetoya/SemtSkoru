@@ -59,10 +59,10 @@ public class DistrictAssistantServiceTests
         var aiClient = new FakeAiClient
         {
             Response = """
-                {"oneriler":[
-                    {"id":"kadikoy","aciklama":"Hava kalitesi skoru 83 ile yüksek."},
-                    {"id":"hayaliilce","aciklama":"Bu ilçe gerçek değil."}
-                ],"guven":"yuksek"}
+                {"recommendations":[
+                    {"id":"kadikoy","reasoning":"Hava kalitesi skoru 83 ile yüksek."},
+                    {"id":"hayaliilce","reasoning":"Bu ilçe gerçek değil."}
+                ],"confidence":"high"}
                 """,
         };
 
@@ -79,7 +79,7 @@ public class DistrictAssistantServiceTests
     {
         var aiClient = new FakeAiClient
         {
-            Response = """{"oneriler":[{"id":"uydurma1","aciklama":"x"},{"id":"uydurma2","aciklama":"y"}]}""",
+            Response = """{"recommendations":[{"id":"uydurma1","reasoning":"x"},{"id":"uydurma2","reasoning":"y"}]}""",
         };
 
         var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
@@ -103,7 +103,7 @@ public class DistrictAssistantServiceTests
     {
         var aiClient = new FakeAiClient
         {
-            Response = "```json\n{\"oneriler\":[{\"id\":\"kadikoy\",\"aciklama\":\"Skoru yüksek.\"}]}\n```",
+            Response = "```json\n{\"recommendations\":[{\"id\":\"kadikoy\",\"reasoning\":\"Skoru yüksek.\"}]}\n```",
         };
 
         var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
@@ -118,11 +118,11 @@ public class DistrictAssistantServiceTests
         var aiClient = new FakeAiClient
         {
             Response = """
-                {"oneriler":[
-                    {"id":"kadikoy","aciklama":"a"},
-                    {"id":"besiktas","aciklama":"b"},
-                    {"id":"uskudar","aciklama":"c"},
-                    {"id":"atasehir","aciklama":"d"}
+                {"recommendations":[
+                    {"id":"kadikoy","reasoning":"a"},
+                    {"id":"besiktas","reasoning":"b"},
+                    {"id":"uskudar","reasoning":"c"},
+                    {"id":"atasehir","reasoning":"d"}
                 ]}
                 """,
         };
@@ -140,9 +140,9 @@ public class DistrictAssistantServiceTests
         var aiClient = new FakeAiClient
         {
             Response = """
-                {"oneriler":[
-                    {"id":"kadikoy","aciklama":"ilk"},
-                    {"id":"kadikoy","aciklama":"tekrar"}
+                {"recommendations":[
+                    {"id":"kadikoy","reasoning":"ilk"},
+                    {"id":"kadikoy","reasoning":"tekrar"}
                 ]}
                 """,
         };
@@ -186,25 +186,25 @@ public class DistrictAssistantServiceTests
     [Fact]
     public async Task GetRecommendationsAsync_grounds_the_prompt_in_the_real_scores_including_veri_yok_for_missing_dimensions()
     {
-        var aiClient = new FakeAiClient { Response = """{"oneriler":[{"id":"kadikoy","aciklama":"x"}]}""" };
+        var aiClient = new FakeAiClient { Response = """{"recommendations":[{"id":"kadikoy","reasoning":"x"}]}""" };
 
         await CreateService(aiClient).GetRecommendationsAsync("Çocuklu bir aileyiz, yeşil alan önemli", CancellationToken.None);
 
         Assert.NotNull(aiClient.CapturedUserPrompt);
         // The real score (83) for a fully-scored district must be present verbatim...
-        Assert.Contains("\"genelSkor\":83", aiClient.CapturedUserPrompt);
+        Assert.Contains("\"overallScore\":83", aiClient.CapturedUserPrompt);
         // ...and besiktas's missing green space dimension must show up as an honest null, never
         // a made-up number - this is the same "Veri yok" boundary as the rest of the app.
         Assert.Contains("\"besiktas\"", aiClient.CapturedUserPrompt);
         var besiktasIndex = aiClient.CapturedUserPrompt!.IndexOf("\"besiktas\"", StringComparison.Ordinal);
         var besiktasBlock = aiClient.CapturedUserPrompt[besiktasIndex..Math.Min(besiktasIndex + 200, aiClient.CapturedUserPrompt.Length)];
-        Assert.Contains("\"yesilAlan\":null", besiktasBlock);
+        Assert.Contains("\"greenSpace\":null", besiktasBlock);
     }
 
     [Fact]
     public async Task GetRecommendationsAsync_truncates_an_excessively_long_free_text_request()
     {
-        var aiClient = new FakeAiClient { Response = """{"oneriler":[{"id":"kadikoy","aciklama":"x"}]}""" };
+        var aiClient = new FakeAiClient { Response = """{"recommendations":[{"id":"kadikoy","reasoning":"x"}]}""" };
         var longQuery = new string('a', 650) + "UNIQUE_TAIL_MARKER" + new string('b', 500);
 
         await CreateService(aiClient).GetRecommendationsAsync(longQuery, CancellationToken.None);

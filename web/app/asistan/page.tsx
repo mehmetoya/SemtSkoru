@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AsistanClient } from "../../components/AsistanClient";
+import { AssistantClient } from "../../components/AssistantClient";
 
 export const metadata: Metadata = {
   title: "AI Semt Asistanı",
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/asistan" },
 };
 
-export default function AsistanPage() {
+export default function AssistantPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
@@ -26,7 +26,7 @@ export default function AsistanPage() {
           Google Gemini destekli
         </span>
       </div>
-      <AsistanClient />
+      <AssistantClient />
     </main>
   );
 }

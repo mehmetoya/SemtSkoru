@@ -40,11 +40,11 @@ export interface NeighborhoodComparison {
   b: NeighborhoodScore;
 }
 
-// Mirrors backend/src/SemtSkoru.Api/Endpoints/AsistanDtos.cs's AssistantOutcomeKind: every
+// Mirrors backend/src/SemtSkoru.Api/Endpoints/AssistantDtos.cs's AssistantOutcomeKind: every
 // non-"Ok" value means `recommendations` is empty and `message` carries the Turkish, user-facing
 // reason (rate limited, not configured, upstream down, or the model's response wasn't usable) -
 // never a fabricated recommendation standing in for a real one.
-export type AsistanStatus =
+export type AssistantStatus =
   | "Ok"
   | "InvalidRequest"
   | "NotConfigured"
@@ -52,7 +52,7 @@ export type AsistanStatus =
   | "Unavailable"
   | "NoUsableRecommendations";
 
-export interface AsistanOneri {
+export interface AssistantRecommendation {
   neighborhoodId: string;
   neighborhoodName: string;
   // The one AI-authored field in this whole response - everything else on `score` is the same
@@ -61,8 +61,8 @@ export interface AsistanOneri {
   score: NeighborhoodScore;
 }
 
-export interface AsistanResponse {
-  recommendations: AsistanOneri[];
-  status: AsistanStatus;
+export interface AssistantResponse {
+  recommendations: AssistantRecommendation[];
+  status: AssistantStatus;
   message: string | null;
 }

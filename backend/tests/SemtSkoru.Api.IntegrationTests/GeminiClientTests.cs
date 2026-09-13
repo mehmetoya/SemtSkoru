@@ -35,12 +35,12 @@ public class GeminiClientTests
     public async Task GenerateAsync_returns_the_text_from_the_first_candidate()
     {
         var handler = new FakeHttpMessageHandler(_ => JsonResponse(HttpStatusCode.OK,
-            """{"candidates":[{"content":{"parts":[{"text":"{\"oneriler\":[]}"}]}}]}"""));
+            """{"candidates":[{"content":{"parts":[{"text":"{\"recommendations\":[]}"}]}}]}"""));
         var client = new GeminiClient(new HttpClient(handler), ConfigWithKey("test-key"));
 
         var result = await client.GenerateAsync("system", "user", CancellationToken.None);
 
-        Assert.Equal("{\"oneriler\":[]}", result);
+        Assert.Equal("{\"recommendations\":[]}", result);
     }
 
     [Fact]

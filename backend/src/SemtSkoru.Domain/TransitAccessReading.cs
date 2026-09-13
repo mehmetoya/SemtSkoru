@@ -6,7 +6,7 @@ public sealed class TransitAccessReading
 
     /// <summary>Real İETT bus stops whose point geometry falls inside this district's boundary
     /// (point-in-polygon test - see TransitAccessIngestionJob) - kept for transparency, the same
-    /// role FacilityCount/MahalleCount play for parking/health access.</summary>
+    /// role FacilityCount/WardCount play for parking/health access.</summary>
     public int StopCount { get; set; }
 
     /// <summary>StopCount divided by the district's real physical area in km² (equirectangular

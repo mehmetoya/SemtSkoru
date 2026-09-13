@@ -43,11 +43,11 @@ public sealed class DistrictAssistantService(
         3. Bir ilçenin bir boyutunun değeri null ise ("veri yok" demektir), o boyut hakkında
            hiçbir şey iddia etme veya varsayma.
         4. Kullanıcının isteğine güvenle uyacak yeterli veri yoksa, ilçe sayısını zorlamak yerine
-           "oneriler" dizisini kısa tut veya boş bırak; "guven":"dusuk" işaretle.
+           "recommendations" dizisini kısa tut veya boş bırak; "confidence":"low" işaretle.
         5. Yanıtın SADECE aşağıdaki şemaya uyan geçerli bir JSON nesnesi olmalı. JSON dışında
            hiçbir açıklama, markdown veya kod bloğu ekleme:
-           {"oneriler":[{"id":"<ilçe listesinden bir id>","aciklama":"<verilen skorlara atıfta
-           bulunan, 1-2 cümlelik Türkçe gerekçe>"}],"guven":"yuksek"|"dusuk"}
+           {"recommendations":[{"id":"<ilçe listesinden bir id>","reasoning":"<verilen skorlara
+           atıfta bulunan, 1-2 cümlelik Türkçe gerekçe>"}],"confidence":"high"|"low"}
         """;
 
     public async Task<AssistantOutcome> GetRecommendationsAsync(string userQuery, CancellationToken ct)
@@ -118,14 +118,14 @@ public sealed class DistrictAssistantService(
 
     private static DistrictContext ToContext(string id, string name, NeighborhoodScoreResult? score) => new(
         Id: id,
-        Ad: name,
-        GenelSkor: score?.Overall?.Value,
-        HavaKalitesi: score?.AirQuality.Value?.Value,
-        YesilAlan: score?.GreenSpace.Value?.Value,
-        Ulasim: score?.Transportation.Value?.Value,
-        Otopark: score?.Parking.Value?.Value,
-        SaglikErisimi: score?.HealthAccess.Value?.Value,
-        TopluTasima: score?.TransitAccess.Value?.Value);
+        Name: name,
+        OverallScore: score?.Overall?.Value,
+        AirQuality: score?.AirQuality.Value?.Value,
+        GreenSpace: score?.GreenSpace.Value?.Value,
+        Transportation: score?.Transportation.Value?.Value,
+        Parking: score?.Parking.Value?.Value,
+        HealthAccess: score?.HealthAccess.Value?.Value,
+        TransitAccess: score?.TransitAccess.Value?.Value);
 
     private static ModelResponsePayload? TryParseModelResponse(string rawResponse)
     {
@@ -174,7 +174,7 @@ public sealed class DistrictAssistantService(
         var result = new List<AssistantRecommendation>();
         var seenIds = new HashSet<string>();
 
-        foreach (var item in payload.Oneriler ?? [])
+        foreach (var item in payload.Recommendations ?? [])
         {
             if (result.Count >= MaxRecommendations)
             {
@@ -182,7 +182,7 @@ public sealed class DistrictAssistantService(
             }
 
             var id = item.Id?.Trim();
-            var reasoning = item.Aciklama?.Trim();
+            var reasoning = item.Reasoning?.Trim();
             if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(reasoning))
             {
                 continue;
@@ -214,20 +214,20 @@ public sealed class DistrictAssistantService(
 
     private sealed record DistrictContext(
         [property: JsonPropertyName("id")] string Id,
-        [property: JsonPropertyName("ad")] string Ad,
-        [property: JsonPropertyName("genelSkor")] int? GenelSkor,
-        [property: JsonPropertyName("havaKalitesi")] int? HavaKalitesi,
-        [property: JsonPropertyName("yesilAlan")] int? YesilAlan,
-        [property: JsonPropertyName("ulasim")] int? Ulasim,
-        [property: JsonPropertyName("otopark")] int? Otopark,
-        [property: JsonPropertyName("saglikErisimi")] int? SaglikErisimi,
-        [property: JsonPropertyName("topluTasima")] int? TopluTasima);
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("overallScore")] int? OverallScore,
+        [property: JsonPropertyName("airQuality")] int? AirQuality,
+        [property: JsonPropertyName("greenSpace")] int? GreenSpace,
+        [property: JsonPropertyName("transportation")] int? Transportation,
+        [property: JsonPropertyName("parking")] int? Parking,
+        [property: JsonPropertyName("healthAccess")] int? HealthAccess,
+        [property: JsonPropertyName("transitAccess")] int? TransitAccess);
 
     private sealed record ModelResponsePayload(
-        [property: JsonPropertyName("oneriler")] List<ModelRecommendationPayload>? Oneriler,
-        [property: JsonPropertyName("guven")] string? Guven);
+        [property: JsonPropertyName("recommendations")] List<ModelRecommendationPayload>? Recommendations,
+        [property: JsonPropertyName("confidence")] string? Confidence);
 
     private sealed record ModelRecommendationPayload(
         [property: JsonPropertyName("id")] string? Id,
-        [property: JsonPropertyName("aciklama")] string? Aciklama);
+        [property: JsonPropertyName("reasoning")] string? Reasoning);
 }

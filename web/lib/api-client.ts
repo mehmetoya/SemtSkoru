@@ -1,5 +1,5 @@
 import type {
-  AsistanResponse,
+  AssistantResponse,
   NeighborhoodComparison,
   NeighborhoodName,
   NeighborhoodScore,
@@ -45,17 +45,17 @@ export function fetchNeighborhoodComparison(
 }
 
 // Unlike getJson() above, a non-2xx status here is still meaningful application state, not just
-// a failure: POST /api/asistan always returns a structured AsistanResponse body - success or
-// not (400/429/502/503, see backend/src/SemtSkoru.Api/Endpoints/AsistanEndpoints.cs) - with a
+// a failure: POST /api/asistan always returns a structured AssistantResponse body - success or
+// not (400/429/502/503, see backend/src/SemtSkoru.Api/Endpoints/AssistantEndpoints.cs) - with a
 // Turkish `message` explaining why, so the caller can render that honestly instead of a generic
 // "request failed". Only a response that isn't valid JSON at all should surface as a thrown
 // error (network failure, or something between the browser and the API neither side produced).
-export async function fetchAsistanOnerileri(prompt: string): Promise<AsistanResponse> {
+export async function fetchAssistantRecommendations(prompt: string): Promise<AssistantResponse> {
   const response = await fetch(`${API_BASE_URL}/api/asistan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),
   });
 
-  return (await response.json()) as AsistanResponse;
+  return (await response.json()) as AssistantResponse;
 }

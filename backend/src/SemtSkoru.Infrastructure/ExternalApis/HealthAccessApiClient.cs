@@ -19,11 +19,11 @@ public sealed class HealthAccessApiClient(HttpClient httpClient) : IHealthAccess
         "https://data.ibb.gov.tr/dataset/d68cd520-971c-46c1-98cb-6cb66c940604/resource/d90e11be-d5b3-4df2-ba1f-e4356d336ad7/download/saglik_index.geojson";
 
     private const string DistrictProperty = "ILCE_ADI";
-    private const string MahalleProperty = "MAHALLE_ADI";
+    private const string WardProperty = "MAHALLE_ADI";
     private const string PopulationProperty = "KISI_SAYISI";
     private const string HealthIndexProperty = "SAGLIK_INDEX";
 
-    public async Task<IReadOnlyList<HealthMahalleFeatureDto>> GetMahallesAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<HealthWardFeatureDto>> GetWardsAsync(CancellationToken ct)
     {
         var options = new JsonSerializerOptions();
         options.Converters.Add(new GeoJsonConverterFactory());
@@ -31,10 +31,10 @@ public sealed class HealthAccessApiClient(HttpClient httpClient) : IHealthAccess
         await using var stream = await httpClient.GetStreamAsync(Endpoint, ct);
         var featureCollection = await JsonSerializer.DeserializeAsync<FeatureCollection>(stream, options, ct);
 
-        var mahalles = new List<HealthMahalleFeatureDto>();
+        var wards = new List<HealthWardFeatureDto>();
         if (featureCollection is null)
         {
-            return mahalles;
+            return wards;
         }
 
         foreach (var feature in featureCollection)
@@ -46,17 +46,17 @@ public sealed class HealthAccessApiClient(HttpClient httpClient) : IHealthAccess
                 continue;
             }
 
-            var mahalleName = feature.Attributes?[MahalleProperty] as string ?? "";
-            // Live-verified (2026-09-13): 97 of the 901 mahalles carry KISI_SAYISI as 0 (never
+            var wardName = feature.Attributes?[WardProperty] as string ?? "";
+            // Live-verified (2026-09-13): 97 of the 901 wards carry KISI_SAYISI as 0 (never
             // observed as a JSON null, but both are treated identically here) - uninhabited
             // industrial/forest zones. ToInt below returns 0 for either case, and
-            // HealthAccessIngestionJob excludes zero-population mahalles from its average.
+            // HealthAccessIngestionJob excludes zero-population wards from its average.
             var population = ToInt(feature.Attributes?[PopulationProperty]);
 
-            mahalles.Add(new HealthMahalleFeatureDto(district, mahalleName, healthIndex.Value, population));
+            wards.Add(new HealthWardFeatureDto(district, wardName, healthIndex.Value, population));
         }
 
-        return mahalles;
+        return wards;
     }
 
     // Live-verified (2026-09-13): System.Text.Json (via GeoJsonConverterFactory's

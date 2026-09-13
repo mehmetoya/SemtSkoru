@@ -18,7 +18,7 @@ namespace SemtSkoru.Api.IntegrationTests;
 // district score flows all the way from Postgres, through DistrictAssistantService's
 // grounding/validation, to the HTTP response - with Gemini itself faked out (never a real
 // network call in the test suite, matching the house style for the other external API clients).
-public class AsistanEndpointsTests : IAsyncLifetime
+public class AssistantEndpointsTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgis/postgis:16-3.4").Build();
     private WebApplicationFactory<Program> _factory = null!;
@@ -103,9 +103,9 @@ public class AsistanEndpointsTests : IAsyncLifetime
         }
 
         var modelJson = """
-            {"oneriler":[
-                {"id":"kadikoy","aciklama":"Hava kalitesi skoru 100 ile mükemmel."},
-                {"id":"hayaliilce","aciklama":"Bu ilçe gerçek değil, model bunu uydurdu."}
+            {"recommendations":[
+                {"id":"kadikoy","reasoning":"Hava kalitesi skoru 100 ile mükemmel."},
+                {"id":"hayaliilce","reasoning":"Bu ilçe gerçek değil, model bunu uydurdu."}
             ]}
             """;
         _factory = CreateFactory("test-key", _ => GeminiJson(modelJson));
@@ -114,7 +114,7 @@ public class AsistanEndpointsTests : IAsyncLifetime
         var response = await client.PostAsJsonAsync("/api/asistan", new { prompt = "Hava kalitesi önemli" });
 
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<AsistanResponseDto>();
+        var body = await response.Content.ReadFromJsonAsync<AssistantResponseDto>();
         Assert.NotNull(body);
         Assert.Equal(nameof(AssistantOutcomeKind.Ok), body.Status);
         var recommendation = Assert.Single(body.Recommendations);
@@ -133,7 +133,7 @@ public class AsistanEndpointsTests : IAsyncLifetime
         var response = await client.PostAsJsonAsync("/api/asistan", new { prompt = "bir istek" });
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<AsistanResponseDto>();
+        var body = await response.Content.ReadFromJsonAsync<AssistantResponseDto>();
         Assert.Equal(nameof(AssistantOutcomeKind.NotConfigured), body!.Status);
         Assert.False(string.IsNullOrWhiteSpace(body.Message));
     }
@@ -141,7 +141,7 @@ public class AsistanEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Returns_400_for_an_empty_prompt()
     {
-        _factory = CreateFactory("test-key", _ => GeminiJson("""{"oneriler":[]}"""));
+        _factory = CreateFactory("test-key", _ => GeminiJson("""{"recommendations":[]}"""));
         var client = _factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/asistan", new { prompt = "   " });
@@ -152,13 +152,13 @@ public class AsistanEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Returns_a_usable_empty_response_rather_than_a_guess_when_every_id_is_hallucinated()
     {
-        _factory = CreateFactory("test-key", _ => GeminiJson("""{"oneriler":[{"id":"uydurma","aciklama":"x"}]}"""));
+        _factory = CreateFactory("test-key", _ => GeminiJson("""{"recommendations":[{"id":"uydurma","reasoning":"x"}]}"""));
         var client = _factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/asistan", new { prompt = "bir istek" });
 
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<AsistanResponseDto>();
+        var body = await response.Content.ReadFromJsonAsync<AssistantResponseDto>();
         Assert.Equal(nameof(AssistantOutcomeKind.NoUsableRecommendations), body!.Status);
         Assert.Empty(body.Recommendations);
         Assert.False(string.IsNullOrWhiteSpace(body.Message));
@@ -167,7 +167,7 @@ public class AsistanEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task The_dedicated_rate_limit_policy_eventually_rejects_a_tight_request_loop_with_429()
     {
-        _factory = CreateFactory("test-key", _ => GeminiJson("""{"oneriler":[]}"""));
+        _factory = CreateFactory("test-key", _ => GeminiJson("""{"recommendations":[]}"""));
         var client = _factory.CreateClient();
 
         // Both the per-IP window (5/10min) and the global per-minute budget (5/min) - see

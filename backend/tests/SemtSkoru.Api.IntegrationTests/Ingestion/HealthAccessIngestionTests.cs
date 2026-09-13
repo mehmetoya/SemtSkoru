@@ -42,14 +42,14 @@ public class HealthAccessIngestionTests : IAsyncLifetime
         new JsonArray(29.0, 41.1),
         new JsonArray(29.0, 41.0));
 
-    private static JsonObject MahalleFeature(string ilce, string mahalle, double? healthIndex, int? population) =>
+    private static JsonObject WardFeature(string district, string ward, double? healthIndex, int? population) =>
         new()
         {
             ["type"] = "Feature",
             ["properties"] = new JsonObject
             {
-                ["ILCE_ADI"] = ilce,
-                ["MAHALLE_ADI"] = mahalle,
+                ["ILCE_ADI"] = district,
+                ["MAHALLE_ADI"] = ward,
                 ["KISI_SAYISI"] = population,
                 ["SAGLIK_INDEX"] = healthIndex,
             },
@@ -78,15 +78,15 @@ public class HealthAccessIngestionTests : IAsyncLifetime
         new(new HealthAccessApiClient(new HttpClient(handler)), context, NullLogger<HealthAccessIngestionJob>.Instance, TimeProvider.System);
 
     [Fact]
-    public async Task RunAsync_excludes_zero_population_mahalles_from_the_weighted_average()
+    public async Task RunAsync_excludes_zero_population_wards_from_the_weighted_average()
     {
         // Kadıköy: one real, populated mahalle (index 80) and one uninhabited one (index 0,
         // population 0) - the uninhabited mahalle must not drag the average down at all, not
         // even by a zero-weighted term, so the result should equal the populated mahalle's own
         // index exactly, not some average that includes the zero.
         var features = new JsonArray(
-            MahalleFeature("KADIKÖY", "Populated", healthIndex: 80, population: 1000),
-            MahalleFeature("KADIKÖY", "Uninhabited", healthIndex: 0, population: 0));
+            WardFeature("KADIKÖY", "Populated", healthIndex: 80, population: 1000),
+            WardFeature("KADIKÖY", "Uninhabited", healthIndex: 0, population: 0));
 
         await using var context = CreateContext();
         var job = CreateJob(context, FakeGeoJsonHandler(features));
@@ -95,18 +95,18 @@ public class HealthAccessIngestionTests : IAsyncLifetime
 
         var kadikoy = await context.HealthAccessReadings.SingleAsync(r => r.NeighborhoodId == "kadikoy");
         Assert.Equal(80, kadikoy.WeightedHealthIndex, precision: 3);
-        Assert.Equal(1, kadikoy.MahalleCount);
+        Assert.Equal(1, kadikoy.WardCount);
     }
 
     [Fact]
-    public async Task RunAsync_computes_a_population_weighted_not_simple_average_across_mahalles()
+    public async Task RunAsync_computes_a_population_weighted_not_simple_average_across_wards()
     {
         // Two populated Üsküdar mahalles with very different populations and indices: a simple
         // (unweighted) average would be (10 + 90) / 2 = 50, but the real population-weighted
         // average is (10*9000 + 90*1000) / 10000 = 18.
         var features = new JsonArray(
-            MahalleFeature("ÜSKÜDAR", "Big Low-Index", healthIndex: 10, population: 9000),
-            MahalleFeature("ÜSKÜDAR", "Small High-Index", healthIndex: 90, population: 1000));
+            WardFeature("ÜSKÜDAR", "Big Low-Index", healthIndex: 10, population: 9000),
+            WardFeature("ÜSKÜDAR", "Small High-Index", healthIndex: 90, population: 1000));
 
         await using var context = CreateContext();
         var job = CreateJob(context, FakeGeoJsonHandler(features));
@@ -115,21 +115,21 @@ public class HealthAccessIngestionTests : IAsyncLifetime
 
         var uskudar = await context.HealthAccessReadings.SingleAsync(r => r.NeighborhoodId == "uskudar");
         Assert.Equal(18, uskudar.WeightedHealthIndex, precision: 3);
-        Assert.Equal(2, uskudar.MahalleCount);
+        Assert.Equal(2, uskudar.WardCount);
 
         Assert.Equal("İBB 34 Dakika İstanbul Sağlık İndeksi", uskudar.Source.SourceName);
         Assert.Equal(DataFreshnessStatus.Fresh, uskudar.Source.GetFreshness(DateTimeOffset.UtcNow));
     }
 
     [Fact]
-    public async Task RunAsync_leaves_a_district_with_no_populated_mahalle_without_a_reading()
+    public async Task RunAsync_leaves_a_district_with_no_populated_ward_without_a_reading()
     {
         // Beşiktaş only has an uninhabited mahalle in this fixture - it must be left with no
         // reading at all (DimensionScore.NoData downstream), never a fabricated 0 or an average
         // that divides by zero population.
         var features = new JsonArray(
-            MahalleFeature("KADIKÖY", "Populated", healthIndex: 50, population: 100),
-            MahalleFeature("BEŞİKTAŞ", "Only Uninhabited Mahalle", healthIndex: 40, population: 0));
+            WardFeature("KADIKÖY", "Populated", healthIndex: 50, population: 100),
+            WardFeature("BEŞİKTAŞ", "Only Uninhabited Mahalle", healthIndex: 40, population: 0));
 
         await using var context = CreateContext();
         var job = CreateJob(context, FakeGeoJsonHandler(features));
@@ -142,9 +142,9 @@ public class HealthAccessIngestionTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RunAsync_leaves_districts_with_no_mahalle_at_all_without_a_reading()
+    public async Task RunAsync_leaves_districts_with_no_ward_at_all_without_a_reading()
     {
-        var features = new JsonArray(MahalleFeature("KADIKÖY", "Populated", healthIndex: 50, population: 100));
+        var features = new JsonArray(WardFeature("KADIKÖY", "Populated", healthIndex: 50, population: 100));
 
         await using var context = CreateContext();
         var job = CreateJob(context, FakeGeoJsonHandler(features));
@@ -174,7 +174,7 @@ public class HealthAccessIngestionTests : IAsyncLifetime
     [Fact]
     public async Task RunAsync_upserts_rather_than_duplicating_on_a_second_run()
     {
-        var features = new JsonArray(MahalleFeature("KADIKÖY", "Populated", healthIndex: 60, population: 100));
+        var features = new JsonArray(WardFeature("KADIKÖY", "Populated", healthIndex: 60, population: 100));
 
         await using var context = CreateContext();
         var handler = FakeGeoJsonHandler(features);

@@ -17,7 +17,7 @@ namespace SemtSkoru.Infrastructure.Ingestion;
 /// (2026-09-13) against all 39 real ILCE_ADI values with no naming exception, unlike İSPARK's
 /// EYÜP/EYÜPSULTAN quirk) and computes the population-weighted average of SAGLIK_INDEX:
 /// Σ(index_i × population_i) / Σ(population_i). A mahalle with zero population (live-verified:
-/// 97 of the dataset's 901 mahalles - likely uninhabited industrial/forest zones) is excluded
+/// 97 of the dataset's 901 wards - likely uninhabited industrial/forest zones) is excluded
 /// from both sides of that sum rather than counted as a zero-weighted term, so it can never
 /// dilute a district's real average. A district with no populated mahalle at all would be left
 /// with no reading (DimensionScore.NoData) rather than a divide-by-zero or a fabricated value -
@@ -48,10 +48,10 @@ public sealed class HealthAccessIngestionJob(
 
     public async Task RunAsync(CancellationToken ct)
     {
-        IReadOnlyList<HealthMahalleFeatureDto> mahalles;
+        IReadOnlyList<HealthWardFeatureDto> wards;
         try
         {
-            mahalles = await client.GetMahallesAsync(ct);
+            wards = await client.GetWardsAsync(ct);
         }
         catch (Exception ex)
         {
@@ -68,23 +68,23 @@ public sealed class HealthAccessIngestionJob(
             // (2026-09-13) to match all 39 seeded districts' Turkish-uppercase display name
             // directly (this dataset already uses "EYÜPSULTAN", never the old "EYÜP" name
             // İSPARK's parking dataset uses, so no alias table is needed here).
-            var ilce = neighborhood.Name.ToUpper(Turkish);
+            var districtName = neighborhood.Name.ToUpper(Turkish);
 
-            var populatedMahalles = mahalles
-                .Where(m => m.District == ilce && m.Population > 0)
+            var populatedWards = wards
+                .Where(m => m.District == districtName && m.Population > 0)
                 .ToList();
 
-            if (populatedMahalles.Count == 0)
+            if (populatedWards.Count == 0)
             {
                 logger.LogInformation(
-                    "No populated mahalle with a health index found for neighborhood {NeighborhoodId} (ILCE_ADI={Ilce})",
+                    "No populated ward with a health index found for neighborhood {NeighborhoodId} (ILCE_ADI={District})",
                     neighborhood.Id,
-                    ilce);
+                    districtName);
                 continue;
             }
 
-            var totalPopulation = populatedMahalles.Sum(m => (double)m.Population);
-            var weightedIndex = populatedMahalles.Sum(m => m.HealthIndex * m.Population) / totalPopulation;
+            var totalPopulation = populatedWards.Sum(m => (double)m.Population);
+            var weightedIndex = populatedWards.Sum(m => m.HealthIndex * m.Population) / totalPopulation;
 
             var metadata = new DataSourceMetadata(
                 SourceName,
@@ -102,14 +102,14 @@ public sealed class HealthAccessIngestionJob(
                 {
                     NeighborhoodId = neighborhood.Id,
                     WeightedHealthIndex = weightedIndex,
-                    MahalleCount = populatedMahalles.Count,
+                    WardCount = populatedWards.Count,
                     Source = metadata,
                 });
             }
             else
             {
                 existing.WeightedHealthIndex = weightedIndex;
-                existing.MahalleCount = populatedMahalles.Count;
+                existing.WardCount = populatedWards.Count;
                 existing.Source = metadata;
             }
         }

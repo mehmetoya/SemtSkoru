@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { KarsilastirClient } from "../../components/KarsilastirClient";
+import { CompareClient } from "../../components/CompareClient";
 
 export const metadata: Metadata = {
   title: "İlçe Karşılaştır",
@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/karsilastir" },
 };
 
-export default function KarsilastirPage() {
+export default function ComparePage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
@@ -25,7 +25,7 @@ export default function KarsilastirPage() {
         </span>
         <span className="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">İBB Açık Veri Portalı</span>
       </div>
-      <KarsilastirClient />
+      <CompareClient />
     </main>
   );
 }

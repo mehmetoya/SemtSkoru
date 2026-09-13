@@ -8,10 +8,10 @@ public sealed class HealthAccessReading
     /// SAGLIK_INDEX (see HealthAccessIngestionJob) - not yet scaled to 0-100.</summary>
     public double WeightedHealthIndex { get; set; }
 
-    /// <summary>How many of the district's mahalles had usable (non-zero) population data
-    /// and were included in the weighted average - kept for transparency, the same role
+    /// <summary>How many of the district's wards (mahalles) had usable (non-zero) population
+    /// data and were included in the weighted average - kept for transparency, the same role
     /// ParkingReading.FacilityCount plays for parking.</summary>
-    public int MahalleCount { get; set; }
+    public int WardCount { get; set; }
 
     public required DataSourceMetadata Source { get; set; }
 }

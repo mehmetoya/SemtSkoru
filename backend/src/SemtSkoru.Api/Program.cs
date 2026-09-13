@@ -136,7 +136,7 @@ app.MapMethods("/health", ["GET", "HEAD"], healthHandler).DisableRateLimiting();
 app.MapMethods("/health/live", ["GET", "HEAD"], healthHandler).DisableRateLimiting();
 
 app.MapNeighborhoodEndpoints();
-app.MapAsistanEndpoints();
+app.MapAssistantEndpoints();
 
 var recurringJobs = app.Services.GetRequiredService<IRecurringJobManager>();
 

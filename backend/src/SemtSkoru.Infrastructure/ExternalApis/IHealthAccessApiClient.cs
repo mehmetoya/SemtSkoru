@@ -1,6 +1,6 @@
 namespace SemtSkoru.Infrastructure.ExternalApis;
 
-public sealed record HealthMahalleFeatureDto(string District, string MahalleName, double HealthIndex, int Population);
+public sealed record HealthWardFeatureDto(string District, string WardName, double HealthIndex, int Population);
 
 public interface IHealthAccessApiClient
 {
@@ -9,5 +9,5 @@ public interface IHealthAccessApiClient
     /// İstanbul Sağlık İndeksi" (health-service access index) dataset, city-wide, with its
     /// own district tag, raw health index value, and population.
     /// </summary>
-    Task<IReadOnlyList<HealthMahalleFeatureDto>> GetMahallesAsync(CancellationToken ct);
+    Task<IReadOnlyList<HealthWardFeatureDto>> GetWardsAsync(CancellationToken ct);
 }

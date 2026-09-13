@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { AsistanClient } from "../AsistanClient";
+import { AssistantClient } from "../AssistantClient";
 import { createQueryWrapper, jsonResponse } from "../../lib/test-utils";
-import type { AsistanResponse, NeighborhoodScore } from "../../lib/types";
+import type { AssistantResponse, NeighborhoodScore } from "../../lib/types";
 
 function emptyDimension() {
   return { score: null, freshness: null, sourceName: null, publishedAt: null };
@@ -24,16 +24,16 @@ function fullScore(overrides: Partial<NeighborhoodScore> = {}): NeighborhoodScor
   };
 }
 
-describe("AsistanClient", () => {
+describe("AssistantClient", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
   });
 
   function renderClient() {
-    return render(<AsistanClient />, { wrapper: createQueryWrapper() });
+    return render(<AssistantClient />, { wrapper: createQueryWrapper() });
   }
 
-  function typeIstek(text: string) {
+  function typePrompt(text: string) {
     fireEvent.change(screen.getByLabelText("Ne arıyorsun?"), { target: { value: text } });
   }
 
@@ -43,7 +43,7 @@ describe("AsistanClient", () => {
     const button = screen.getByRole("button", { name: "Öner" });
     expect(button).toBeDisabled();
 
-    typeIstek("Hava kalitesi önemli");
+    typePrompt("Hava kalitesi önemli");
     expect(button).toBeEnabled();
   });
 
@@ -58,7 +58,7 @@ describe("AsistanClient", () => {
   });
 
   it("shows the AI disclosure label and the real score data behind a grounded recommendation", async () => {
-    const response: AsistanResponse = {
+    const response: AssistantResponse = {
       status: "Ok",
       message: null,
       recommendations: [
@@ -73,7 +73,7 @@ describe("AsistanClient", () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
     renderClient();
 
-    typeIstek("Hava kalitesi önemli");
+    typePrompt("Hava kalitesi önemli");
     fireEvent.click(screen.getByRole("button", { name: "Öner" }));
 
     await waitFor(() => expect(screen.getByText("Kadıköy")).toBeInTheDocument());
@@ -85,7 +85,7 @@ describe("AsistanClient", () => {
   });
 
   it("shows the backend's honest Turkish message instead of a guess when no usable recommendation comes back", async () => {
-    const response: AsistanResponse = {
+    const response: AssistantResponse = {
       status: "NoUsableRecommendations",
       message: "İsteğiniz için güvenilir bir öneri oluşturamadık. İlçeleri doğrudan karşılaştırmayı deneyebilirsiniz.",
       recommendations: [],
@@ -93,7 +93,7 @@ describe("AsistanClient", () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
     renderClient();
 
-    typeIstek("çok tuhaf bir istek");
+    typePrompt("çok tuhaf bir istek");
     fireEvent.click(screen.getByRole("button", { name: "Öner" }));
 
     await waitFor(() =>
@@ -107,7 +107,7 @@ describe("AsistanClient", () => {
     vi.mocked(fetch).mockRejectedValue(new TypeError("network error"));
     renderClient();
 
-    typeIstek("bir istek");
+    typePrompt("bir istek");
     fireEvent.click(screen.getByRole("button", { name: "Öner" }));
 
     await waitFor(() =>

@@ -1,19 +1,19 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useAsistan } from "../lib/hooks/useAsistan";
-import { AsistanOneriKart } from "./AsistanOneriKart";
+import { useAssistant } from "../lib/hooks/useAssistant";
+import { AssistantRecommendationCard } from "./AssistantRecommendationCard";
 
-const ORNEK_ISTEKLER = [
+const EXAMPLE_PROMPTS = [
   "Çocuklu bir aileyim, yeşil alan ve sağlık erişimi önemli, bütçem sınırlı.",
   "Uzaktan çalışıyorum, hava kalitesi ve toplu taşımaya yakınlık önemli.",
 ];
 
-const MAX_ISTEK_UZUNLUGU = 600;
+const MAX_PROMPT_LENGTH = 600;
 
-export function AsistanClient() {
+export function AssistantClient() {
   const [prompt, setPrompt] = useState("");
-  const { mutate, data, isPending, isError, reset } = useAsistan();
+  const { mutate, data, isPending, isError, reset } = useAssistant();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,16 +31,16 @@ export function AsistanClient() {
   return (
     <div className="mt-6">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <label htmlFor="asistan-istek" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+        <label htmlFor="assistant-prompt" className="text-sm font-medium text-slate-700 dark:text-slate-300">
           Ne arıyorsun?
         </label>
         <textarea
-          id="asistan-istek"
+          id="assistant-prompt"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           rows={4}
-          maxLength={MAX_ISTEK_UZUNLUGU}
-          placeholder={ORNEK_ISTEKLER[0]}
+          maxLength={MAX_PROMPT_LENGTH}
+          placeholder={EXAMPLE_PROMPTS[0]}
           className="w-full resize-y rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         />
         <div className="flex flex-wrap items-center gap-3">
@@ -65,14 +65,14 @@ export function AsistanClient() {
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
         <span>Örnek:</span>
-        {ORNEK_ISTEKLER.map((ornek) => (
+        {EXAMPLE_PROMPTS.map((example) => (
           <button
-            key={ornek}
+            key={example}
             type="button"
-            onClick={() => setPrompt(ornek)}
+            onClick={() => setPrompt(example)}
             className="rounded-full bg-slate-100 px-2.5 py-1 text-left hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
           >
-            {ornek}
+            {example}
           </button>
         ))}
       </div>
@@ -101,8 +101,8 @@ export function AsistanClient() {
             ✨ Google Gemini ile oluşturuldu — SemtSkoru&apos;nun gerçek skor verilerine dayanır
           </p>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {data.recommendations.map((oneri) => (
-              <AsistanOneriKart key={oneri.neighborhoodId} oneri={oneri} />
+            {data.recommendations.map((recommendation) => (
+              <AssistantRecommendationCard key={recommendation.neighborhoodId} recommendation={recommendation} />
             ))}
           </div>
         </div>
