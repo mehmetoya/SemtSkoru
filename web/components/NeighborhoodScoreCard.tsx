@@ -67,9 +67,13 @@ export function NeighborhoodScoreCard({
   boundary,
   score,
   share,
+  headingLevel = "h1",
 }: {
   name: string;
-  boundary: GeoJSON.Geometry;
+  // Optional: callers that don't have a district's boundary geometry handy (e.g. the AI Semt
+  // Asistanı's recommendation cards, which only get id/name/score back from POST /api/asistan)
+  // still get the full real dimension breakdown below - just without the shape thumbnail.
+  boundary?: GeoJSON.Geometry;
   score: NeighborhoodScore;
   share?: {
     imageUrl: string;
@@ -78,16 +82,23 @@ export function NeighborhoodScoreCard({
     shareText: string;
     fallbackUrl: string;
   };
+  // A single district's own page is this card's <h1>; a page that shows several of these at
+  // once (the AI assistant's 2-3 recommendations) needs them to be <h2>s under that page's own
+  // <h1> instead, so the document keeps exactly one <h1>.
+  headingLevel?: "h1" | "h2";
 }) {
   const overallBand = getScoreBand(score.overall);
   const overallStyles = SCORE_BAND_STYLES[overallBand];
+  const Heading = headingLevel;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <DistrictShapeIcon boundary={boundary} className={`h-12 w-12 shrink-0 ${overallStyles.text}`} />
-          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl dark:text-slate-100">{name}</h1>
+          {boundary && (
+            <DistrictShapeIcon boundary={boundary} className={`h-12 w-12 shrink-0 ${overallStyles.text}`} />
+          )}
+          <Heading className="text-2xl font-bold text-slate-900 sm:text-3xl dark:text-slate-100">{name}</Heading>
         </div>
         <div className="flex shrink-0 flex-col items-center gap-1.5">
           <div className={`flex h-16 w-16 flex-col items-center justify-center rounded-full ${overallStyles.bg}`}>

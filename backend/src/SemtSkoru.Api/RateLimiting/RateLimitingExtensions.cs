@@ -44,6 +44,34 @@ public static class RateLimitingExtensions
 
     private static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
 
+    // AI Semt Asistanı (POST /api/asistan) spends a completely different kind of scarce
+    // resource than every policy above: Google Gemini's free-tier quota. That quota is metered
+    // per Google Cloud project - i.e. shared by every visitor to the whole deployed app at once
+    // - and resets once a day, not once a minute. A per-IP-only limiter (like the three above)
+    // cannot protect that at all: 20 different visitors on 20 different IPs, each well under
+    // their own per-IP cap, could still collectively exhaust the whole day's shared budget and
+    // 503 the feature for everyone else until Google's own reset.
+    //
+    // As of this writing (2026-09-13), ai.google.dev/gemini-api/docs/rate-limits no longer
+    // publishes exact per-model free-tier RPM/RPD numbers - it now points to an authenticated
+    // AI Studio dashboard (aistudio.google.com/rate-limit) that only the real key's owner can
+    // read. Cross-referencing several current third-party trackers of that same dashboard for
+    // the Flash-Lite class of model this app uses (GeminiClient.cs) converges on roughly
+    // 15 requests/minute and 1,000 requests/day - consistent with the prior gemini-2.5-flash-lite
+    // generation's own last-published numbers. Since the exact current number for this app's own
+    // key can't be confirmed without that key, these limits are sized as a conservative fraction
+    // of the LOWEST figure found, not the average - correct even if the real dashboard number
+    // turns out less generous than what's publicly reported:
+    private const int AiAssistantGlobalPermitLimitPerMinute = 5; // <= the low end of every reported RPM figure (5-15/min)
+    private const int AiAssistantGlobalPermitLimitPerDay = 150; // 15% of the commonly-reported 1,000/day free-tier RPD
+
+    // Per-IP layer: not what protects the shared budget above (the global limiters do that
+    // regardless of caller identity) - this exists so ONE enthusiastic or scripted visitor can't
+    // burn through a disproportionate slice of that shared daily budget alone before anyone else
+    // gets a turn. Generous enough for a real visitor to rephrase their preferences a few times.
+    private const int AiAssistantPerIpPermitLimit = 5;
+    private static readonly TimeSpan AiAssistantPerIpWindow = TimeSpan.FromMinutes(10);
+
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services)
     {
         services.AddRateLimiter(options =>
@@ -65,6 +93,7 @@ public static class RateLimitingExtensions
             options.AddPolicy(RateLimitPolicies.Cheap, ClientIpPartition(CheapPermitLimitPerMinute));
             options.AddPolicy(RateLimitPolicies.Standard, ClientIpPartition(StandardPermitLimitPerMinute));
             options.AddPolicy(RateLimitPolicies.Compare, ClientIpPartition(ComparePermitLimitPerMinute));
+            options.AddPolicy(RateLimitPolicies.AiAssistant, AiAssistantPartition());
 
             options.OnRejected = async (context, ct) =>
             {
@@ -107,4 +136,57 @@ public static class RateLimitingExtensions
                 QueueLimit = 0,
             });
         };
+
+    // Combines a per-IP limiter with two truly GLOBAL limiters under one named policy. ASP.NET
+    // Core's rate limiter middleware only lets one named policy apply to a given endpoint
+    // (RequireRateLimiting replaces rather than stacks), so all three dimensions have to be
+    // expressed as a single chained RateLimiter per partition key - see
+    // learn.microsoft.com/aspnet/core/performance/rate-limit, "Chain limiters in a named policy".
+    private static Func<HttpContext, RateLimitPartition<string>> AiAssistantPartition()
+    {
+        // Constructed ONCE here (this method itself only runs once, at startup, to build the
+        // Func below) rather than inside the per-key factory beneath - every per-IP chain closes
+        // over these same two instances, so acquiring a permit from any caller's chain decrements
+        // the SAME shared counters. That's what makes this a real cross-visitor global budget
+        // instead of yet another per-IP one.
+        var globalPerMinute = new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = AiAssistantGlobalPermitLimitPerMinute,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0,
+        });
+        var globalPerDay = new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = AiAssistantGlobalPermitLimitPerDay,
+            Window = TimeSpan.FromHours(24),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0,
+        });
+
+        return httpContext =>
+        {
+            var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            // Order matters here. The per-IP limiter runs FIRST in the chain: fixed/sliding
+            // window limiters don't refund a permit they already granted if a LATER limiter in
+            // the chain rejects the request (see the "Chain limiters" doc above), so if the
+            // global limiters ran first, one IP looping past its own per-IP cap would still burn
+            // a permit from the shared global budget on every one of those excess requests
+            // before finally being rejected - exactly the "one abuser starves everyone else"
+            // failure this whole policy exists to prevent. Checking per-IP first means an
+            // over-eager caller is turned away before ever touching the shared budget.
+            return RateLimitPartition.Get(key, _ => RateLimiter.CreateChained(
+                new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = AiAssistantPerIpPermitLimit,
+                    Window = AiAssistantPerIpWindow,
+                    SegmentsPerWindow = 5,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                }),
+                globalPerMinute,
+                globalPerDay));
+        };
+    }
 }

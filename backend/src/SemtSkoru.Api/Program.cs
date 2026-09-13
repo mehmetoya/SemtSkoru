@@ -8,6 +8,7 @@ using Npgsql;
 using Scalar.AspNetCore;
 using SemtSkoru.Api.Endpoints;
 using SemtSkoru.Api.RateLimiting;
+using SemtSkoru.Application.Assistant;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Infrastructure.ExternalApis;
 using SemtSkoru.Infrastructure.Ingestion;
@@ -71,6 +72,14 @@ builder.Services.AddScoped<TransitAccessIngestionJob>();
 builder.Services.AddScoped<INeighborhoodScoringRepository, NeighborhoodScoringRepository>();
 builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringService>();
 
+// AI Semt Asistanı - see GeminiClient.cs for the model/endpoint and
+// RateLimiting/RateLimitingExtensions.cs for why this gets its own dedicated rate-limit policy.
+// A short, bounded timeout: this feature calls Gemini synchronously inside an HTTP request a
+// real visitor is waiting on, unlike the ingestion clients above which run as background jobs.
+builder.Services.AddHttpClient<IDistrictAssistantAiClient, GeminiClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddScoped<INeighborhoodDirectory, NeighborhoodDirectory>();
+builder.Services.AddScoped<IDistrictAssistantService, DistrictAssistantService>();
+
 // See RateLimiting/RateLimitingExtensions.cs for the policies and their rationale: every
 // endpoint here is public and unauthenticated (no API keys - out of scope), and DB round trips
 // are the resource actually worth protecting given MaxPoolSize=8 above.
@@ -127,6 +136,7 @@ app.MapMethods("/health", ["GET", "HEAD"], healthHandler).DisableRateLimiting();
 app.MapMethods("/health/live", ["GET", "HEAD"], healthHandler).DisableRateLimiting();
 
 app.MapNeighborhoodEndpoints();
+app.MapAsistanEndpoints();
 
 var recurringJobs = app.Services.GetRequiredService<IRecurringJobManager>();
 

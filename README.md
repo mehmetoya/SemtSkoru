@@ -135,10 +135,16 @@ npm run dev
 
 Migration'lar İstanbul'un 39 ilçesini gerçek sınır verisiyle (OpenStreetMap) otomatik olarak seed eder. Skorlar, arka planda çalışan Hangfire ingestion job'ları (hava kalitesi ve otopark günlük, yeşil alan/sağlık erişimi/toplu taşıma erişimi haftalık, trafik aylık) gerçek veriyi çektikçe dolar; job'ları hemen tetiklemek isterseniz API'nin Hangfire panosundan (`/hangfire`, sadece Development ortamında) manuel çalıştırabilirsiniz.
 
+AI Semt Asistanı (`/asistan`, `POST /api/asistan`) isteğe bağlıdır ve anahtar olmadan da uygulamanın geri kalanını bozmadan 503 döner. Yerelde denemek için [Google AI Studio](https://aistudio.google.com/apikey)'dan ücretsiz bir anahtar alıp user-secrets'a ekleyin:
+
+```bash
+dotnet user-secrets set "Gemini:ApiKey" "<anahtarınız>" --project src/SemtSkoru.Api
+```
+
 ## Testler
 
 ```bash
-# Backend: 92 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
+# Backend: 124 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
 cd backend && dotnet test
 
 # Frontend: unit/component testleri (Vitest + React Testing Library)

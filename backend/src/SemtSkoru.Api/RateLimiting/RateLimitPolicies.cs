@@ -16,4 +16,15 @@ public static class RateLimitPolicies
 
     /// <summary>~14 DB round trips: runs the "standard" scoring path twice (GET /api/neighborhoods/compare).</summary>
     public const string Compare = "compare";
+
+    /// <summary>
+    /// POST /api/asistan (AI Semt Asistanı). Unlike the three policies above, this endpoint's
+    /// scarce resource isn't this app's own DB pool - it's Google Gemini's free-tier quota,
+    /// which is shared globally across every visitor to the whole app and resets once a day.
+    /// A per-IP-only policy can't protect that: a handful of visitors spread across different
+    /// IPs could still exhaust the whole day's budget for everyone else. See
+    /// RateLimitingExtensions.cs for the combined per-IP + global-per-minute + global-per-day
+    /// policy this name maps to.
+    /// </summary>
+    public const string AiAssistant = "ai-assistant";
 }

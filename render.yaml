@@ -11,5 +11,7 @@ services:
         sync: false # Supabase connection string - set manually in the Render dashboard
       - key: Cors__FrontendOrigin
         sync: false # deployed Vercel URL, e.g. https://semtskoru.vercel.app
+      - key: Gemini__ApiKey
+        sync: false # free-tier Google AI Studio key for the AI Semt Asistanı feature (POST /api/asistan) - optional, feature 503s gracefully until set
       - key: ASPNETCORE_ENVIRONMENT
         value: Production

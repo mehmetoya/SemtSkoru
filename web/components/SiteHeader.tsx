@@ -44,6 +44,13 @@ export function SiteHeader() {
             Karşılaştır
           </Link>
           <Link
+            href="/asistan"
+            className={`whitespace-nowrap ${linkClass("/asistan")}`}
+            aria-current={pathname === "/asistan" ? "page" : undefined}
+          >
+            Asistan
+          </Link>
+          <Link
             href="/hakkimizda"
             className={linkClass("/hakkimizda")}
             aria-current={pathname === "/hakkimizda" ? "page" : undefined}

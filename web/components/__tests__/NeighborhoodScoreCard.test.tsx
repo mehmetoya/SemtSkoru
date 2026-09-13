@@ -152,4 +152,23 @@ describe("NeighborhoodScoreCard", () => {
       "Hava Kalitesi",
     ]);
   });
+
+  it("renders without a boundary (e.g. the AI Semt Asistanı's recommendation cards) and as an h2 when asked", () => {
+    const score: NeighborhoodScore = {
+      neighborhoodId: "kadikoy",
+      airQuality: { score: 83, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      greenSpace: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      transportation: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      parking: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      healthAccess: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      transitAccess: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      overall: 97,
+      isComplete: true,
+    };
+
+    render(<NeighborhoodScoreCard name="Kadıköy" score={score} headingLevel="h2" />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Kadıköy" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+  });
 });

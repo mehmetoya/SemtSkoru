@@ -55,8 +55,29 @@ kullanan bir cache eklenirse hem `docker-compose.yml`'e hem bu dokümana geri ek
    olarak işaretli, yani repo'ya yazılmıyor — secret oldukları için elle girilmeli):
    - `ConnectionStrings__Default` → adım 1'deki Supabase bağlantı dizesi
    - `Cors__FrontendOrigin` → adım 3'teki Vercel URL'i (örn. `https://semtskoru.vercel.app`)
+   - `Gemini__ApiKey` → aşağıdaki adımlarla alınan ücretsiz Gemini API anahtarı
 4. Deploy sonrası servis URL'ini not al (örn. `https://semtskoru-api.onrender.com`) —
    hem Vercel'de hem GitHub Actions secret'ında kullanılacak.
+
+**AI Semt Asistanı (Gemini) API anahtarı almak için:**
+
+- [aistudio.google.com/apikey](https://aistudio.google.com/apikey) adresine bir Google
+  hesabıyla giriş yap, **Create API key** ile ücretsiz bir anahtar oluştur (kredi kartı
+  istenmez — Gemini'nin free tier'ı için ayrı bir "trial" değil, kalıcı bir ücretsiz kota).
+- Render dashboard → servis → **Environment** → yeni environment variable:
+  `Gemini__ApiKey` = bu anahtar (adım 3'teki gibi).
+- Bu adım atlanırsa özellik kırılmaz: `POST /api/asistan` 503 döner
+  (`AsistanResponseDto.status: "NotConfigured"`), uygulamanın geri kalanı etkilenmez.
+
+Bu özellik Google Gemini'nin ücretsiz katmanını kullanır (`gemini-3.5-flash-lite`,
+girdi/çıktı free tier'da "Free of charge" — bkz.
+`backend/src/SemtSkoru.Infrastructure/ExternalApis/GeminiClient.cs`'deki yorumlar). Ücretsiz
+katmanın güncel RPM/RPD sınırları artık ai.google.dev'de statik olarak yayınlanmıyor (yalnızca
+oturum açılmış AI Studio panosunda, [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit)
+üzerinde görünüyor); `backend/src/SemtSkoru.Api/RateLimiting/RateLimitingExtensions.cs` bu
+belirsizliğe karşı muhafazakâr, paylaşılan bir günlük/dakikalık bütçe (IP başına değil, tüm
+uygulama için tek bir bütçe) uygular. Anahtarı ekledikten sonra o panodaki gerçek sınırları
+görüp gerekirse `AiAssistantGlobalPermitLimitPerMinute`/`PerDay` sabitlerini ayarlaman gerekebilir.
 
 **Not:** Free plan, ~15 dakika istek almayınca container'ı durduruyor; sıradaki istek
 container'ı yeniden başlatıyor (ilk istekte ~30-60sn gecikme olur). Bu, günlük ingestion

@@ -89,7 +89,7 @@ export default async function Home() {
       )}
 
       {!listError && best && worst && (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <HighlightCard label="En yüksek genel skor" neighborhood={best} />
           <HighlightCard label="En düşük genel skor" neighborhood={worst} />
           <Link
@@ -99,6 +99,15 @@ export default async function Home() {
             <p className="font-semibold text-blue-900 dark:text-blue-200">İki ilçeyi karşılaştır →</p>
             <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
               Skorları yan yana ve haritada gör
+            </p>
+          </Link>
+          <Link
+            href="/asistan"
+            className="flex flex-col justify-center rounded-2xl border border-violet-200 bg-violet-50 p-5 shadow-sm transition hover:border-violet-300 hover:shadow-md dark:border-violet-900 dark:bg-violet-950/40 dark:hover:border-violet-700"
+          >
+            <p className="font-semibold text-violet-900 dark:text-violet-200">AI Semt Asistanı →</p>
+            <p className="mt-1 text-sm text-violet-700 dark:text-violet-300">
+              Tercihini yaz, gerçek verilere dayanan öneri al
             </p>
           </Link>
         </div>
