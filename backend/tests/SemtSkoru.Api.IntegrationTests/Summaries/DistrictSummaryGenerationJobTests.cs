@@ -1,0 +1,228 @@
+using System.Net;
+using System.Text;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using SemtSkoru.Application.Scoring;
+using SemtSkoru.Application.Summaries;
+using SemtSkoru.Domain;
+using SemtSkoru.Infrastructure.ExternalApis;
+using SemtSkoru.Infrastructure.Persistence;
+using SemtSkoru.Infrastructure.Scoring;
+using SemtSkoru.Infrastructure.Summaries;
+using Testcontainers.PostgreSql;
+
+namespace SemtSkoru.Api.IntegrationTests.Summaries;
+
+// End-to-end proof (real Postgres via Testcontainers, real 39-district seed) that
+// DistrictSummaryGenerationJob's whole point holds up outside of unit tests: it persists a real
+// generated summary, it never spends a second Gemini call once a district's scores stop changing,
+// and it degrades to a complete no-op - not an exception, not a placeholder row - when Gemini
+// isn't configured at all. Gemini itself is faked out the same way AssistantEndpointsTests.cs
+// fakes it - never a real network call in the test suite.
+public class DistrictSummaryGenerationJobTests : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgis/postgis:16-3.4").Build();
+
+    public async Task InitializeAsync()
+    {
+        await _postgres.StartAsync();
+        await using var context = CreateContext();
+        await context.Database.MigrateAsync();
+    }
+
+    public async Task DisposeAsync() => await _postgres.DisposeAsync();
+
+    private AppDbContext CreateContext()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(_postgres.GetConnectionString(), o => o.UseNetTopologySuite())
+            .Options;
+        return new AppDbContext(options);
+    }
+
+    private static DataSourceMetadata TestSource(DateTimeOffset at) => new(
+        SourceName: "Test Source",
+        SourceUrl: "https://example.test",
+        SourceLicense: "Test License",
+        FetchedAt: at,
+        PublishedAt: at,
+        LastSuccessfulSyncAt: at,
+        Cadence: SourceCadence.Live);
+
+    // Only kadikoy gets a reading - every other one of the 39 seeded districts has HasAnyData ==
+    // false and is skipped by the job before it ever calls Gemini or waits out the pacing delay
+    // (see DistrictSummaryGenerationJob's remarks), which is what keeps this test fast.
+    private async Task SeedOneScoredDistrictAsync()
+    {
+        await using var context = CreateContext();
+        context.AirQualityReadings.Add(new AirQualityReading
+        {
+            NeighborhoodId = "kadikoy",
+            AqiIndex = 0, // -> a real, deterministic score of 100 (see DimensionScoring)
+            ReadingTime = DateTimeOffset.UtcNow,
+            Source = TestSource(DateTimeOffset.UtcNow),
+        });
+        await context.SaveChangesAsync();
+    }
+
+    private static IConfiguration ConfigWithKey(string? apiKey) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(apiKey is null ? [] : new Dictionary<string, string?> { ["Gemini:ApiKey"] = apiKey })
+            .Build();
+
+    private static DistrictSummaryGenerationJob CreateJob(
+        AppDbContext context, HttpMessageHandler geminiHandler, string? apiKey = "test-key") => new(
+        new SemtSkoru.Infrastructure.Persistence.NeighborhoodDirectory(context),
+        new NeighborhoodScoringService(new NeighborhoodScoringRepository(context), TimeProvider.System),
+        new DistrictSummaryService(new GeminiClient(new HttpClient(geminiHandler), ConfigWithKey(apiKey))),
+        context,
+        NullLogger<DistrictSummaryGenerationJob>.Instance,
+        TimeProvider.System);
+
+    private static HttpResponseMessage GeminiJson(string modelJsonText) => new(HttpStatusCode.OK)
+    {
+        Content = new StringContent(
+            JsonSerializer.Serialize(new { candidates = new[] { new { content = new { parts = new[] { new { text = modelJsonText } } } } } }),
+            Encoding.UTF8,
+            "application/json"),
+    };
+
+    private const string ValidModelResponse =
+        """{"highlights":[{"dimension":"airQuality","strength":"strong"}],"summary":"Bu ilçe hava kalitesinde güçlü."}""";
+
+    [Fact]
+    public async Task RunAsync_persists_a_grounded_summary_for_a_scored_district()
+    {
+        await SeedOneScoredDistrictAsync();
+        await using var context = CreateContext();
+        var job = CreateJob(context, new FakeHttpMessageHandler(_ => GeminiJson(ValidModelResponse)));
+
+        await job.RunAsync(CancellationToken.None);
+
+        var summary = await context.DistrictSummaries.SingleAsync(s => s.NeighborhoodId == "kadikoy");
+        Assert.Equal("Bu ilçe hava kalitesinde güçlü.", summary.SummaryText);
+        Assert.NotEqual(default, summary.GeneratedAt);
+        Assert.False(string.IsNullOrWhiteSpace(summary.ScoreSignature));
+    }
+
+    [Fact]
+    public async Task RunAsync_never_creates_a_row_for_a_district_with_no_ingested_data()
+    {
+        // No readings seeded at all - every one of the 39 districts has HasAnyData == false.
+        await using var context = CreateContext();
+        var callCount = 0;
+        var job = CreateJob(context, new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); }));
+
+        await job.RunAsync(CancellationToken.None);
+
+        Assert.Equal(0, callCount);
+        Assert.Empty(await context.DistrictSummaries.ToListAsync());
+    }
+
+    [Fact]
+    public async Task RunAsync_skips_a_second_gemini_call_when_the_districts_scores_have_not_changed()
+    {
+        await SeedOneScoredDistrictAsync();
+        var callCount = 0;
+        var handler = new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); });
+
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, handler).RunAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(1, callCount);
+        DistrictSummary firstRun;
+        await using (var context = CreateContext())
+        {
+            firstRun = await context.DistrictSummaries.AsNoTracking().SingleAsync(s => s.NeighborhoodId == "kadikoy");
+        }
+
+        // Nothing about kadikoy's scores changed between runs - a second run must not spend
+        // another Gemini call, and must leave the existing row (including its GeneratedAt)
+        // exactly as it was, not silently refresh the timestamp for no real reason.
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, handler).RunAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(1, callCount);
+        await using (var context = CreateContext())
+        {
+            var secondRun = await context.DistrictSummaries.AsNoTracking().SingleAsync(s => s.NeighborhoodId == "kadikoy");
+            Assert.Equal(firstRun.GeneratedAt, secondRun.GeneratedAt);
+            Assert.Equal(firstRun.ScoreSignature, secondRun.ScoreSignature);
+        }
+    }
+
+    [Fact]
+    public async Task RunAsync_regenerates_once_the_districts_score_actually_changes()
+    {
+        await SeedOneScoredDistrictAsync();
+        var callCount = 0;
+        var handler = new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); });
+
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, handler).RunAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(1, callCount);
+
+        // A real score change (a fresh, much worse air quality reading) - this must trigger
+        // exactly one more Gemini call, not zero (stale skip) and not a crash.
+        await using (var context = CreateContext())
+        {
+            var reading = await context.AirQualityReadings.SingleAsync(r => r.NeighborhoodId == "kadikoy");
+            reading.AqiIndex = 500;
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, handler).RunAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(2, callCount);
+    }
+
+    [Fact]
+    public async Task RunAsync_does_not_throw_and_writes_nothing_when_gemini_is_not_configured()
+    {
+        await SeedOneScoredDistrictAsync();
+        await using var context = CreateContext();
+        var callCount = 0;
+        var job = CreateJob(
+            context,
+            new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); }),
+            apiKey: null);
+
+        var exception = await Record.ExceptionAsync(() => job.RunAsync(CancellationToken.None));
+
+        Assert.Null(exception);
+        Assert.Equal(0, callCount);
+        Assert.Empty(await context.DistrictSummaries.ToListAsync());
+    }
+
+    [Fact]
+    public async Task RunAsync_writes_nothing_when_every_highlight_the_model_returns_is_hallucinated()
+    {
+        await SeedOneScoredDistrictAsync();
+        await using var context = CreateContext();
+        var job = CreateJob(
+            context,
+            new FakeHttpMessageHandler(_ => GeminiJson("""{"highlights":[{"dimension":"deniz_manzarasi","strength":"strong"}],"summary":"Deniz manzaralı bir ilçe."}""")));
+
+        await job.RunAsync(CancellationToken.None);
+
+        Assert.Empty(await context.DistrictSummaries.ToListAsync());
+    }
+}
+
+file sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        Task.FromResult(responder(request));
+}

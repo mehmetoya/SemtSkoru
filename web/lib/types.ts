@@ -23,6 +23,17 @@ export interface DimensionScore {
   publishedAt: string | null;
 }
 
+// The AI "standout traits" summary shown on a district's page (see DistrictSummaryBadge) -
+// generated ahead of time by the backend's weekly DistrictSummaryGenerationJob, never live on
+// this request. `null` on NeighborhoodScore.summary covers every reason one might not exist yet
+// (Gemini not configured, the job hasn't run for this district yet, or no usable summary could be
+// grounded in its real scores) - never a fabricated placeholder.
+export interface DistrictSummary {
+  text: string;
+  // ISO 8601 string (System.Text.Json's default DateTimeOffset serialization).
+  generatedAt: string;
+}
+
 export interface NeighborhoodScore {
   neighborhoodId: string;
   airQuality: DimensionScore;
@@ -33,6 +44,7 @@ export interface NeighborhoodScore {
   transitAccess: DimensionScore;
   overall: number | null;
   isComplete: boolean;
+  summary: DistrictSummary | null;
 }
 
 export interface NeighborhoodComparison {

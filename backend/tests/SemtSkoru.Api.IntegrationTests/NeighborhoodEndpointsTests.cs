@@ -130,6 +130,49 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetScore_returns_a_null_summary_when_no_ai_summary_has_been_generated_yet()
+    {
+        // No DistrictSummaries row at all for this district - e.g. Gemini isn't configured in
+        // this environment, or DistrictSummaryGenerationJob just hasn't run for it yet. The
+        // endpoint must degrade to an honestly-null field, never an error or a placeholder.
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/neighborhoods/kadikoy/score");
+
+        response.EnsureSuccessStatusCode();
+        var score = await response.Content.ReadFromJsonAsync<NeighborhoodScoreDto>();
+        Assert.NotNull(score);
+        Assert.Null(score.Summary);
+    }
+
+    [Fact]
+    public async Task GetScore_returns_the_cached_ai_summary_when_one_exists()
+    {
+        var generatedAt = DateTimeOffset.UtcNow;
+        await using (var context = CreateContext())
+        {
+            context.DistrictSummaries.Add(new DistrictSummary
+            {
+                NeighborhoodId = "kadikoy",
+                SummaryText = "Bu ilçe hava kalitesinde güçlü.",
+                GeneratedAt = generatedAt,
+                ScoreSignature = "100|null|null|null|null|null",
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/neighborhoods/kadikoy/score");
+
+        response.EnsureSuccessStatusCode();
+        var score = await response.Content.ReadFromJsonAsync<NeighborhoodScoreDto>();
+        Assert.NotNull(score?.Summary);
+        Assert.Equal("Bu ilçe hava kalitesinde güçlü.", score.Summary.Text);
+        Assert.Equal(generatedAt, score.Summary.GeneratedAt, TimeSpan.FromMilliseconds(1));
+    }
+
+    [Fact]
     public async Task GetScore_returns_404_for_an_unknown_district()
     {
         var client = _factory.CreateClient();

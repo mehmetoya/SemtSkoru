@@ -19,6 +19,7 @@ function emptyScore(neighborhoodId: string) {
     transitAccess: emptyDimension(),
     overall: null,
     isComplete: false,
+    summary: null,
   };
 }
 

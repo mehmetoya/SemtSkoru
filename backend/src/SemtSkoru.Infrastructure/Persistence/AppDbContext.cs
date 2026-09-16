@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ParkingReading> ParkingReadings => Set<ParkingReading>();
     public DbSet<HealthAccessReading> HealthAccessReadings => Set<HealthAccessReading>();
     public DbSet<TransitAccessReading> TransitAccessReadings => Set<TransitAccessReading>();
+    public DbSet<DistrictSummary> DistrictSummaries => Set<DistrictSummary>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

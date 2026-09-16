@@ -20,6 +20,7 @@ function fullScore(overrides: Partial<NeighborhoodScore> = {}): NeighborhoodScor
     transitAccess: dim,
     overall: 83,
     isComplete: false,
+    summary: null,
     ...overrides,
   };
 }
