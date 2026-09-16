@@ -12,10 +12,10 @@
 
 ## Ekran Görüntüleri
 
-| Ana Sayfa                                                   | Karşılaştırma                                                          |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
-| ![İlçe listesi ve genel skorlar](docs/screenshots/home.png) | ![İki ilçeyi haritada karşılaştırma](docs/screenshots/compare.png)     |
-| 39 ilçenin genel skoru, mini sınır ikonlarıyla              | İki ilçeyi seçince skorlar ve boyut bazlı karşılaştırma canlı haritada |
+| Ana Sayfa                                                   | Karşılaştırma                                                                                  |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| ![İlçe listesi ve genel skorlar](docs/screenshots/home.png) | ![İki ilçeyi haritada karşılaştırma](docs/screenshots/compare.png)                             |
+| 39 ilçenin genel skoru, mini sınır ikonlarıyla              | İki ilçeyi seçince skorlar, canlı haritada boyut bazlı karşılaştırma ve AI karşılaştırma özeti |
 
 ![AI Semt Asistanı gerçek bir öneri üretirken](docs/screenshots/assistant.png)
 AI Semt Asistanı, isteğe göre 2-3 ilçe önerip nedenini gerçek skorlara dayandırıyor (Google Gemini)
@@ -27,6 +27,10 @@ AI Semt Asistanı, isteğe göre 2-3 ilçe önerip nedenini gerçek skorlara day
 - Skor kartını PNG görsel olarak indirme veya native paylaşım menüsüyle (varsa) doğrudan paylaşma
 - Her skor kartında verinin hangi kaynaktan geldiği ve ne zamana ait olduğu açıkça görünür
 - Bir veri kaynağı beklenenden eski kaldığında ("bayat veri") veya doğası gereği canlı olmadığında ("tarihsel veri") UI'da açıkça işaretlenir — hiçbir veri, öyle olmadığı sürece "canlı" diye sunulmaz
+- AI Semt Asistanı, isteğe göre 2-3 ilçe önerip nedenini gerçek skorlara dayandırır (Google Gemini)
+- Her ilçe sayfasında "Öne Çıkan Özellikler" AI özeti ve "Zaman İçindeki Değişim" AI trend özeti (yalnızca gerçek, anlamlı bir skor değişimi olduğunda gösterilir)
+- Karşılaştırma sayfasında iki ilçenin hangi boyut(lar)da öne çıktığını özetleyen bir AI "Karşılaştırma Özeti"
+- Dört AI özelliği de yalnızca uygulamanın kendi gerçek skor verisine atıfta bulunur; veri yoksa veya bir iddia doğrulanamıyorsa metin hiç gösterilmez, asla uydurulmaz
 
 ## Mimari
 
@@ -147,7 +151,7 @@ npm run dev
 
 Migration'lar İstanbul'un 39 ilçesini gerçek sınır verisiyle (OpenStreetMap) otomatik olarak seed eder. Skorlar, arka planda çalışan Hangfire ingestion job'ları (hava kalitesi ve otopark günlük, yeşil alan/sağlık erişimi/toplu taşıma erişimi haftalık, trafik aylık) gerçek veriyi çektikçe dolar; job'ları hemen tetiklemek isterseniz API'nin Hangfire panosundan (`/hangfire`, sadece Development ortamında) manuel çalıştırabilirsiniz.
 
-AI Semt Asistanı (`/asistan`, `POST /api/asistan`) isteğe bağlıdır ve anahtar olmadan da uygulamanın geri kalanını bozmadan 503 döner. Aynı Gemini anahtarı, her ilçe sayfasındaki "Öne Çıkan Özellikler" AI özetini de besler - bu özet canlı değil, haftalık bir Hangfire job'ı (`district-summary-generation`) tarafından önceden üretilip önbelleğe alınır, anahtar yoksa sayfa hiçbir hata vermeden özeti göstermeden devam eder. Aynı anahtar, ilçe sayfasındaki "Zaman İçindeki Değişim" trend özetini de besler - bu da haftalık bir Hangfire job'ı (`score-snapshot`) tarafından üretilir, ancak o job her ilçenin skorunun bir önceki, en az 1 hafta eski bir ölçümle GERÇEK sayısal farkı varsa metin üretir; ilk deploy'dan sonraki ilk hafta boyunca (ve karşılaştırılacak eski bir ölçüm birikene kadar) her ilçede bu alan dürüstçe boş kalır - tahmini bir trend asla gösterilmez. Yerelde denemek için [Google AI Studio](https://aistudio.google.com/apikey)'dan ücretsiz bir anahtar alıp user-secrets'a ekleyin:
+AI Semt Asistanı (`/asistan`, `POST /api/asistan`) isteğe bağlıdır ve anahtar olmadan da uygulamanın geri kalanını bozmadan 503 döner. Aynı Gemini anahtarı, her ilçe sayfasındaki "Öne Çıkan Özellikler" AI özetini de besler - bu özet canlı değil, haftalık bir Hangfire job'ı (`district-summary-generation`) tarafından önceden üretilip önbelleğe alınır, anahtar yoksa sayfa hiçbir hata vermeden özeti göstermeden devam eder. Aynı anahtar, ilçe sayfasındaki "Zaman İçindeki Değişim" trend özetini de besler - bu da haftalık bir Hangfire job'ı (`score-snapshot`) tarafından üretilir, ancak o job her ilçenin skorunun bir önceki, en az 1 hafta eski bir ölçümle GERÇEK sayısal farkı varsa metin üretir; ilk deploy'dan sonraki ilk hafta boyunca (ve karşılaştırılacak eski bir ölçüm birikene kadar) her ilçede bu alan dürüstçe boş kalır - tahmini bir trend asla gösterilmez. Aynı anahtar, karşılaştırma sayfasındaki "Karşılaştırma Özeti"ni de besler (`GET /api/neighborhoods/compare/summary`) - bu, weekly-batch değil, ilk kez sorulduğunda üretilip veritabanında kalıcı olarak önbelleğe alınan bir çift bazında (39 ilçe arasında mümkün 741 çiftin tamamını önceden üretmek yerine) - modelin "hangi ilçe daha güçlü" iddiası, bu istekte zaten hesaplanmış gerçek sayılara karşı ayrıca doğrulanır, gerçek skorlarla çelişen bir iddia asla gösterilmez. Yerelde denemek için [Google AI Studio](https://aistudio.google.com/apikey)'dan ücretsiz bir anahtar alıp user-secrets'a ekleyin:
 
 ```bash
 dotnet user-secrets set "Gemini:ApiKey" "<anahtarınız>" --project src/SemtSkoru.Api
