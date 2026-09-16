@@ -200,6 +200,10 @@ Her kaynak, kod yazılmadan önce gerçek bir HTTP isteğiyle doğrulandı — b
 
 Harita verileri © [OpenStreetMap katkıda bulunanları](https://www.openstreetmap.org/copyright), ODbL lisansı altında.
 
+## Katkı Sağlama
+
+Hata bildirimleri, veri kaynağı düzeltmeleri ve kod katkıları memnuniyetle karşılanır — bkz. [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## Lisans
 
 MIT — bkz. [LICENSE](LICENSE). Yukarıdaki açık veri kaynaklarının kendi lisansları ayrıca geçerlidir; ODbL atıf zorunluluğu için bkz. yukarısı.
