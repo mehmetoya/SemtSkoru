@@ -12,10 +12,10 @@
 
 ## Ekran Görüntüleri
 
-|  |  |
-|---|---|
-| ![İlçe listesi ve genel skorlar](docs/screenshots/home.png) | ![İki ilçeyi haritada karşılaştırma](docs/screenshots/compare.png) |
-| 39 ilçenin genel skoru, mini sınır ikonlarıyla | İki ilçeyi seçince skorlar ve boyut bazlı karşılaştırma canlı haritada |
+| Ana Sayfa                                                   | Karşılaştırma                                                          |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| ![İlçe listesi ve genel skorlar](docs/screenshots/home.png) | ![İki ilçeyi haritada karşılaştırma](docs/screenshots/compare.png)     |
+| 39 ilçenin genel skoru, mini sınır ikonlarıyla              | İki ilçeyi seçince skorlar ve boyut bazlı karşılaştırma canlı haritada |
 
 ![AI Semt Asistanı gerçek bir öneri üretirken](docs/screenshots/assistant.png)
 AI Semt Asistanı, isteğe göre 2-3 ilçe önerip nedenini gerçek skorlara dayandırıyor (Google Gemini)
@@ -71,7 +71,7 @@ API, paylaşılan DB bağlantı havuzunu korumak için global bir eşzamanlılı
 ## Tech Stack
 
 | Katman | Teknoloji | Neden |
-|---|---|---|
+| --- | --- | --- |
 | Backend framework | ASP.NET Core (.NET 10) | Minimal API'ler, native OpenAPI desteği |
 | Mimari | Clean Architecture | Domain hiçbir dış bağımlılığa sahip değil; kaynak/DB değişimi izole |
 | ORM | EF Core + Npgsql | PostGIS geometry tipleriyle native entegrasyon |
@@ -89,7 +89,7 @@ API, paylaşılan DB bağlantı havuzunu korumak için global bir eşzamanlılı
 
 ## Proje Yapısı
 
-```
+```text
 /backend
   global.json                     → .NET SDK sürüm pin'i (reproducible build)
   src/
@@ -189,7 +189,7 @@ Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdu
 Her kaynak, kod yazılmadan önce gerçek bir HTTP isteğiyle doğrulandı — bkz. [`docs/data-sources.md`](docs/data-sources.md) tam detay için.
 
 | Boyut | Kaynak | Güncellik | Lisans |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Hava Kalitesi | İBB Açık Veri Portalı (canlı API) | Saatlik | İBB Açık Veri Lisansı |
 | Yeşil Alan | İBB Açık Veri Portalı (GeoJSON) | Yıllık | İBB Açık Veri Lisansı |
 | Trafik/Ulaşım | İBB Açık Veri Portalı (Ocak 2025 CSV) | Tarihsel — canlı değil, UI'da açıkça etiketli | İBB Açık Veri Lisansı |
