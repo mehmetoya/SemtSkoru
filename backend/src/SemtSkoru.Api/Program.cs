@@ -243,15 +243,16 @@ recurringJobs.AddOrUpdate<TransitAccessIngestionJob>(
 // separate, shared, hard-capped-per-day THIRD-PARTY quota (Gemini's free tier - see
 // RateLimiting/RateLimitingExtensions.cs) rather than just this app's own DB/API-fetch time, so
 // its cadence is chosen against that budget, not against how often the underlying scores change:
-// worst case (every district's score signature changed) this job spends 39 Gemini calls per run.
-// Daily, that would be up to 39 calls EVERY day against the same 150-request shared daily budget
-// the interactive AI Semt Asistanı also depends on - over a quarter of the whole day's budget,
-// every day, before a single real visitor asks the assistant anything. Weekly, the same worst
-// case amortizes to under 6 calls/day, and DistrictSummaryGenerationJob's own score-signature
-// skip (see its remarks) means a real run is usually far cheaper than that, since only air
-// quality/parking update daily and a district's *standout* dimensions rarely flip on a single
-// day's noise. A short lag between a real score change and this text catching up is an
-// acceptable trade for not competing with the assistant for the same scarce quota.
+// worst case (every district's score signature changed, in BOTH supported locales - see
+// AiLocale.All) this job spends 39 x 2 = 78 Gemini calls per run. Daily, that would be up to 78
+// calls EVERY day against the same 150-request shared daily budget the interactive AI Semt
+// Asistanı also depends on - over half the whole day's budget, every day, before a single real
+// visitor asks the assistant anything. Weekly, the same worst case amortizes to 78/7 ≈ 11
+// calls/day, and DistrictSummaryGenerationJob's own per-locale score-signature skip (see its
+// remarks) means a real run is usually far cheaper than that, since only air quality/parking
+// update daily and a district's *standout* dimensions rarely flip on a single day's noise. A
+// short lag between a real score change and this text catching up is an acceptable trade for not
+// competing with the assistant for the same scarce quota.
 recurringJobs.AddOrUpdate<DistrictSummaryGenerationJob>(
     "district-summary-generation",
     job => job.RunAsync(CancellationToken.None),
@@ -259,15 +260,16 @@ recurringJobs.AddOrUpdate<DistrictSummaryGenerationJob>(
 
 // Weekly, the same bucket as green space/health access/transit access/district-summary-generation
 // above, for the same reason DistrictSummaryGenerationJob is weekly rather than daily: this job's
-// TREND half also spends a THIRD-PARTY quota (Gemini) worst case 39 calls/run, and weekly keeps
-// that amortized cost far below the shared 150-request daily budget. Its SNAPSHOT half doesn't
-// need weekly cadence for its own sake (it writes plain DB rows, no external quota involved) - it
+// TREND half also spends a THIRD-PARTY quota (Gemini) worst case 39 x 2 = 78 calls/run (39
+// districts, both supported locales - see AiLocale.All), and weekly keeps that amortized cost far
+// below the shared 150-request daily budget. Its SNAPSHOT half doesn't need weekly cadence for
+// its own sake (it writes plain DB rows, no external quota involved, and is locale-agnostic) - it
 // runs at this cadence only because it's the same job as the trend generation that does.
 //
 // Scheduled 6 hours after the other weekly jobs' default midnight slot (Cron.Weekly() with no
 // arguments = Monday 00:00 UTC), specifically to avoid ever landing in the same Hangfire
 // worker-pool window as district-summary-generation above: that job's own worst-case run takes
-// ~3.5 minutes (see its remarks), so a 6-hour gap comfortably separates the two jobs' Gemini
+// ~6.5 minutes (see its remarks), so a 6-hour gap comfortably separates the two jobs' Gemini
 // calls in the normal case where both fire on schedule. This app's free-tier host (Render) can
 // spin its container down when idle and only wakes on a request (see the /health comment above
 // and .github/workflows/keep-warm.yml) - if it was asleep past BOTH jobs' trigger times, Hangfire
@@ -276,10 +278,18 @@ recurringJobs.AddOrUpdate<DistrictSummaryGenerationJob>(
 // against: with WorkerCount=2 they would run truly in parallel rather than queue, so the combined
 // per-minute Gemini rate could transiently exceed this app's own conservative internal target -
 // but each job already treats Gemini's own 429 as an expected, handled outcome (30s backoff, see
-// RateLimitBackoff in each job), and even a full 39-call run from BOTH jobs at once (78 calls
-// total) stays well under half of the 150-request DAILY cap that is this app's real backstop
-// (see DistrictSummaryGenerationJob's own remarks for why that daily figure, not the per-minute
-// one, is what every one of these jobs' worst-case reasoning is ultimately bounded by).
+// RateLimitBackoff in each job). Unlike before locale support was added, a full 78-call run from
+// BOTH jobs at once (156 calls total) is no longer comfortably under the 150-request DAILY cap
+// that is this app's real backstop - it would, in that specific worst-case-collision scenario,
+// exhaust the day's shared Gemini quota (the last ~6 calls of whichever job runs second would
+// come back RateLimited, which both jobs already handle as an expected, non-fatal outcome: they
+// back off and simply leave those particular (district, locale) rows stale until the NEXT weekly
+// run, never a crash or a fabricated placeholder). This residual risk is accepted rather than
+// specially guarded against because it requires BOTH an extended host sleep past both trigger
+// times AND every single one of 78 district/locale score signatures changing in one week, which
+// has never happened in this app's real usage pattern (see DistrictSummaryGenerationJob's own
+// remarks for why that daily figure, not the per-minute one, is what every one of these jobs'
+// worst-case reasoning is ultimately bounded by).
 recurringJobs.AddOrUpdate<ScoreSnapshotJob>(
     "score-snapshot",
     job => job.RunAsync(CancellationToken.None),

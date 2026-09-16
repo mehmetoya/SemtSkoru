@@ -1,5 +1,6 @@
 using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Assistant;
+using SemtSkoru.Application.Localization;
 
 namespace SemtSkoru.Api.Endpoints;
 
@@ -16,7 +17,8 @@ public static class AssistantEndpoints
             IDistrictAssistantService assistantService,
             CancellationToken ct) =>
         {
-            var outcome = await assistantService.GetRecommendationsAsync(request.Prompt, ct);
+            var outcome = await assistantService.GetRecommendationsAsync(
+                request.Prompt, AiLocale.NormalizeOrDefault(request.Locale), ct);
 
             return outcome.Kind switch
             {

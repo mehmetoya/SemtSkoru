@@ -10,8 +10,10 @@ public class DistrictTrendSummaryConfiguration : IEntityTypeConfiguration<Distri
     {
         builder.ToTable("DistrictTrendSummaries");
 
-        builder.HasKey(s => s.NeighborhoodId);
+        // Composite key: one row per (district, locale) - see DistrictTrendSummary.Locale's remarks.
+        builder.HasKey(s => new { s.NeighborhoodId, s.Locale });
         builder.Property(s => s.NeighborhoodId).HasMaxLength(64);
+        builder.Property(s => s.Locale).HasMaxLength(5);
 
         builder.Property(s => s.SummaryText).HasMaxLength(500).IsRequired();
         builder.Property(s => s.GeneratedAt).IsRequired();

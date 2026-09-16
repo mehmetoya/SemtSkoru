@@ -10,12 +10,15 @@ public class ComparisonSummaryConfiguration : IEntityTypeConfiguration<Compariso
     {
         builder.ToTable("ComparisonSummaries");
 
-        // Composite canonical-pair key - see ComparisonSummary.NeighborhoodIdA/B's remarks. Order
-        // here (A then B) matches every FindAsync([idLo, idHi], ct) call in
-        // ComparisonSummaryOrchestrator, which is the only place this key's declared order matters.
-        builder.HasKey(c => new { c.NeighborhoodIdA, c.NeighborhoodIdB });
+        // Composite canonical-pair-plus-locale key - see ComparisonSummary.NeighborhoodIdA/B/
+        // Locale's remarks. Order here (A, then B, then Locale) matches every
+        // FindAsync([idLo, idHi, locale], ct) call in ComparisonSummaryOrchestrator, which is the
+        // only place this key's declared order matters - FindAsync matches key VALUES positionally
+        // against this exact declaration order, not by property name.
+        builder.HasKey(c => new { c.NeighborhoodIdA, c.NeighborhoodIdB, c.Locale });
         builder.Property(c => c.NeighborhoodIdA).HasMaxLength(64);
         builder.Property(c => c.NeighborhoodIdB).HasMaxLength(64);
+        builder.Property(c => c.Locale).HasMaxLength(5);
 
         builder.Property(c => c.SummaryText).HasMaxLength(500).IsRequired();
         builder.Property(c => c.GeneratedAt).IsRequired();

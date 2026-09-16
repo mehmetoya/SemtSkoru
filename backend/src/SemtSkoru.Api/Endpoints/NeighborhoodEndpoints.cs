@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Comparisons;
+using SemtSkoru.Application.Localization;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Application.Summaries;
 using SemtSkoru.Application.Trends;
@@ -65,6 +66,7 @@ public static class NeighborhoodEndpoints
         app.MapGet("/api/neighborhoods/{id}/score", async (
             HttpContext context,
             string id,
+            string? locale,
             INeighborhoodScoringService scoringService,
             IDistrictSummaryRepository summaryRepository,
             IDistrictTrendRepository trendRepository,
@@ -79,11 +81,15 @@ public static class NeighborhoodEndpoints
 
             // Both are cheap reads against whatever their respective weekly Hangfire job already
             // wrote (DistrictSummaryGenerationJob / ScoreSnapshotJob) - never a live Gemini call
-            // on this request path.
-            var summary = await summaryRepository.GetAsync(id, ct);
+            // on this request path. Locale ("tr"/"en", defaulting to "tr" for a missing/unknown
+            // value via AiLocale.NormalizeOrDefault) scopes both reads: a locale the weekly job
+            // hasn't caught up on yet for this district honestly returns null here, exactly like
+            // Gemini not being configured at all does - see DistrictSummaryRepository's remarks.
+            var normalizedLocale = AiLocale.NormalizeOrDefault(locale);
+            var summary = await summaryRepository.GetAsync(id, normalizedLocale, ct);
             var summaryDto = summary is null ? null : new DistrictSummaryDto(summary.SummaryText, summary.GeneratedAt);
 
-            var trend = await trendRepository.GetAsync(id, ct);
+            var trend = await trendRepository.GetAsync(id, normalizedLocale, ct);
             var trendDto = trend is null ? null : new DistrictTrendDto(trend.SummaryText, trend.GeneratedAt);
 
             return Results.Ok(NeighborhoodScoreDto.From(result, summaryDto, trendDto));
@@ -126,6 +132,7 @@ public static class NeighborhoodEndpoints
         app.MapGet("/api/neighborhoods/compare/summary", async (
             string? a,
             string? b,
+            string? locale,
             AppDbContext db,
             INeighborhoodScoringService scoringService,
             IComparisonSummaryOrchestrator orchestrator,
@@ -154,7 +161,8 @@ public static class NeighborhoodEndpoints
                 .ToDictionaryAsync(n => n.Id, n => n.Name, ct);
 
             var summary = await orchestrator.GetOrGenerateAsync(
-                names.GetValueOrDefault(a, a), scoreA!, names.GetValueOrDefault(b, b), scoreB!, ct);
+                names.GetValueOrDefault(a, a), scoreA!, names.GetValueOrDefault(b, b), scoreB!,
+                AiLocale.NormalizeOrDefault(locale), ct);
 
             // Deliberately just { summary } - null covers every honest reason one might not be
             // available right now (no key configured, the live call failed/timed out/was

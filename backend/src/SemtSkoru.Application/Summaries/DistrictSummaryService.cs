@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SemtSkoru.Application.Assistant;
+using SemtSkoru.Application.Localization;
 using SemtSkoru.Application.Scoring;
 
 namespace SemtSkoru.Application.Summaries;
@@ -38,13 +39,13 @@ public sealed class DistrictSummaryService(IDistrictAssistantAiClient aiClient) 
         "airQuality", "greenSpace", "transportation", "parking", "healthAccess", "transitAccess",
     };
 
-    private const string SystemInstruction =
+    private const string BaseSystemInstruction =
         """
         Sen SemtSkoru uygulamasının bir ilçe sayfasında gösterilen "Öne Çıkan Özellikler" AI
         özetini üretiyorsun. SemtSkoru, İstanbul'un 39 ilçesini yalnızca gerçek İBB (İstanbul
         Büyükşehir Belediyesi) açık verisinden hesaplanan skorlarla karşılaştıran bir uygulamadır.
         Görevin, sana JSON olarak verilen TEK bir ilçenin GERÇEK ve GÜNCEL 6 boyut skorunu (0-100)
-        inceleyip, o ilçenin öne çıkan güçlü ve zayıf yönlerini kısa bir Türkçe özetle anlatmak.
+        inceleyip, o ilçenin öne çıkan güçlü ve zayıf yönlerini kısa bir özetle anlatmak.
 
         KESİNLİKLE UYULMASI GEREKEN KURALLAR:
         1. SADECE sana verilen 6 boyuttan ("airQuality","greenSpace","transportation","parking",
@@ -64,11 +65,26 @@ public sealed class DistrictSummaryService(IDistrictAssistantAiClient aiClient) 
         6. Yanıtın SADECE aşağıdaki şemaya uyan geçerli bir JSON nesnesi olmalı. JSON dışında
            hiçbir açıklama, markdown veya kod bloğu ekleme:
            {"highlights":[{"dimension":"<6 boyuttan biri>","strength":"strong"|"weak"}],
-            "summary":"<en fazla 2 cümlelik Türkçe özet, veya highlights boşsa boş string>"}
+            "summary":"<en fazla 2 cümlelik özet, veya highlights boşsa boş string>"}
+        """;
+
+    // Only the free-text "summary" sentence changes with locale - every JSON key and every
+    // enum-like value (dimension names, "strength": "strong"/"weak") must come back byte-for-byte
+    // as given, because ValidateAndGround below checks them with literal string equality against
+    // this district's REAL scores. If the model ever translated a dimension name or a "strength"
+    // value, every response would silently fail that check and get dropped as unverifiable - see
+    // this class's own remarks.
+    private static string BuildSystemInstruction(string locale) =>
+        $$"""
+        {{BaseSystemInstruction}}
+        7. "summary" alanındaki serbest metni {{AiLocale.ToLanguageName(locale)}} dilinde yaz.
+           Bunun dışındaki TÜM JSON anahtarları ve değerleri (dimension adları, "strength" gibi
+           sabit değerler) verildiği gibi, DEĞİŞTİRMEDEN kalmalı - bunlar birer tanımlayıcı/sabit
+           değerdir, çeviri konusu değildir.
         """;
 
     public async Task<DistrictSummaryOutcome> GenerateSummaryAsync(
-        string neighborhoodName, NeighborhoodScoreResult score, CancellationToken ct)
+        string neighborhoodName, NeighborhoodScoreResult score, string locale, CancellationToken ct)
     {
         if (!score.HasAnyData)
         {
@@ -76,11 +92,12 @@ public sealed class DistrictSummaryService(IDistrictAssistantAiClient aiClient) 
         }
 
         var userPrompt = BuildUserPrompt(neighborhoodName, score);
+        var systemInstruction = BuildSystemInstruction(AiLocale.NormalizeOrDefault(locale));
 
         string rawResponse;
         try
         {
-            rawResponse = await aiClient.GenerateAsync(SystemInstruction, userPrompt, ct);
+            rawResponse = await aiClient.GenerateAsync(systemInstruction, userPrompt, ct);
         }
         catch (AiAssistantNotConfiguredException)
         {

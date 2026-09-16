@@ -2,7 +2,10 @@ using SemtSkoru.Application.Assistant;
 
 namespace SemtSkoru.Api.Endpoints;
 
-public sealed record AssistantRequestDto(string Prompt);
+// Locale is nullable/optional here (unlike the query-string endpoints, which get "missing" for
+// free) because this is a POST body a caller might send without it at all - defaults to "tr" the
+// same way via SemtSkoru.Application.Localization.AiLocale.NormalizeOrDefault, see AssistantEndpoints.cs.
+public sealed record AssistantRequestDto(string Prompt, string? Locale = null);
 
 public sealed record AssistantRecommendationDto(
     string NeighborhoodId,

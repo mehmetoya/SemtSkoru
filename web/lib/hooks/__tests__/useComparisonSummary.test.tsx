@@ -19,7 +19,7 @@ describe("useComparisonSummary", () => {
     );
 
     const { result } = renderHook(
-      () => useComparisonSummary("kadikoy", "besiktas"),
+      () => useComparisonSummary("kadikoy", "besiktas", "tr"),
       { wrapper: createQueryWrapper() },
     );
 
@@ -29,7 +29,7 @@ describe("useComparisonSummary", () => {
       generatedAt: "2026-09-11T00:00:00Z",
     });
     expect(fetch).toHaveBeenCalledWith(
-      "http://localhost:5169/api/neighborhoods/compare/summary?a=kadikoy&b=besiktas",
+      "http://localhost:5169/api/neighborhoods/compare/summary?a=kadikoy&b=besiktas&locale=tr",
     );
   });
 
@@ -37,7 +37,7 @@ describe("useComparisonSummary", () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ summary: null }));
 
     const { result } = renderHook(
-      () => useComparisonSummary("kadikoy", "besiktas"),
+      () => useComparisonSummary("kadikoy", "besiktas", "tr"),
       { wrapper: createQueryWrapper() },
     );
 
@@ -46,10 +46,40 @@ describe("useComparisonSummary", () => {
   });
 
   it("does not fetch until both district ids are chosen", () => {
-    renderHook(() => useComparisonSummary("kadikoy", undefined), {
+    renderHook(() => useComparisonSummary("kadikoy", undefined, "tr"), {
       wrapper: createQueryWrapper(),
     });
 
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  // THE real edge case this queryKey design exists to prevent: a visitor switches the language
+  // toggle (a client-side route change, not a reload - see this hook's own remarks) while a
+  // cached "tr" result for the same two districts is still within providers.tsx's 5-minute
+  // staleTime. Without locale in the queryKey, React Query would keep serving that stale Turkish
+  // text under the new English UI instead of firing a fresh request.
+  it("fetches again - a fresh request, not the other locale's cache - when locale changes for the same pair", async () => {
+    vi.mocked(fetch).mockImplementation((input) => {
+      const url = String(input);
+      const text = url.includes("locale=en")
+        ? "Kadıköy stands out in air quality."
+        : "Kadıköy hava kalitesinde öne çıkıyor.";
+      return Promise.resolve(jsonResponse({ summary: { text, generatedAt: "2026-09-11T00:00:00Z" } }));
+    });
+
+    const { result, rerender } = renderHook(
+      ({ locale }: { locale: string }) => useComparisonSummary("kadikoy", "besiktas", locale),
+      { wrapper: createQueryWrapper(), initialProps: { locale: "tr" } },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.text).toBe("Kadıköy hava kalitesinde öne çıkıyor.");
+
+    rerender({ locale: "en" });
+
+    await waitFor(() => expect(result.current.data?.text).toBe("Kadıköy stands out in air quality."));
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:5169/api/neighborhoods/compare/summary?a=kadikoy&b=besiktas&locale=en",
+    );
   });
 });

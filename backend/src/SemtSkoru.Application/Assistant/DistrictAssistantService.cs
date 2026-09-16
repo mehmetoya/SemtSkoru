@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SemtSkoru.Application.Localization;
 using SemtSkoru.Application.Scoring;
 
 namespace SemtSkoru.Application.Assistant;
@@ -25,7 +26,7 @@ public sealed class DistrictAssistantService(
 
     private const int MaxRecommendations = 3;
 
-    private const string SystemInstruction =
+    private const string BaseSystemInstruction =
         """
         Sen SemtSkoru uygulamasının "AI Semt Asistanı" özelliğisin. SemtSkoru, İstanbul'un 39
         ilçesini yalnızca gerçek İBB (İstanbul Büyükşehir Belediyesi) açık verisinden hesaplanan
@@ -47,10 +48,26 @@ public sealed class DistrictAssistantService(
         5. Yanıtın SADECE aşağıdaki şemaya uyan geçerli bir JSON nesnesi olmalı. JSON dışında
            hiçbir açıklama, markdown veya kod bloğu ekleme:
            {"recommendations":[{"id":"<ilçe listesinden bir id>","reasoning":"<verilen skorlara
-           atıfta bulunan, 1-2 cümlelik Türkçe gerekçe>"}],"confidence":"high"|"low"}
+           atıfta bulunan, 1-2 cümlelik gerekçe>"}],"confidence":"high"|"low"}
         """;
 
-    public async Task<AssistantOutcome> GetRecommendationsAsync(string userQuery, CancellationToken ct)
+    // Only the free-text "reasoning" sentence changes with locale - every JSON key and every
+    // enum-like value ("id", "confidence": "high"/"low") must come back byte-for-byte as given,
+    // because ValidateAndGround below checks them with literal string equality against REAL data.
+    // If the model ever translated an id or "confidence" value, every response would silently
+    // fail that check and get dropped as unverifiable - see this class's own remarks. Appended as
+    // its own rule (not folded into the Turkish rule text above) so it's unmistakable and easy to
+    // audit independently of the (deliberately still-Turkish, developer-authored) rules above it.
+    private static string BuildSystemInstruction(string locale) =>
+        $$"""
+        {{BaseSystemInstruction}}
+        6. "reasoning" alanındaki serbest metni {{AiLocale.ToLanguageName(locale)}} dilinde yaz.
+           Bunun dışındaki TÜM JSON anahtarları ve değerleri ("id", "confidence" gibi) verildiği
+           gibi, DEĞİŞTİRMEDEN kalmalı - bunlar birer tanımlayıcı/sabit değerdir, çeviri konusu
+           değildir.
+        """;
+
+    public async Task<AssistantOutcome> GetRecommendationsAsync(string userQuery, string locale, CancellationToken ct)
     {
         var trimmedQuery = userQuery?.Trim() ?? "";
         if (trimmedQuery.Length == 0)
@@ -67,11 +84,12 @@ public sealed class DistrictAssistantService(
         var scores = await scoringService.GetAllScoresAsync(ct);
 
         var userPrompt = BuildUserPrompt(trimmedQuery, names, scores);
+        var systemInstruction = BuildSystemInstruction(AiLocale.NormalizeOrDefault(locale));
 
         string rawResponse;
         try
         {
-            rawResponse = await aiClient.GenerateAsync(SystemInstruction, userPrompt, ct);
+            rawResponse = await aiClient.GenerateAsync(systemInstruction, userPrompt, ct);
         }
         catch (AiAssistantNotConfiguredException)
         {

@@ -9,11 +9,14 @@ public interface IComparisonSummaryService
     /// own already-computed scores only (see NeighborhoodScoreResult) - never recomputes or fakes
     /// them. A single live call to the configured AI client (no caching, no persistence) - see
     /// SemtSkoru.Infrastructure.Comparisons.ComparisonSummaryOrchestrator for the layer that
-    /// caches this result keyed by the pair's canonical id + score signature, and only calls this
-    /// on a cache miss.
+    /// caches this result keyed by the pair's canonical id + locale + score signature, and only
+    /// calls this on a cache miss. The model's free-text "summary" is written in the given locale
+    /// ("tr" or "en" - see SemtSkoru.Application.Localization.AiLocale, which an
+    /// unrecognized/missing value normalizes to "tr" through); locale never affects grounding.
     /// </summary>
     Task<ComparisonSummaryOutcome> GenerateComparisonAsync(
         string neighborhoodNameA, NeighborhoodScoreResult scoreA,
         string neighborhoodNameB, NeighborhoodScoreResult scoreB,
+        string locale,
         CancellationToken ct);
 }

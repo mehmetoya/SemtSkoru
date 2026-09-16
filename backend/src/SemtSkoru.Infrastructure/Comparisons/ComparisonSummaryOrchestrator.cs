@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SemtSkoru.Application.Comparisons;
+using SemtSkoru.Application.Localization;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Domain;
 using SemtSkoru.Infrastructure.Persistence;
@@ -26,6 +27,13 @@ namespace SemtSkoru.Infrastructure.Comparisons;
 ///    RateLimiting/RateLimitingExtensions.cs), not a separate one, since this app's whole Gemini
 ///    free-tier quota (150 requests/day, ~5/min) is shared across every AI feature at once.
 ///
+/// Locale ("tr"/"en" - see SemtSkoru.Application.Localization.AiLocale) is part of the cache key
+/// (ComparisonSummaryConfiguration's composite primary key), not just an input to the prompt: a
+/// pair already cached in Turkish is still a live Gemini call the first time it's requested in
+/// English, and vice versa - this is inherent to being generated on demand rather than the
+/// "doubling a fixed weekly batch" concern DistrictSummaryGenerationJob/ScoreSnapshotJob have,
+/// since it only costs anything extra for pairs actually viewed in both locales.
+///
 /// A generation failure of ANY kind (no key configured, Gemini down/rate-limited/timed out, or an
 /// unusable model response) never throws and never persists a placeholder - it returns null, and
 /// the caller is expected to simply omit the AI summary from the response, exactly like
@@ -39,20 +47,25 @@ public sealed class ComparisonSummaryOrchestrator(
     public async Task<ComparisonSummary?> GetOrGenerateAsync(
         string neighborhoodNameA, NeighborhoodScoreResult scoreA,
         string neighborhoodNameB, NeighborhoodScoreResult scoreB,
+        string locale,
         CancellationToken ct)
     {
         var (idLo, nameLo, scoreLo, idHi, nameHi, scoreHi) =
             Canonicalize(neighborhoodNameA, scoreA, neighborhoodNameB, scoreB);
+        var normalizedLocale = AiLocale.NormalizeOrDefault(locale);
 
         var signature = ComparisonSummarySignature.Compute(scoreLo, scoreHi);
 
-        var existing = await db.ComparisonSummaries.FindAsync([idLo, idHi], ct);
+        // Positional lookup against ComparisonSummaryConfiguration's composite key, declared in
+        // the exact same order (NeighborhoodIdA, NeighborhoodIdB, Locale) - see that
+        // configuration's remarks for why the array order below must match it exactly.
+        var existing = await db.ComparisonSummaries.FindAsync([idLo, idHi, normalizedLocale], ct);
         if (existing is not null && existing.ScoreSignature == signature)
         {
-            return existing; // cache hit: neither district's scores changed since this was written.
+            return existing; // cache hit: neither district's scores changed since this (pair, locale) was written.
         }
 
-        var outcome = await summaryService.GenerateComparisonAsync(nameLo, scoreLo, nameHi, scoreHi, ct);
+        var outcome = await summaryService.GenerateComparisonAsync(nameLo, scoreLo, nameHi, scoreHi, normalizedLocale, ct);
         if (outcome.Kind != ComparisonSummaryOutcomeKind.Ok)
         {
             // Deliberately does NOT fall back to a stale `existing` row here even though one may
@@ -72,6 +85,7 @@ public sealed class ComparisonSummaryOrchestrator(
             {
                 NeighborhoodIdA = idLo,
                 NeighborhoodIdB = idHi,
+                Locale = normalizedLocale,
                 SummaryText = outcome.SummaryText!,
                 GeneratedAt = now,
                 ScoreSignature = signature,

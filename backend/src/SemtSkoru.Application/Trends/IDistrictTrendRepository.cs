@@ -11,5 +11,8 @@ namespace SemtSkoru.Application.Trends;
 /// </summary>
 public interface IDistrictTrendRepository
 {
-    Task<DistrictTrendSummary?> GetAsync(string neighborhoodId, CancellationToken ct);
+    /// <summary>Reads the cached trend summary for this (district, locale) pair - "tr"/"en", see
+    /// SemtSkoru.Application.Localization.AiLocale. Mirrors IDistrictSummaryRepository.GetAsync's
+    /// own locale-scoping exactly: never falls back to the other locale's row.</summary>
+    Task<DistrictTrendSummary?> GetAsync(string neighborhoodId, string locale, CancellationToken ct);
 }

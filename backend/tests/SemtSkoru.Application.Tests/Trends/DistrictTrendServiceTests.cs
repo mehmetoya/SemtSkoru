@@ -8,7 +8,10 @@ namespace SemtSkoru.Application.Tests.Trends;
 // cites is one of the real, already-computed deltas it was given, with the real direction of
 // that delta" - and separately, "never even ask the model anything when there's nothing real to
 // compare" (the cold-start-shaped case: an empty delta list). These tests prove both boundaries
-// hold even when the model misbehaves, not just that they should in theory.
+// hold even when the model misbehaves, not just that they should in theory. Locale ("tr"/"en" -
+// see AiLocale) only ever changes the free-text "summary" the model wrote - the
+// grounding/validation logic below has no locale-specific branch and this file proves that stays
+// true for both supported locales.
 public class DistrictTrendServiceTests
 {
     private static readonly DimensionDelta ParkingIncrease = new("parking", 45, 67);
@@ -26,7 +29,7 @@ public class DistrictTrendServiceTests
         // guarantee holds and must degrade the same honest way if it ever were called like this.
         var aiClient = new FakeAiClient { Response = "irrelevant" };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Üsküdar", [], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Üsküdar", [], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.NoMeaningfulChange, outcome.Kind);
         Assert.Null(outcome.SummaryText);
@@ -44,10 +47,30 @@ public class DistrictTrendServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
         Assert.Equal("Otopark skoru belirgin şekilde arttı.", outcome.SummaryText);
+    }
+
+    // Mirrors the test above but for the "en" locale with English free-text "summary" - proves
+    // the hallucination gate (dimension must be one of the given deltas, direction must match the
+    // real sign) doesn't care what language the free text came back in.
+    [Fact]
+    public async Task GenerateTrendAsync_returns_Ok_with_a_valid_grounded_change_in_english_locale()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"changes":[{"dimension":"parking","direction":"increased"}],
+                 "summary":"The parking score increased significantly."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "en", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal("The parking score increased significantly.", outcome.SummaryText);
     }
 
     [Fact]
@@ -64,7 +87,7 @@ public class DistrictTrendServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
         Assert.Equal("Otopark skoru belirgin şekilde arttı.", outcome.SummaryText);
@@ -84,7 +107,7 @@ public class DistrictTrendServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
         Assert.Null(outcome.SummaryText);
@@ -103,7 +126,7 @@ public class DistrictTrendServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -123,7 +146,7 @@ public class DistrictTrendServiceTests
         };
 
         var outcome = await CreateService(aiClient)
-            .GenerateTrendAsync("Kadıköy", [ParkingIncrease, AirQualityDecrease], CancellationToken.None);
+            .GenerateTrendAsync("Kadıköy", [ParkingIncrease, AirQualityDecrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
         Assert.Equal("Otopark skoru arttı, hava kalitesi skoru azaldı.", outcome.SummaryText);
@@ -137,7 +160,7 @@ public class DistrictTrendServiceTests
             Response = """{"changes":[],"summary":"Bir şeyler değişti."}""",
         };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -150,7 +173,7 @@ public class DistrictTrendServiceTests
             Response = """{"changes":[{"dimension":"parking","direction":"increased"}],"summary":""}""",
         };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -163,7 +186,7 @@ public class DistrictTrendServiceTests
             Response = $$"""{"changes":[{"dimension":"parking","direction":"increased"}],"summary":"{{new string('a', 500)}}"}""",
         };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -173,7 +196,7 @@ public class DistrictTrendServiceTests
     {
         var aiClient = new FakeAiClient { Response = "Bu bir JSON değil, düz metin." };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -186,7 +209,7 @@ public class DistrictTrendServiceTests
             Response = "```json\n{\"changes\":[{\"dimension\":\"parking\",\"direction\":\"increased\"}],\"summary\":\"x\"}\n```",
         };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
     }
@@ -196,7 +219,7 @@ public class DistrictTrendServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantNotConfiguredException() };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.NotConfigured, outcome.Kind);
     }
@@ -206,7 +229,7 @@ public class DistrictTrendServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantRateLimitedException() };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.RateLimited, outcome.Kind);
     }
@@ -216,7 +239,7 @@ public class DistrictTrendServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantUnavailableException("network down") };
 
-        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.Equal(DistrictTrendOutcomeKind.Unavailable, outcome.Kind);
     }
@@ -229,7 +252,7 @@ public class DistrictTrendServiceTests
             Response = """{"changes":[{"dimension":"parking","direction":"increased"}],"summary":"x"}""",
         };
 
-        await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], CancellationToken.None);
+        await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
 
         Assert.NotNull(aiClient.CapturedUserPrompt);
         Assert.Contains("\"previousScore\":45", aiClient.CapturedUserPrompt);
@@ -240,16 +263,37 @@ public class DistrictTrendServiceTests
         Assert.DoesNotContain("reason", aiClient.CapturedUserPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
+    // Proves the locale actually reaches the model: the system instruction embeds a
+    // human-readable target-language name (see AiLocale.ToLanguageName), not a raw locale code,
+    // and it changes with the requested locale.
+    [Theory]
+    [InlineData("tr", "Türkçe")]
+    [InlineData("en", "English")]
+    [InlineData("es", "Türkçe")] // unrecognized - normalizes to the "tr" default, see AiLocale.
+    [InlineData(null, "Türkçe")] // missing - same default.
+    public async Task GenerateTrendAsync_embeds_the_target_language_name_for_the_requested_locale(
+        string? locale, string expectedLanguageName)
+    {
+        var aiClient = new FakeAiClient { Response = """{"changes":[{"dimension":"parking","direction":"increased"}],"summary":"x"}""" };
+
+        await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], locale!, CancellationToken.None);
+
+        Assert.NotNull(aiClient.CapturedSystemInstruction);
+        Assert.Contains(expectedLanguageName, aiClient.CapturedSystemInstruction);
+    }
+
     private sealed class FakeAiClient : IDistrictAssistantAiClient
     {
         public string Response { get; set; } = "";
         public Exception? ExceptionToThrow { get; set; }
         public bool WasCalled { get; private set; }
         public string? CapturedUserPrompt { get; private set; }
+        public string? CapturedSystemInstruction { get; private set; }
 
         public Task<string> GenerateAsync(string systemInstruction, string userPrompt, CancellationToken ct)
         {
             WasCalled = true;
+            CapturedSystemInstruction = systemInstruction;
             CapturedUserPrompt = userPrompt;
             return ExceptionToThrow is not null
                 ? Task.FromException<string>(ExceptionToThrow)

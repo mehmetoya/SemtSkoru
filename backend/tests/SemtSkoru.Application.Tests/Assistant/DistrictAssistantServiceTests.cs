@@ -8,7 +8,10 @@ namespace SemtSkoru.Application.Tests.Assistant;
 // ("never fabricate or estimate data") extends to the AI assistant as "never let the model's
 // text past validation unless every district id it names is one of the real ones we gave it."
 // These tests prove that boundary holds even when the model misbehaves - hallucinated ids,
-// invalid JSON, too many recommendations, duplicates - not just that it should in theory.
+// invalid JSON, too many recommendations, duplicates - not just that it should in theory. Locale
+// ("tr"/"en" - see AiLocale) only ever changes the free-text "reasoning" the model wrote - the
+// grounding/validation logic below has no locale-specific branch and this file proves that stays
+// true for both supported locales, not just the original Turkish-only behavior.
 public class DistrictAssistantServiceTests
 {
     private static readonly DimensionScore FullDimension = new(new Score(83), DataFreshnessStatus.Fresh, "Test Source", DateTimeOffset.UtcNow);
@@ -43,7 +46,7 @@ public class DistrictAssistantServiceTests
     {
         var aiClient = new FakeAiClient { Response = "irrelevant" };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync(query, CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync(query, "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.InvalidRequest, outcome.Kind);
         Assert.Empty(outcome.Recommendations);
@@ -66,11 +69,36 @@ public class DistrictAssistantServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("Hava kalitesi önemli", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("Hava kalitesi önemli", "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.Ok, outcome.Kind);
         var recommendation = Assert.Single(outcome.Recommendations);
         Assert.Equal("kadikoy", recommendation.NeighborhoodId);
+        Assert.DoesNotContain(outcome.Recommendations, r => r.NeighborhoodId == "hayaliilce");
+    }
+
+    // Mirrors the test above exactly, but for the "en" locale and English free-text "reasoning" -
+    // proves the hallucination guard (checking "id" against the REAL id set) is completely
+    // unaffected by which locale the free-text was written in.
+    [Fact]
+    public async Task GetRecommendationsAsync_drops_a_hallucinated_district_id_and_keeps_the_real_one_in_english_locale()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"recommendations":[
+                    {"id":"kadikoy","reasoning":"Air quality score is high at 83."},
+                    {"id":"hayaliilce","reasoning":"This district is not real."}
+                ],"confidence":"high"}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("Air quality matters", "en", CancellationToken.None);
+
+        Assert.Equal(AssistantOutcomeKind.Ok, outcome.Kind);
+        var recommendation = Assert.Single(outcome.Recommendations);
+        Assert.Equal("kadikoy", recommendation.NeighborhoodId);
+        Assert.Equal("Air quality score is high at 83.", recommendation.Reasoning);
         Assert.DoesNotContain(outcome.Recommendations, r => r.NeighborhoodId == "hayaliilce");
     }
 
@@ -82,7 +110,7 @@ public class DistrictAssistantServiceTests
             Response = """{"recommendations":[{"id":"uydurma1","reasoning":"x"},{"id":"uydurma2","reasoning":"y"}]}""",
         };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.NoUsableRecommendations, outcome.Kind);
         Assert.Empty(outcome.Recommendations);
@@ -93,7 +121,7 @@ public class DistrictAssistantServiceTests
     {
         var aiClient = new FakeAiClient { Response = "Bu bir JSON değil, düz metin." };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.NoUsableRecommendations, outcome.Kind);
     }
@@ -106,7 +134,7 @@ public class DistrictAssistantServiceTests
             Response = "```json\n{\"recommendations\":[{\"id\":\"kadikoy\",\"reasoning\":\"Skoru yüksek.\"}]}\n```",
         };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.Ok, outcome.Kind);
         Assert.Single(outcome.Recommendations);
@@ -127,7 +155,7 @@ public class DistrictAssistantServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.Ok, outcome.Kind);
         Assert.Equal(3, outcome.Recommendations.Count);
@@ -147,7 +175,7 @@ public class DistrictAssistantServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
 
         var recommendation = Assert.Single(outcome.Recommendations);
         Assert.Equal("ilk", recommendation.Reasoning);
@@ -158,7 +186,7 @@ public class DistrictAssistantServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantNotConfiguredException() };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.NotConfigured, outcome.Kind);
     }
@@ -168,7 +196,7 @@ public class DistrictAssistantServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantRateLimitedException() };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.RateLimited, outcome.Kind);
     }
@@ -178,7 +206,7 @@ public class DistrictAssistantServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantUnavailableException("network down") };
 
-        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", CancellationToken.None);
+        var outcome = await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
 
         Assert.Equal(AssistantOutcomeKind.Unavailable, outcome.Kind);
     }
@@ -188,7 +216,7 @@ public class DistrictAssistantServiceTests
     {
         var aiClient = new FakeAiClient { Response = """{"recommendations":[{"id":"kadikoy","reasoning":"x"}]}""" };
 
-        await CreateService(aiClient).GetRecommendationsAsync("Çocuklu bir aileyiz, yeşil alan önemli", CancellationToken.None);
+        await CreateService(aiClient).GetRecommendationsAsync("Çocuklu bir aileyiz, yeşil alan önemli", "tr", CancellationToken.None);
 
         Assert.NotNull(aiClient.CapturedUserPrompt);
         // The real score (83) for a fully-scored district must be present verbatim...
@@ -207,9 +235,28 @@ public class DistrictAssistantServiceTests
         var aiClient = new FakeAiClient { Response = """{"recommendations":[{"id":"kadikoy","reasoning":"x"}]}""" };
         var longQuery = new string('a', 650) + "UNIQUE_TAIL_MARKER" + new string('b', 500);
 
-        await CreateService(aiClient).GetRecommendationsAsync(longQuery, CancellationToken.None);
+        await CreateService(aiClient).GetRecommendationsAsync(longQuery, "tr", CancellationToken.None);
 
         Assert.DoesNotContain("UNIQUE_TAIL_MARKER", aiClient.CapturedUserPrompt);
+    }
+
+    // Proves the locale actually reaches the model: the system instruction embeds a
+    // human-readable target-language name (see AiLocale.ToLanguageName), not a raw locale code,
+    // and it changes with the requested locale.
+    [Theory]
+    [InlineData("tr", "Türkçe")]
+    [InlineData("en", "English")]
+    [InlineData("fr", "Türkçe")] // unrecognized - normalizes to the "tr" default, see AiLocale.
+    [InlineData(null, "Türkçe")] // missing - same default.
+    public async Task GetRecommendationsAsync_embeds_the_target_language_name_for_the_requested_locale(
+        string? locale, string expectedLanguageName)
+    {
+        var aiClient = new FakeAiClient { Response = """{"recommendations":[]}""" };
+
+        await CreateService(aiClient).GetRecommendationsAsync("bir istek", locale!, CancellationToken.None);
+
+        Assert.NotNull(aiClient.CapturedSystemInstruction);
+        Assert.Contains(expectedLanguageName, aiClient.CapturedSystemInstruction);
     }
 
     private sealed class FakeAiClient : IDistrictAssistantAiClient

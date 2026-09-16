@@ -10,7 +10,10 @@ namespace SemtSkoru.Application.Tests.Comparisons;
 // model misbehaves. This feature has one MORE way to misbehave than the single-district one does:
 // it can claim district A beats district B at a dimension when the real numbers say otherwise (or
 // say the same thing). These tests prove that specific claim is independently verified against
-// the real scores, not just trusted because it's well-formed.
+// the real scores, not just trusted because it's well-formed. Locale ("tr"/"en" - see AiLocale)
+// only ever changes the free-text "summary" the model wrote - the grounding/validation logic
+// below has no locale-specific branch and this file proves that stays true for both supported
+// locales.
 public class ComparisonSummaryServiceTests
 {
     private static DimensionScore Scored(int value) =>
@@ -36,7 +39,7 @@ public class ComparisonSummaryServiceTests
         var aiClient = new FakeAiClient { Response = "irrelevant" };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Boş A", Unscored("bosA"), "Boş B", Unscored("bosB"), CancellationToken.None);
+            "Boş A", Unscored("bosA"), "Boş B", Unscored("bosB"), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.InsufficientData, outcome.Kind);
         Assert.Null(outcome.SummaryText);
@@ -56,10 +59,31 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.Ok, outcome.Kind);
         Assert.Equal("Kadıköy hava kalitesinde öne çıkıyor.", outcome.SummaryText);
+    }
+
+    // Mirrors the test above but for the "en" locale with English free-text "summary" - proves
+    // the "stronger district" verification against real numbers doesn't care what language the
+    // free text came back in.
+    [Fact]
+    public async Task GenerateComparisonAsync_returns_Ok_with_a_valid_grounded_highlight_in_english_locale()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"highlights":[{"dimension":"airQuality","strongerDistrict":"a"}],
+                 "summary":"Kadıköy stands out in air quality."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateComparisonAsync(
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "en", CancellationToken.None);
+
+        Assert.Equal(ComparisonSummaryOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal("Kadıköy stands out in air quality.", outcome.SummaryText);
     }
 
     [Fact]
@@ -77,7 +101,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.Ok, outcome.Kind);
     }
@@ -98,7 +122,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
         Assert.Null(outcome.SummaryText);
@@ -117,7 +141,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -135,7 +159,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -149,7 +173,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -163,7 +187,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -177,7 +201,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -191,7 +215,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -205,7 +229,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -216,7 +240,7 @@ public class ComparisonSummaryServiceTests
         var aiClient = new FakeAiClient { Response = "Bu bir JSON değil, düz metin." };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -230,7 +254,7 @@ public class ComparisonSummaryServiceTests
         };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.Ok, outcome.Kind);
     }
@@ -241,7 +265,7 @@ public class ComparisonSummaryServiceTests
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantNotConfiguredException() };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.NotConfigured, outcome.Kind);
     }
@@ -252,7 +276,7 @@ public class ComparisonSummaryServiceTests
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantRateLimitedException() };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.RateLimited, outcome.Kind);
     }
@@ -263,7 +287,7 @@ public class ComparisonSummaryServiceTests
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantUnavailableException("network down") };
 
         var outcome = await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.Equal(ComparisonSummaryOutcomeKind.Unavailable, outcome.Kind);
     }
@@ -277,7 +301,7 @@ public class ComparisonSummaryServiceTests
         };
 
         await CreateService(aiClient).GenerateComparisonAsync(
-            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), CancellationToken.None);
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
 
         Assert.NotNull(aiClient.CapturedUserPrompt);
         // The real scores (90 and 30) must be present verbatim...
@@ -286,6 +310,26 @@ public class ComparisonSummaryServiceTests
         // ...and the missing green space dimension must show up as an honest null for both
         // districts, never a made-up number - the same "Veri yok" boundary as the rest of the app.
         Assert.Contains("\"greenSpace\":null", aiClient.CapturedUserPrompt);
+    }
+
+    // Proves the locale actually reaches the model: the system instruction embeds a
+    // human-readable target-language name (see AiLocale.ToLanguageName), not a raw locale code,
+    // and it changes with the requested locale.
+    [Theory]
+    [InlineData("tr", "Türkçe")]
+    [InlineData("en", "English")]
+    [InlineData("it", "Türkçe")] // unrecognized - normalizes to the "tr" default, see AiLocale.
+    [InlineData(null, "Türkçe")] // missing - same default.
+    public async Task GenerateComparisonAsync_embeds_the_target_language_name_for_the_requested_locale(
+        string? locale, string expectedLanguageName)
+    {
+        var aiClient = new FakeAiClient { Response = """{"highlights":[],"summary":""}""" };
+
+        await CreateService(aiClient).GenerateComparisonAsync(
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), locale!, CancellationToken.None);
+
+        Assert.NotNull(aiClient.CapturedSystemInstruction);
+        Assert.Contains(expectedLanguageName, aiClient.CapturedSystemInstruction);
     }
 
     private sealed class FakeAiClient : IDistrictAssistantAiClient

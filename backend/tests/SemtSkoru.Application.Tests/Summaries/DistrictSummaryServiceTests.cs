@@ -6,11 +6,13 @@ using SemtSkoru.Domain;
 namespace SemtSkoru.Application.Tests.Summaries;
 
 // The most important test file in this feature (mirrors DistrictAssistantServiceTests.cs's own
-// role for the assistant): SemtSkoru's one non-negotiable principle ("never fabricate or estimate
-// data") extends to this AI summary as "never let the model's text past validation unless every
-// dimension it cites is real AND actually has data for this district." These tests prove that
-// boundary holds even when the model misbehaves - an invented dimension key, a dimension with no
-// data, invalid JSON - not just that it should in theory.
+// role for the assistant): SemtSkoru's "never fabricate or estimate data" principle extends to
+// this AI summary as "never let the model's text past validation unless every dimension it cites
+// is real AND actually has data for this district." These tests prove that boundary holds even
+// when the model misbehaves - an invented dimension key, a dimension with no data, invalid JSON -
+// not just that it should in theory. Locale ("tr"/"en" - see AiLocale) only ever changes the
+// free-text "summary" the model wrote - the grounding/validation logic below has no
+// locale-specific branch and this file proves that stays true for both supported locales.
 public class DistrictSummaryServiceTests
 {
     private static readonly DimensionScore Full = new(new Score(83), DataFreshnessStatus.Fresh, "Test Source", DateTimeOffset.UtcNow);
@@ -34,7 +36,7 @@ public class DistrictSummaryServiceTests
     {
         var aiClient = new FakeAiClient { Response = "irrelevant" };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Üsküdar", Unscored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Üsküdar", Unscored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.InsufficientData, outcome.Kind);
         Assert.Null(outcome.SummaryText);
@@ -52,10 +54,30 @@ public class DistrictSummaryServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.Ok, outcome.Kind);
         Assert.Equal("Bu ilçe hava kalitesinde güçlü.", outcome.SummaryText);
+    }
+
+    // Mirrors the test above but for the "en" locale with English free-text "summary" - proves
+    // the hallucination gate (dimension key must be real AND have data) doesn't care what
+    // language the free text came back in.
+    [Fact]
+    public async Task GenerateSummaryAsync_returns_Ok_with_a_valid_grounded_highlight_in_english_locale()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"highlights":[{"dimension":"airQuality","strength":"strong"}],
+                 "summary":"This district is strong in air quality."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "en", CancellationToken.None);
+
+        Assert.Equal(DistrictSummaryOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal("This district is strong in air quality.", outcome.SummaryText);
     }
 
     [Fact]
@@ -75,7 +97,7 @@ public class DistrictSummaryServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.Ok, outcome.Kind);
         Assert.Equal("Bu ilçe hava kalitesinde güçlü.", outcome.SummaryText);
@@ -96,7 +118,7 @@ public class DistrictSummaryServiceTests
                 """,
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Beşiktaş", PartiallyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Beşiktaş", PartiallyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
         Assert.Null(outcome.SummaryText);
@@ -110,7 +132,7 @@ public class DistrictSummaryServiceTests
             Response = """{"highlights":[{"dimension":"uydurma1","strength":"strong"}],"summary":"x"}""",
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -123,7 +145,7 @@ public class DistrictSummaryServiceTests
             Response = """{"highlights":[],"summary":"Bu ilçe hakkında bir şeyler."}""",
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -136,7 +158,7 @@ public class DistrictSummaryServiceTests
             Response = """{"highlights":[{"dimension":"airQuality","strength":"strong"}],"summary":""}""",
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -149,7 +171,7 @@ public class DistrictSummaryServiceTests
             Response = $$"""{"highlights":[{"dimension":"airQuality","strength":"strong"}],"summary":"{{new string('a', 500)}}"}""",
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -162,7 +184,7 @@ public class DistrictSummaryServiceTests
             Response = """{"highlights":[{"dimension":"airQuality","strength":"aşırı güçlü"}],"summary":"x"}""",
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -172,7 +194,7 @@ public class DistrictSummaryServiceTests
     {
         var aiClient = new FakeAiClient { Response = "Bu bir JSON değil, düz metin." };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
     }
@@ -185,7 +207,7 @@ public class DistrictSummaryServiceTests
             Response = "```json\n{\"highlights\":[{\"dimension\":\"airQuality\",\"strength\":\"strong\"}],\"summary\":\"x\"}\n```",
         };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.Ok, outcome.Kind);
     }
@@ -195,7 +217,7 @@ public class DistrictSummaryServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantNotConfiguredException() };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.NotConfigured, outcome.Kind);
     }
@@ -205,7 +227,7 @@ public class DistrictSummaryServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantRateLimitedException() };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.RateLimited, outcome.Kind);
     }
@@ -215,7 +237,7 @@ public class DistrictSummaryServiceTests
     {
         var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantUnavailableException("network down") };
 
-        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), CancellationToken.None);
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), "tr", CancellationToken.None);
 
         Assert.Equal(DistrictSummaryOutcomeKind.Unavailable, outcome.Kind);
     }
@@ -228,7 +250,7 @@ public class DistrictSummaryServiceTests
             Response = """{"highlights":[{"dimension":"airQuality","strength":"strong"}],"summary":"x"}""",
         };
 
-        await CreateService(aiClient).GenerateSummaryAsync("Beşiktaş", PartiallyScored(), CancellationToken.None);
+        await CreateService(aiClient).GenerateSummaryAsync("Beşiktaş", PartiallyScored(), "tr", CancellationToken.None);
 
         Assert.NotNull(aiClient.CapturedUserPrompt);
         // The real score (83) for a fully-scored dimension must be present verbatim...
@@ -236,6 +258,25 @@ public class DistrictSummaryServiceTests
         // ...and the missing green space dimension must show up as an honest null, never a
         // made-up number - the same "Veri yok" boundary as the rest of the app.
         Assert.Contains("\"greenSpace\":null", aiClient.CapturedUserPrompt);
+    }
+
+    // Proves the locale actually reaches the model: the system instruction embeds a
+    // human-readable target-language name (see AiLocale.ToLanguageName), not a raw locale code,
+    // and it changes with the requested locale.
+    [Theory]
+    [InlineData("tr", "Türkçe")]
+    [InlineData("en", "English")]
+    [InlineData("de", "Türkçe")] // unrecognized - normalizes to the "tr" default, see AiLocale.
+    [InlineData(null, "Türkçe")] // missing - same default.
+    public async Task GenerateSummaryAsync_embeds_the_target_language_name_for_the_requested_locale(
+        string? locale, string expectedLanguageName)
+    {
+        var aiClient = new FakeAiClient { Response = """{"highlights":[],"summary":""}""" };
+
+        await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), locale!, CancellationToken.None);
+
+        Assert.NotNull(aiClient.CapturedSystemInstruction);
+        Assert.Contains(expectedLanguageName, aiClient.CapturedSystemInstruction);
     }
 
     private sealed class FakeAiClient : IDistrictAssistantAiClient

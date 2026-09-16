@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SemtSkoru.Application.Assistant;
+using SemtSkoru.Application.Localization;
 using SemtSkoru.Application.Scoring;
 
 namespace SemtSkoru.Application.Comparisons;
@@ -35,13 +36,13 @@ public sealed class ComparisonSummaryService(IDistrictAssistantAiClient aiClient
         "airQuality", "greenSpace", "transportation", "parking", "healthAccess", "transitAccess",
     };
 
-    private const string SystemInstruction =
+    private const string BaseSystemInstruction =
         """
         Sen SemtSkoru uygulamasının "İlçe Karşılaştırma Özeti" AI özelliğisin. SemtSkoru,
         İstanbul'un 39 ilçesini yalnızca gerçek İBB (İstanbul Büyükşehir Belediyesi) açık
         verisinden hesaplanan skorlarla karşılaştıran bir uygulamadır. Görevin, sana JSON olarak
         verilen İKİ ilçenin ("a" ve "b") GERÇEK ve GÜNCEL 6 boyut skorunu (0-100) karşılaştırıp,
-        hangi ilçenin hangi boyut(lar)da öne çıktığını kısa bir Türkçe cümleyle özetlemek.
+        hangi ilçenin hangi boyut(lar)da öne çıktığını kısa bir cümleyle özetlemek.
 
         KESİNLİKLE UYULMASI GEREKEN KURALLAR:
         1. SADECE sana verilen 6 boyuttan ("airQuality","greenSpace","transportation","parking",
@@ -63,12 +64,30 @@ public sealed class ComparisonSummaryService(IDistrictAssistantAiClient aiClient
         6. Yanıtın SADECE aşağıdaki şemaya uyan geçerli bir JSON nesnesi olmalı. JSON dışında
            hiçbir açıklama, markdown veya kod bloğu ekleme:
            {"highlights":[{"dimension":"<6 boyuttan biri>","strongerDistrict":"a"|"b"}],
-            "summary":"<en fazla 2 cümlelik Türkçe özet, veya highlights boşsa boş string>"}
+            "summary":"<en fazla 2 cümlelik özet, veya highlights boşsa boş string>"}
+        """;
+
+    // Only the free-text "summary" sentence changes with locale - every JSON key and every
+    // enum-like value (dimension names, "strongerDistrict": "a"/"b") must come back byte-for-byte
+    // as given, and the real district "name" values must never be translated (a Turkish place
+    // name has no English equivalent) - ValidateAndGround below checks the dimension/
+    // strongerDistrict fields with literal string equality against the REAL numbers this request
+    // already fetched. If the model ever translated a dimension name or a "strongerDistrict"
+    // value, every response would silently fail that check and get dropped as unverifiable - see
+    // this class's own remarks.
+    private static string BuildSystemInstruction(string locale) =>
+        $$"""
+        {{BaseSystemInstruction}}
+        7. "summary" alanındaki serbest metni {{AiLocale.ToLanguageName(locale)}} dilinde yaz.
+           Bunun dışındaki TÜM JSON anahtarları ve değerleri (dimension adları, "strongerDistrict"
+           gibi sabit değerler, ilçe adları) verildiği gibi, DEĞİŞTİRMEDEN kalmalı - bunlar birer
+           tanımlayıcı/sabit değer veya özel isimdir, çeviri konusu değildir.
         """;
 
     public async Task<ComparisonSummaryOutcome> GenerateComparisonAsync(
         string neighborhoodNameA, NeighborhoodScoreResult scoreA,
         string neighborhoodNameB, NeighborhoodScoreResult scoreB,
+        string locale,
         CancellationToken ct)
     {
         var valuesA = DimensionValues(scoreA);
@@ -83,11 +102,12 @@ public sealed class ComparisonSummaryService(IDistrictAssistantAiClient aiClient
         }
 
         var userPrompt = BuildUserPrompt(neighborhoodNameA, scoreA, neighborhoodNameB, scoreB);
+        var systemInstruction = BuildSystemInstruction(AiLocale.NormalizeOrDefault(locale));
 
         string rawResponse;
         try
         {
-            rawResponse = await aiClient.GenerateAsync(SystemInstruction, userPrompt, ct);
+            rawResponse = await aiClient.GenerateAsync(systemInstruction, userPrompt, ct);
         }
         catch (AiAssistantNotConfiguredException)
         {

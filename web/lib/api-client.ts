@@ -29,9 +29,14 @@ export function fetchNeighborhoodNames(): Promise<NeighborhoodName[]> {
   return getJson<NeighborhoodName[]>("/api/neighborhoods/names");
 }
 
-export function fetchNeighborhoodScore(id: string): Promise<NeighborhoodScore> {
+// `locale` ("tr"/"en") scopes the cached AI district summary/trend embedded in the response (see
+// backend/.../DistrictSummaryRepository, DistrictTrendRepository) - every OTHER field here is
+// locale-agnostic (the real numeric scores don't change per language), but threading it through
+// on every call keeps this one fetch honest about which locale's AI prose it can return.
+export function fetchNeighborhoodScore(id: string, locale: string): Promise<NeighborhoodScore> {
+  const params = new URLSearchParams({ locale });
   return getJson<NeighborhoodScore>(
-    `/api/neighborhoods/${encodeURIComponent(id)}/score`,
+    `/api/neighborhoods/${encodeURIComponent(id)}/score?${params.toString()}`,
   );
 }
 
@@ -47,12 +52,16 @@ export function fetchNeighborhoodComparison(
 
 // A separate request from fetchNeighborhoodComparison above by design - see
 // useComparisonSummary.ts. Unwraps the `{ summary }` envelope here so callers just get the
-// summary itself (or null) rather than repeating that unwrap at every call site.
+// summary itself (or null) rather than repeating that unwrap at every call site. `locale`
+// ("tr"/"en") is part of what's cached server-side per pair (see
+// backend/.../ComparisonSummaryOrchestrator) - the first request for a given pair in a given
+// locale may cost a live Gemini call even if the other locale is already cached.
 export async function fetchComparisonSummary(
   a: string,
   b: string,
+  locale: string,
 ): Promise<ComparisonSummary | null> {
-  const params = new URLSearchParams({ a, b });
+  const params = new URLSearchParams({ a, b, locale });
   const { summary } = await getJson<{ summary: ComparisonSummary | null }>(
     `/api/neighborhoods/compare/summary?${params.toString()}`,
   );
@@ -65,11 +74,14 @@ export async function fetchComparisonSummary(
 // Turkish `message` explaining why, so the caller can render that honestly instead of a generic
 // "request failed". Only a response that isn't valid JSON at all should surface as a thrown
 // error (network failure, or something between the browser and the API neither side produced).
-export async function fetchAssistantRecommendations(prompt: string): Promise<AssistantResponse> {
+export async function fetchAssistantRecommendations(
+  prompt: string,
+  locale: string,
+): Promise<AssistantResponse> {
   const response = await fetch(`${API_BASE_URL}/api/asistan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, locale }),
   });
 
   return (await response.json()) as AssistantResponse;

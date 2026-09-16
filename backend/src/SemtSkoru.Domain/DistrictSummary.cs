@@ -15,9 +15,17 @@ public sealed class DistrictSummary
 {
     public required string NeighborhoodId { get; init; }
 
-    /// <summary>The 1-2 sentence Turkish "standout traits" summary text - see
-    /// DistrictSummaryService's SystemInstruction for the exact grounding rules the model must
-    /// follow to produce this (never a fact beyond the district's own 6 dimension scores).</summary>
+    /// <summary>"tr" or "en" (see SemtSkoru.Application.Localization.AiLocale) - which locale
+    /// SummaryText's prose is written in. Part of this row's key alongside NeighborhoodId: each
+    /// district has (at most) one row per supported locale, written by the same
+    /// DistrictSummaryGenerationJob run iterating both.</summary>
+    public required string Locale { get; init; }
+
+    /// <summary>The 1-2 sentence "standout traits" summary text, in whichever locale
+    /// <see cref="Locale"/> says - see DistrictSummaryService's SystemInstruction for the exact
+    /// grounding rules the model must follow to produce this (never a fact beyond the district's
+    /// own 6 dimension scores) - the locale only changes this free-text prose, never the
+    /// grounding.</summary>
     public required string SummaryText { get; set; }
 
     public required DateTimeOffset GeneratedAt { get; set; }

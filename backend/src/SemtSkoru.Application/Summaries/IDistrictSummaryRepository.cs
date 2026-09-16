@@ -10,5 +10,10 @@ namespace SemtSkoru.Application.Summaries;
 /// </summary>
 public interface IDistrictSummaryRepository
 {
-    Task<DistrictSummary?> GetAsync(string neighborhoodId, CancellationToken ct);
+    /// <summary>Reads the cached summary for this (district, locale) pair - "tr"/"en", see
+    /// SemtSkoru.Application.Localization.AiLocale. Never falls back to the other locale: an
+    /// "en" row genuinely not existing yet (e.g. the weekly job hasn't caught up since this app
+    /// added locale support) must read as null, not silently serve Turkish prose under English
+    /// UI chrome - that mismatch is exactly the bug locale-awareness exists to fix.</summary>
+    Task<DistrictSummary?> GetAsync(string neighborhoodId, string locale, CancellationToken ct);
 }

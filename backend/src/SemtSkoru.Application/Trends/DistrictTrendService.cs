@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SemtSkoru.Application.Assistant;
+using SemtSkoru.Application.Localization;
 
 namespace SemtSkoru.Application.Trends;
 
@@ -11,16 +12,16 @@ namespace SemtSkoru.Application.Trends;
 /// DistrictSummaryService's remarks for why one client abstraction is enough for every AI feature
 /// in this app) - rather than a third AI client abstraction.
 ///
-/// AI content in this app is generated in Turkish only, never per-locale (see
-/// DistrictSummaryService/DistrictAssistantService - neither takes a locale parameter either);
-/// this service follows that exact precedent rather than inventing bilingual generation for just
-/// this one feature. That is a deliberate quota decision, not an oversight: this app's entire AI
-/// surface shares ONE Gemini free-tier budget (150 requests/day - see
-/// RateLimiting/RateLimitingExtensions.cs and ScoreSnapshotJob's remarks), and generating this
-/// text twice per district (once per locale) would double this feature's real spend for no
-/// benefit other than completeness - the English site already reads Turkish AI prose for the
-/// existing "standout traits" summary today, and this feature stays consistent with that rather
-/// than being the one AI surface that behaves differently.
+/// Generates in the caller's requested locale ("tr" or "en" - see
+/// SemtSkoru.Application.Localization.AiLocale), matching every other AI feature in this app
+/// (DistrictSummaryService/DistrictAssistantService/ComparisonSummaryService all take the same
+/// locale parameter). This WAS Turkish-only by deliberate quota decision (see git history for the
+/// original reasoning: doubling ScoreSnapshotJob's worst-case Gemini spend per run), but that
+/// traded a real, visible UX inconsistency - English-locale visitors reading Turkish AI prose
+/// under translated English headings - for quota headroom this portfolio-scale app doesn't
+/// actually need day to day; see ScoreSnapshotJob's own remarks for the recomputed worst-case
+/// math (78 calls/run, ~52% of one day's shared 150-request budget) now that this job generates
+/// for both locales per district.
 ///
 /// The grounding mechanism mirrors DistrictSummaryService's most important property, adapted from
 /// "cite a real dimension with real data" to "cite a real, already-computed, meaningfully-sized
@@ -46,13 +47,13 @@ public sealed class DistrictTrendService(IDistrictAssistantAiClient aiClient) : 
     // instruction, without trusting that instruction blindly.
     private const int MaxSummaryLength = 400;
 
-    private const string SystemInstruction =
+    private const string BaseSystemInstruction =
         """
         Sen SemtSkoru uygulamasının bir ilçe sayfasında gösterilen "Zaman İçindeki Değişim" AI
         özetini üretiyorsun. SemtSkoru, İstanbul'un 39 ilçesini yalnızca gerçek İBB (İstanbul
         Büyükşehir Belediyesi) açık verisinden hesaplanan skorlarla karşılaştıran bir uygulamadır.
         Görevin, sana JSON olarak verilen, bir ilçenin önceki bir ölçümden şimdiye kadar GERÇEKTEN
-        değişmiş skorlarını kısa bir Türkçe özetle anlatmak.
+        değişmiş skorlarını kısa bir özetle anlatmak.
 
         KESİNLİKLE UYULMASI GEREKEN KURALLAR:
         1. SADECE sana "changes" listesinde verilen boyutlardan ve onların GERÇEK eski/yeni skor
@@ -71,11 +72,26 @@ public sealed class DistrictTrendService(IDistrictAssistantAiClient aiClient) : 
         5. Yanıtın SADECE aşağıdaki şemaya uyan geçerli bir JSON nesnesi olmalı. JSON dışında
            hiçbir açıklama, markdown veya kod bloğu ekleme:
            {"changes":[{"dimension":"<verilen boyutlardan biri>","direction":"increased"|"decreased"}],
-            "summary":"<en fazla 2 cümlelik Türkçe özet>"}
+            "summary":"<en fazla 2 cümlelik özet>"}
+        """;
+
+    // Only the free-text "summary" sentence changes with locale - every JSON key and every
+    // enum-like value (dimension names, "direction": "increased"/"decreased") must come back
+    // byte-for-byte as given, because ValidateAndGround below checks them with literal string
+    // equality against the REAL delta list this request was given. If the model ever translated a
+    // dimension name or a "direction" value, every response would silently fail that check and
+    // get dropped as unverifiable - see this class's own remarks.
+    private static string BuildSystemInstruction(string locale) =>
+        $$"""
+        {{BaseSystemInstruction}}
+        6. "summary" alanındaki serbest metni {{AiLocale.ToLanguageName(locale)}} dilinde yaz.
+           Bunun dışındaki TÜM JSON anahtarları ve değerleri (dimension adları, "direction" gibi
+           sabit değerler) verildiği gibi, DEĞİŞTİRMEDEN kalmalı - bunlar birer tanımlayıcı/sabit
+           değerdir, çeviri konusu değildir.
         """;
 
     public async Task<DistrictTrendOutcome> GenerateTrendAsync(
-        string neighborhoodName, IReadOnlyList<DimensionDelta> deltas, CancellationToken ct)
+        string neighborhoodName, IReadOnlyList<DimensionDelta> deltas, string locale, CancellationToken ct)
     {
         if (deltas.Count == 0)
         {
@@ -87,11 +103,12 @@ public sealed class DistrictTrendService(IDistrictAssistantAiClient aiClient) : 
         }
 
         var userPrompt = BuildUserPrompt(neighborhoodName, deltas);
+        var systemInstruction = BuildSystemInstruction(AiLocale.NormalizeOrDefault(locale));
 
         string rawResponse;
         try
         {
-            rawResponse = await aiClient.GenerateAsync(SystemInstruction, userPrompt, ct);
+            rawResponse = await aiClient.GenerateAsync(systemInstruction, userPrompt, ct);
         }
         catch (AiAssistantNotConfiguredException)
         {

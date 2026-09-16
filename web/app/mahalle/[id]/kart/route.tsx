@@ -22,7 +22,10 @@ export async function GET(
 
   const [neighborhoods, score] = await Promise.all([
     fetchNeighborhoodNames(),
-    fetchNeighborhoodScore(id).catch(() => null),
+    // This route never renders score.summary/score.trend (the only locale-sensitive fields on
+    // this response) at all, only the deterministic dimension scores - the "tr" argument here is
+    // inert, just satisfying fetchNeighborhoodScore's now-required locale parameter.
+    fetchNeighborhoodScore(id, "tr").catch(() => null),
   ]);
   const neighborhood = neighborhoods.find((n) => n.id === id);
 

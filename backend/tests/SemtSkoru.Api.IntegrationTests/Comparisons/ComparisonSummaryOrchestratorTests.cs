@@ -99,7 +99,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
         var kadikoy = await ScoreAsync(context, "kadikoy");
         var uskudar = await ScoreAsync(context, "uskudar");
 
-        var result = await orchestrator.GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
+        var result = await orchestrator.GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal("Kadıköy hava kalitesinde öne çıkıyor.", result.SummaryText);
@@ -123,7 +123,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
 
         // Called with uskudar as "A" and kadikoy as "B" - the opposite of the district ids' own
         // ordinal order.
-        await orchestrator.GetOrGenerateAsync("Üsküdar", uskudar, "Kadıköy", kadikoy, CancellationToken.None);
+        await orchestrator.GetOrGenerateAsync("Üsküdar", uskudar, "Kadıköy", kadikoy, "tr", CancellationToken.None);
 
         var persisted = await context.ComparisonSummaries.SingleAsync();
         Assert.Equal("kadikoy", persisted.NeighborhoodIdA);
@@ -143,7 +143,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
             var kadikoy = await ScoreAsync(context, "kadikoy");
             var uskudar = await ScoreAsync(context, "uskudar");
             await CreateOrchestrator(context, handler).GetOrGenerateAsync(
-                "Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
+                "Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
         }
 
         Assert.Equal(1, callCount);
@@ -167,7 +167,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
             var kadikoy = await ScoreAsync(context, "kadikoy");
             var uskudar = await ScoreAsync(context, "uskudar");
             var result = await CreateOrchestrator(context, handler).GetOrGenerateAsync(
-                "Üsküdar", uskudar, "Kadıköy", kadikoy, CancellationToken.None);
+                "Üsküdar", uskudar, "Kadıköy", kadikoy, "tr", CancellationToken.None);
 
             Assert.Equal(1, callCount); // no new Gemini call.
             Assert.Equal(firstGeneratedAt, result!.GeneratedAt); // the exact same cached row, untouched.
@@ -185,7 +185,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
         {
             var kadikoy = await ScoreAsync(context, "kadikoy");
             var uskudar = await ScoreAsync(context, "uskudar");
-            await CreateOrchestrator(context, handler).GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
+            await CreateOrchestrator(context, handler).GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
         }
 
         Assert.Equal(1, callCount);
@@ -203,7 +203,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
         {
             var kadikoy = await ScoreAsync(context, "kadikoy");
             var uskudar = await ScoreAsync(context, "uskudar");
-            await CreateOrchestrator(context, handler).GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
+            await CreateOrchestrator(context, handler).GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
         }
 
         Assert.Equal(2, callCount);
@@ -222,7 +222,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
         var kadikoy = await ScoreAsync(context, "kadikoy");
         var uskudar = await ScoreAsync(context, "uskudar");
 
-        var result = await orchestrator.GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
+        var result = await orchestrator.GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
 
         Assert.Null(result);
         Assert.Equal(0, callCount);
@@ -240,7 +240,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
         var kadikoy = await ScoreAsync(context, "kadikoy");
         var uskudar = await ScoreAsync(context, "uskudar");
 
-        var result = await orchestrator.GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
+        var result = await orchestrator.GetOrGenerateAsync("Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
 
         Assert.Null(result);
         Assert.Empty(await context.ComparisonSummaries.ToListAsync());
@@ -261,7 +261,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
             var kadikoy = await ScoreAsync(context, "kadikoy");
             var uskudar = await ScoreAsync(context, "uskudar");
             var firstResult = await CreateOrchestrator(context, handler).GetOrGenerateAsync(
-                "Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
+                "Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
             Assert.NotNull(firstResult);
         }
 
@@ -279,7 +279,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
             var kadikoy = await ScoreAsync(context, "kadikoy");
             var uskudar = await ScoreAsync(context, "uskudar");
             var result = await CreateOrchestrator(context, failingHandler).GetOrGenerateAsync(
-                "Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
+                "Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
 
             Assert.Null(result);
         }
@@ -290,6 +290,67 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
         {
             Assert.Single(await context.ComparisonSummaries.ToListAsync());
         }
+    }
+
+    // The locale-scoping correctness the whole point of ComparisonSummaryConfiguration's
+    // composite (NeighborhoodIdA, NeighborhoodIdB, Locale) key exists to guarantee: a pair
+    // already cached in ONE locale is still a live Gemini call - not a cache hit - the first time
+    // the OTHER locale requests it, and the two locales' cached rows never leak into each other.
+    // Also exercises the composite-key FindAsync lookup for the case where only one locale's row
+    // exists yet for a pair.
+    [Fact]
+    public async Task GetOrGenerateAsync_caches_tr_and_en_independently_for_the_same_pair()
+    {
+        await SeedTwoDistrictsWithDistinctAirQualityAsync();
+        var callCount = 0;
+        var handler = new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); });
+
+        await using (var context = CreateContext())
+        {
+            var kadikoy = await ScoreAsync(context, "kadikoy");
+            var uskudar = await ScoreAsync(context, "uskudar");
+            var trResult = await CreateOrchestrator(context, handler).GetOrGenerateAsync(
+                "Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
+            Assert.NotNull(trResult);
+        }
+
+        Assert.Equal(1, callCount);
+
+        // Same exact pair (same scores, unchanged), requested in "en" for the first time - must
+        // still be a live Gemini call, not served from the "tr" cache row.
+        await using (var context = CreateContext())
+        {
+            var kadikoy = await ScoreAsync(context, "kadikoy");
+            var uskudar = await ScoreAsync(context, "uskudar");
+            var enResult = await CreateOrchestrator(context, handler).GetOrGenerateAsync(
+                "Kadıköy", kadikoy, "Üsküdar", uskudar, "en", CancellationToken.None);
+            Assert.NotNull(enResult);
+        }
+
+        Assert.Equal(2, callCount);
+
+        // Both locale rows now exist, independently, for the same canonical pair.
+        await using (var context = CreateContext())
+        {
+            var persisted = await context.ComparisonSummaries
+                .Where(c => c.NeighborhoodIdA == "kadikoy" && c.NeighborhoodIdB == "uskudar")
+                .ToListAsync();
+            Assert.Equal(2, persisted.Count);
+            Assert.Contains(persisted, c => c.Locale == "tr");
+            Assert.Contains(persisted, c => c.Locale == "en");
+        }
+
+        // A second "tr" request for the same unchanged pair is now a pure cache hit again - the
+        // "en" request in between must not have disturbed it.
+        await using (var context = CreateContext())
+        {
+            var kadikoy = await ScoreAsync(context, "kadikoy");
+            var uskudar = await ScoreAsync(context, "uskudar");
+            await CreateOrchestrator(context, handler).GetOrGenerateAsync(
+                "Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
+        }
+
+        Assert.Equal(2, callCount); // no new call.
     }
 }
 

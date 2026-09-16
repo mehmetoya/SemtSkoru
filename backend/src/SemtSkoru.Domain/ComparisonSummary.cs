@@ -29,11 +29,19 @@ public sealed class ComparisonSummary
     /// <summary>The lexicographically larger (ordinal) of the two real neighborhood ids - see NeighborhoodIdA.</summary>
     public required string NeighborhoodIdB { get; init; }
 
-    /// <summary>The 1-2 sentence Turkish comparison summary text - see ComparisonSummaryService's
-    /// SystemInstruction for the exact grounding rules the model must follow to produce this
-    /// (never a claim beyond the two districts' own 6 dimension scores, and never a claim about
-    /// which district is "stronger" in a dimension that isn't independently verified against the
-    /// real numbers before this text is trusted).</summary>
+    /// <summary>"tr" or "en" (see SemtSkoru.Application.Localization.AiLocale) - which locale
+    /// SummaryText's prose is written in. Part of this row's key alongside NeighborhoodIdA/B: the
+    /// same pair has (at most) one cached row per supported locale it's actually been requested
+    /// in, generated independently the first time that (pair, locale) combination is requested -
+    /// see ComparisonSummaryOrchestrator.</summary>
+    public required string Locale { get; init; }
+
+    /// <summary>The 1-2 sentence comparison summary text, in whichever locale
+    /// <see cref="Locale"/> says - see ComparisonSummaryService's SystemInstruction for the exact
+    /// grounding rules the model must follow to produce this (never a claim beyond the two
+    /// districts' own 6 dimension scores, and never a claim about which district is "stronger" in
+    /// a dimension that isn't independently verified against the real numbers before this text is
+    /// trusted) - the locale only changes this free-text prose, never the grounding.</summary>
     public required string SummaryText { get; set; }
 
     public required DateTimeOffset GeneratedAt { get; set; }

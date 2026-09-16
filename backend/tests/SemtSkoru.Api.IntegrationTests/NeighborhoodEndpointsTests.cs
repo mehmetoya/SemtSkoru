@@ -154,6 +154,7 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
             context.DistrictSummaries.Add(new DistrictSummary
             {
                 NeighborhoodId = "kadikoy",
+                Locale = "tr",
                 SummaryText = "Bu ilçe hava kalitesinde güçlü.",
                 GeneratedAt = generatedAt,
                 ScoreSignature = "100|null|null|null|null|null",
@@ -170,6 +171,60 @@ public class NeighborhoodEndpointsTests : IAsyncLifetime
         Assert.NotNull(score?.Summary);
         Assert.Equal("Bu ilçe hava kalitesinde güçlü.", score.Summary.Text);
         Assert.Equal(generatedAt, score.Summary.GeneratedAt, TimeSpan.FromMilliseconds(1));
+    }
+
+    // The locale-scoping correctness the whole point of the Locale column exists to guarantee:
+    // an "en" cache row must never be handed back for a "tr" request (or the default, which IS
+    // "tr" - see AiLocale.Default) even when a "tr" row for the SAME district genuinely exists,
+    // and vice versa. Also exercises the composite-key repository lookup for the case where only
+    // ONE locale's row exists.
+    [Fact]
+    public async Task GetScore_scopes_the_cached_summary_by_locale_and_never_leaks_the_other_locales_row()
+    {
+        await using (var context = CreateContext())
+        {
+            context.DistrictSummaries.Add(new DistrictSummary
+            {
+                NeighborhoodId = "kadikoy",
+                Locale = "tr",
+                SummaryText = "Bu ilçe hava kalitesinde güçlü.",
+                GeneratedAt = DateTimeOffset.UtcNow,
+                ScoreSignature = "100|null|null|null|null|null",
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var client = _factory.CreateClient();
+
+        // Default (no ?locale=) is "tr" - the seeded row is returned.
+        var defaultResponse = await client.GetAsync("/api/neighborhoods/kadikoy/score");
+        defaultResponse.EnsureSuccessStatusCode();
+        var defaultScore = await defaultResponse.Content.ReadFromJsonAsync<NeighborhoodScoreDto>();
+        Assert.NotNull(defaultScore?.Summary);
+        Assert.Equal("Bu ilçe hava kalitesinde güçlü.", defaultScore.Summary.Text);
+
+        // Explicit ?locale=tr - same row, same result.
+        var trResponse = await client.GetAsync("/api/neighborhoods/kadikoy/score?locale=tr");
+        trResponse.EnsureSuccessStatusCode();
+        var trScore = await trResponse.Content.ReadFromJsonAsync<NeighborhoodScoreDto>();
+        Assert.NotNull(trScore?.Summary);
+
+        // ?locale=en - no "en" row exists yet for this district (only "tr" was seeded above) -
+        // must honestly return null, never fall back to serving the "tr" row's text under an
+        // English request. This is the exact cold-start-after-deploy state described on
+        // DistrictSummaryGenerationJob.
+        var enResponse = await client.GetAsync("/api/neighborhoods/kadikoy/score?locale=en");
+        enResponse.EnsureSuccessStatusCode();
+        var enScore = await enResponse.Content.ReadFromJsonAsync<NeighborhoodScoreDto>();
+        Assert.Null(enScore?.Summary);
+
+        // An unrecognized locale value normalizes to "tr" (AiLocale.NormalizeOrDefault) rather
+        // than erroring or being treated as "no locale" - matches the seeded "tr" row.
+        var unknownResponse = await client.GetAsync("/api/neighborhoods/kadikoy/score?locale=xx");
+        unknownResponse.EnsureSuccessStatusCode();
+        var unknownScore = await unknownResponse.Content.ReadFromJsonAsync<NeighborhoodScoreDto>();
+        Assert.NotNull(unknownScore?.Summary);
+        Assert.Equal("Bu ilçe hava kalitesinde güçlü.", unknownScore.Summary.Text);
     }
 
     [Fact]

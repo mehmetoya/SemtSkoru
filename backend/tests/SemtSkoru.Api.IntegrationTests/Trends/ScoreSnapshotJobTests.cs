@@ -175,7 +175,7 @@ public class ScoreSnapshotJobTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RunAsync_persists_a_grounded_trend_once_a_meaningful_change_exists_against_an_old_enough_baseline()
+    public async Task RunAsync_persists_a_grounded_trend_in_both_supported_locales_once_a_meaningful_change_exists_against_an_old_enough_baseline()
     {
         await SeedOrUpdateAirQualityAsync(0);
         var callCount = 0;
@@ -194,13 +194,21 @@ public class ScoreSnapshotJobTests : IAsyncLifetime
             await CreateJob(context, T0.AddDays(7), handler).RunAsync(CancellationToken.None);
         }
 
-        Assert.Equal(1, callCount);
+        // Both locales, not just "tr" - same reasoning as DistrictSummaryGenerationJob: an
+        // English-locale visitor must get an "en" trend row from the SAME weekly run.
+        Assert.Equal(2, callCount);
         await using (var context = CreateContext())
         {
-            var trend = await context.DistrictTrendSummaries.SingleAsync(t => t.NeighborhoodId == "kadikoy");
-            Assert.Equal("Bu ilçenin hava kalitesi skoru belirgin şekilde azaldı.", trend.SummaryText);
-            Assert.NotEqual(default, trend.GeneratedAt);
-            Assert.Contains("airQuality", trend.ComparisonSignature);
+            var trends = await context.DistrictTrendSummaries.Where(t => t.NeighborhoodId == "kadikoy").ToListAsync();
+            Assert.Equal(2, trends.Count);
+            Assert.Contains(trends, t => t.Locale == "tr");
+            Assert.Contains(trends, t => t.Locale == "en");
+            Assert.All(trends, t =>
+            {
+                Assert.Equal("Bu ilçenin hava kalitesi skoru belirgin şekilde azaldı.", t.SummaryText);
+                Assert.NotEqual(default, t.GeneratedAt);
+                Assert.Contains("airQuality", t.ComparisonSignature);
+            });
         }
     }
 
@@ -267,7 +275,7 @@ public class ScoreSnapshotJobTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RunAsync_skips_a_second_gemini_call_when_the_comparison_basis_has_not_changed()
+    public async Task RunAsync_skips_a_second_gemini_call_in_either_locale_when_the_comparison_basis_has_not_changed()
     {
         await SeedOrUpdateAirQualityAsync(0);
         var callCount = 0;
@@ -285,27 +293,90 @@ public class ScoreSnapshotJobTests : IAsyncLifetime
             await CreateJob(context, T0.AddDays(8), handler).RunAsync(CancellationToken.None);
         }
 
-        Assert.Equal(1, callCount);
-        DistrictTrendSummary firstRun;
+        Assert.Equal(2, callCount); // one call per locale on the first run that actually generated a trend.
+        List<DistrictTrendSummary> firstRun;
         await using (var context = CreateContext())
         {
-            firstRun = await context.DistrictTrendSummaries.AsNoTracking().SingleAsync(t => t.NeighborhoodId == "kadikoy");
+            firstRun = await context.DistrictTrendSummaries.AsNoTracking().Where(t => t.NeighborhoodId == "kadikoy").ToListAsync();
         }
 
+        Assert.Equal(2, firstRun.Count);
+
         // Re-running at the exact same "now" with no further score change (e.g. a process
-        // restart re-triggering an overdue job) must not spend a second Gemini call, and must
-        // leave the existing row exactly as it was.
+        // restart re-triggering an overdue job) must not spend a second Gemini call FOR EITHER
+        // LOCALE, and must leave both existing rows exactly as they were.
         await using (var context = CreateContext())
         {
             await CreateJob(context, T0.AddDays(8), handler).RunAsync(CancellationToken.None);
         }
 
+        Assert.Equal(2, callCount);
+        await using (var context = CreateContext())
+        {
+            var secondRun = await context.DistrictTrendSummaries.AsNoTracking().Where(t => t.NeighborhoodId == "kadikoy").ToListAsync();
+            Assert.Equal(2, secondRun.Count);
+            foreach (var before in firstRun)
+            {
+                var after = Assert.Single(secondRun, t => t.Locale == before.Locale);
+                Assert.Equal(before.GeneratedAt, after.GeneratedAt);
+                Assert.Equal(before.ComparisonSignature, after.ComparisonSignature);
+            }
+        }
+    }
+
+    // The specific per-locale-independent skip behavior the brief calls out explicitly (mirrors
+    // DistrictSummaryGenerationJobTests's own equivalent test): a locale that already has an
+    // up-to-date trend row must be skipped, while a locale with NO row yet must still be
+    // generated - even though the OTHER locale's signature already matches and would, on its
+    // own, justify skipping.
+    [Fact]
+    public async Task RunAsync_generates_only_the_missing_locale_when_the_other_locale_is_already_up_to_date()
+    {
+        await SeedOrUpdateAirQualityAsync(0);
+        var handler = new FakeHttpMessageHandler(_ => GeminiJson(ValidModelResponse));
+
+        // First run establishes the T0 baseline snapshot (cold start, no trend yet).
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, T0, handler).RunAsync(CancellationToken.None);
+        }
+
+        await SeedOrUpdateAirQualityAsync(500);
+
+        // Simulates the pre-locale-support state: only a "tr" trend row exists, already matching
+        // the comparison signature this run would compute (airQuality changed from 100 to 0).
+        var existingSignature = DistrictTrendSignature.Compute([new DimensionDelta("airQuality", 100, 0)]);
+        await using (var context = CreateContext())
+        {
+            context.DistrictTrendSummaries.Add(new DistrictTrendSummary
+            {
+                NeighborhoodId = "kadikoy",
+                Locale = "tr",
+                SummaryText = "Zaten var olan Türkçe trend özeti.",
+                GeneratedAt = T0.AddDays(7),
+                ComparisonSignature = existingSignature,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var callCount = 0;
+        var countingHandler = new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); });
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, T0.AddDays(8), countingHandler).RunAsync(CancellationToken.None);
+        }
+
+        // Exactly one call - for "en", which had no row at all. "tr" is skipped because its
+        // existing row's signature already matches this run's computed comparison signature.
         Assert.Equal(1, callCount);
         await using (var context = CreateContext())
         {
-            var secondRun = await context.DistrictTrendSummaries.AsNoTracking().SingleAsync(t => t.NeighborhoodId == "kadikoy");
-            Assert.Equal(firstRun.GeneratedAt, secondRun.GeneratedAt);
-            Assert.Equal(firstRun.ComparisonSignature, secondRun.ComparisonSignature);
+            var trends = await context.DistrictTrendSummaries.Where(t => t.NeighborhoodId == "kadikoy").ToListAsync();
+            Assert.Equal(2, trends.Count);
+            var trRow = Assert.Single(trends, t => t.Locale == "tr");
+            Assert.Equal("Zaten var olan Türkçe trend özeti.", trRow.SummaryText); // untouched by this run.
+            var enRow = Assert.Single(trends, t => t.Locale == "en");
+            Assert.Equal("Bu ilçenin hava kalitesi skoru belirgin şekilde azaldı.", enRow.SummaryText); // freshly generated.
         }
     }
 

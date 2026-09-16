@@ -15,9 +15,13 @@ namespace SemtSkoru.Application.Comparisons;
 public interface IComparisonSummaryOrchestrator
 {
     /// <summary>
-    /// Returns the cached ComparisonSummary for this pair if one already exists for the pair's
-    /// CURRENT combined score signature (a cheap DB read, no Gemini call); otherwise attempts a
-    /// live generation, persists it on success, and returns the freshly-generated row. Returns
+    /// Returns the cached ComparisonSummary for this (pair, locale) if one already exists for the
+    /// pair's CURRENT combined score signature (a cheap DB read, no Gemini call); otherwise
+    /// attempts a live generation in the given locale ("tr" or "en" - see
+    /// SemtSkoru.Application.Localization.AiLocale, which an unrecognized/missing value
+    /// normalizes to "tr" through), persists it on success, and returns the freshly-generated
+    /// row. A pair that's already cached in ONE locale is still a live call the first time the
+    /// OTHER locale requests it - locale is part of the cache key, not just the prompt. Returns
     /// null - never throws, never fabricates - for every reason a summary isn't available: no
     /// Gemini key configured, the live call fails/times out/is rate-limited, the model's response
     /// wasn't usable, or neither district has a dimension the other also has data for. Callers
@@ -27,5 +31,6 @@ public interface IComparisonSummaryOrchestrator
     Task<ComparisonSummary?> GetOrGenerateAsync(
         string neighborhoodNameA, NeighborhoodScoreResult scoreA,
         string neighborhoodNameB, NeighborhoodScoreResult scoreB,
+        string locale,
         CancellationToken ct);
 }

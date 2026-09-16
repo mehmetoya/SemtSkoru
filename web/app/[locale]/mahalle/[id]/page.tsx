@@ -47,16 +47,19 @@ export default async function NeighborhoodPage({
 }: {
   params: Promise<{ locale: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
 
   // findNeighborhood (full district list, for the name/boundary) and the score fetch hit
   // two different backend endpoints and don't depend on each other's result - run them
   // concurrently instead of paying for both round-trips back to back. Measured live
   // (2026-09-16, real Render backend): this roughly halves this page's server-side data-
-  // fetch time versus the previous sequential await/await.
+  // fetch time versus the previous sequential await/await. `locale` scopes the cached AI
+  // district summary/trend embedded in the score response (see fetchNeighborhoodScore) - the
+  // URL already includes [locale], so /tr/mahalle/kadikoy and /en/mahalle/kadikoy are already
+  // separate ISR cache entries (see `revalidate` above), no extra caching work needed here.
   const [neighborhood, score] = await Promise.all([
     findNeighborhood(id),
-    fetchNeighborhoodScore(id).catch(() => null),
+    fetchNeighborhoodScore(id, locale).catch(() => null),
   ]);
   if (!neighborhood) notFound();
 

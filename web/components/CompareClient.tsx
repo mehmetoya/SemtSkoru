@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useNeighborhoods } from "../lib/hooks/useNeighborhoods";
 import { useCompareNeighborhoods } from "../lib/hooks/useCompareNeighborhoods";
 import { useComparisonSummary } from "../lib/hooks/useComparisonSummary";
@@ -32,6 +32,7 @@ const NeighborhoodMap = dynamic(
 export function CompareClient() {
   const t = useTranslations("Compare");
   const tBand = useTranslations("ScoreBand");
+  const locale = useLocale();
   const { data: neighborhoods } = useNeighborhoods();
   const [a, setA] = useState<string | undefined>(undefined);
   const [b, setB] = useState<string | undefined>(undefined);
@@ -44,7 +45,7 @@ export function CompareClient() {
 
   // Deliberately a separate fetch from the score comparison above (see useComparisonSummary's own
   // remarks) - a slow or failed AI summary must never hold up or error the score table itself.
-  const { data: comparisonSummary, isPending: isComparisonSummaryPending } = useComparisonSummary(a, b);
+  const { data: comparisonSummary, isPending: isComparisonSummaryPending } = useComparisonSummary(a, b, locale);
 
   const nameOf = (id: string | undefined) =>
     neighborhoods?.find((n) => n.id === id)?.name ?? "";

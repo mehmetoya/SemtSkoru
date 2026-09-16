@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useAssistant } from "../lib/hooks/useAssistant";
 import { AssistantRecommendationCard } from "./AssistantRecommendationCard";
 import type { AssistantStatus } from "../lib/types";
@@ -27,8 +27,9 @@ const KNOWN_STATUSES: ReadonlySet<AssistantStatus> = new Set([
 export function AssistantClient() {
   const t = useTranslations("Assistant");
   const tCommon = useTranslations("Common");
+  const locale = useLocale();
   const [prompt, setPrompt] = useState("");
-  const { mutate, data, isPending, isError, reset } = useAssistant();
+  const { mutate, data, isPending, isError, reset } = useAssistant(locale);
 
   const examplePrompts = t.raw("examples") as string[];
 
