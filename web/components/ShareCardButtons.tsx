@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 function DownloadIcon({ className }: { className?: string }) {
   return (
@@ -42,7 +43,7 @@ function ShareIcon({ className }: { className?: string }) {
 const GHOST_BUTTON =
   "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-3.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus:ring-offset-slate-950";
 
-// Shared by the single-district score card (app/mahalle/[id]/page.tsx) and the
+// Shared by the single-district score card (app/[locale]/mahalle/[id]/page.tsx) and the
 // comparison result (CompareClient.tsx) - both point this at their own
 // ImageResponse route (app/mahalle/[id]/kart or app/karsilastir/kart), which renders a
 // fixed light-mode PNG, timestamped at generation time, honoring "Veri yok" for any
@@ -64,6 +65,7 @@ export function ShareCardButtons({
   // the image URL itself (a stable, frozen snapshot - see ShareCardButtons callers).
   fallbackUrl: string;
 }) {
+  const t = useTranslations("ShareCardButtons");
   const [isSharing, setIsSharing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -78,7 +80,7 @@ export function ShareCardButtons({
     setIsSharing(true);
     try {
       const response = await fetch(imageUrl);
-      if (!response.ok) throw new Error("Görsel indirilemedi");
+      if (!response.ok) throw new Error(t("imageDownloadFailed"));
       const blob = await response.blob();
       const file = new File([blob], fileName, { type: "image/png" });
 
@@ -92,7 +94,7 @@ export function ShareCardButtons({
       if (error instanceof Error && error.name === "AbortError") {
         setStatus(null);
       } else {
-        setStatus("Paylaşım tamamlanamadı. Bunun yerine görseli indirebilirsin.");
+        setStatus(t("shareFailed"));
       }
     } finally {
       setIsSharing(false);
@@ -102,9 +104,9 @@ export function ShareCardButtons({
   async function copyFallbackLink() {
     try {
       await navigator.clipboard.writeText(fallbackUrl);
-      setStatus("Bağlantı panoya kopyalandı.");
+      setStatus(t("linkCopied"));
     } catch {
-      setStatus(`Paylaşım desteklenmiyor. Bağlantı: ${fallbackUrl}`);
+      setStatus(t("shareNotSupported", { url: fallbackUrl }));
     }
   }
 
@@ -112,11 +114,11 @@ export function ShareCardButtons({
     <div className="flex flex-wrap items-center gap-2">
       <a href={imageUrl} download={fileName} className={GHOST_BUTTON}>
         <DownloadIcon className="h-3.5 w-3.5" />
-        İndir
+        {t("download")}
       </a>
       <button type="button" onClick={handleShare} disabled={isSharing} className={GHOST_BUTTON}>
         <ShareIcon className="h-3.5 w-3.5" />
-        {isSharing ? "Paylaşılıyor…" : "Paylaş"}
+        {isSharing ? t("sharing") : t("share")}
       </button>
       <p role="status" aria-live="polite" className="w-full text-xs text-slate-500 dark:text-slate-400 empty:hidden">
         {status}

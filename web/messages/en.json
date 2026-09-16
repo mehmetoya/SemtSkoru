@@ -1,0 +1,232 @@
+{
+  "Metadata": {
+    "titleDefault": "SemtSkoru — Istanbul District Livability Score",
+    "titleTemplate": "%s | SemtSkoru",
+    "description": "An open-source tool that turns Istanbul districts' air quality, green space, transportation, parking, healthcare, and public transit access into 0-100 scores using real İBB open data.",
+    "ogDescription": "We turn air quality, green space, transportation, parking, healthcare, and public transit access into 0-100 scores using real İBB open data.",
+    "websiteJsonLdDescription": "Air quality, green space, transportation, parking, healthcare, and public transit access scores for Istanbul's districts."
+  },
+  "Common": {
+    "districtCount": "39 districts",
+    "airQualityCoverage": "Air quality data: 19/39 districts",
+    "ibbOpenData": "İBB Open Data Portal",
+    "aiAttribution": "Generated with Google Gemini — grounded in SemtSkoru's real score data"
+  },
+  "Home": {
+    "title": "SemtSkoru — Istanbul District Livability Score",
+    "description": "An open-source tool that turns air quality, green space, transportation, parking, healthcare, and public transit access into 0-100 scores for Istanbul's 39 districts, using real İBB open data.",
+    "heading": "Explore Istanbul Through Data",
+    "intro": "We turn Istanbul's 39 districts into 0-100 scores across air quality, green space, transportation, parking, healthcare, and public transit access — all backed by real İBB Open Data Portal data, with each score's source and freshness date shown alongside it. Pick a district to see its dimension-by-dimension scores and how they're calculated, or compare two districts side by side and on the map.",
+    "errorLoadingList": "Something went wrong while loading the district list.",
+    "highestScore": "Highest overall score",
+    "lowestScore": "Lowest overall score",
+    "compareCtaTitle": "Compare two districts →",
+    "compareCtaDescription": "See scores side by side and on the map",
+    "assistantCtaTitle": "AI District Assistant →",
+    "assistantCtaDescription": "Describe what you want, get a recommendation grounded in real data",
+    "datasetJsonLdName": "SemtSkoru District Livability Scores",
+    "datasetJsonLdDescription": "Air quality, green space, transportation, parking, healthcare, and public transit access scores for Istanbul's 39 districts, sourced from the İBB Open Data Portal and OpenStreetMap.",
+    "datasetJsonLdCreator": "Istanbul Metropolitan Municipality Open Data Portal"
+  },
+  "Compare": {
+    "title": "Compare Districts",
+    "description": "Compare two Istanbul districts' air quality, green space, transportation, parking, healthcare, and public transit access scores side by side and on the map.",
+    "heading": "Compare Districts",
+    "intro": "Pick two districts (below, or by clicking the map) to see their scores side by side and on the map.",
+    "firstDistrict": "First district",
+    "secondDistrict": "Second district",
+    "mapHint": "You can also pick a district by clicking it on the map.",
+    "mapLoading": "Loading map…",
+    "loadingResult": "Loading…",
+    "errorLoadingComparison": "Something went wrong while loading the comparison.",
+    "shareTitle": "{nameA} vs {nameB} Comparison | SemtSkoru",
+    "shareText": "Check out the SemtSkoru comparison of {nameA} and {nameB}."
+  },
+  "Assistant": {
+    "title": "AI District Assistant",
+    "description": "Describe your preferences in a few sentences and see AI-powered district recommendations grounded in the real İBB open-data scores SemtSkoru calculates for all 39 districts.",
+    "heading": "AI District Assistant",
+    "intro": "Describe what you're looking for in a few sentences, and SemtSkoru will recommend 2-3 districts based on the real scores it calculates for all 39. Recommendations are always grounded in real İBB open data — the model never invents anything about Istanbul beyond the numbers it's given.",
+    "geminiPowered": "Powered by Google Gemini",
+    "promptLabel": "What are you looking for?",
+    "examples": [
+      "We're a family with kids — green space and healthcare access matter most, and our budget is tight.",
+      "I work remotely — air quality and easy access to public transit matter most to me."
+    ],
+    "examplePrefix": "Example:",
+    "submit": "Suggest",
+    "submitPending": "Preparing recommendations…",
+    "clear": "Clear",
+    "loadingStatus": "Evaluating using your real score data…",
+    "genericError": "Something went wrong. Please try again later.",
+    "whyRecommended": "Why {name}?",
+    "goToDistrict": "Go to {name}'s page →",
+    "status": {
+      "InvalidRequest": "Please describe your preferences in a few sentences.",
+      "NotConfigured": "The AI District Assistant isn't configured right now. Please try again later.",
+      "RateLimited": "The AI District Assistant is getting a lot of requests right now. Please try again in a few minutes.",
+      "Unavailable": "The AI District Assistant can't respond right now. Please try again later.",
+      "NoUsableRecommendations": "We couldn't generate a reliable recommendation for your request. You can try comparing districts directly instead."
+    }
+  },
+  "About": {
+    "title": "About",
+    "description": "Why SemtSkoru exists, how we calculate our scores, and what data we rely on - with source, license, and freshness details.",
+    "heading": "About",
+    "whyTitle": "Why SemtSkoru?",
+    "whyBody": "Plenty of open-data projects for Istanbul plot data on a map, but don't make it comparable. SemtSkoru distills air quality, green space access, traffic congestion, parking access, healthcare access, and public transit access into a single 0-100 score, so you can explore Istanbul's 39 districts with real data and compare two districts directly. It doesn't offer a preference-weighted \"best district for you\" recommendation — that's a deliberate scope decision; it shows each dimension on its own and leaves the interpretation to you.",
+    "howTitle": "How do we score?",
+    "howIntro": "Every dimension is a real measurement, mapped from raw data to 0-100 with a linear formula — never a guess or a subjective judgment:",
+    "howFooter": "The overall score is a simple average of the dimensions that have data. If a district is missing data for a dimension (for example, districts without an air-quality monitoring station), that dimension is excluded from the average and the interface clearly shows \"No data\" — it is never filled in by guessing or interpolation.",
+    "sourcesTitle": "Data sources",
+    "sourcesHeaders": {
+      "dimension": "Dimension",
+      "source": "Source",
+      "freshness": "Freshness",
+      "license": "License"
+    },
+    "districtBoundaryLabel": "District boundaries",
+    "sources": {
+      "airQuality": {
+        "source": "İBB Open Data Portal (live API)",
+        "freshness": "Hourly (at the source) — synced daily",
+        "license": "İBB Open Data License"
+      },
+      "greenSpace": {
+        "source": "İBB Open Data Portal (GeoJSON)",
+        "freshness": "Annual",
+        "license": "İBB Open Data License"
+      },
+      "transportation": {
+        "source": "İBB Open Data Portal (January 2025 CSV)",
+        "freshness": "Historical — not live, clearly labeled in the UI",
+        "license": "İBB Open Data License"
+      },
+      "parking": {
+        "source": "İBB İSPARK Open Data Portal (live API)",
+        "freshness": "Live",
+        "license": "İBB Open Data License"
+      },
+      "healthAccess": {
+        "source": "İBB \"34-Minute Istanbul\" Health Index (GeoJSON)",
+        "freshness": "Static — the source hasn't been updated since 2024, re-fetched weekly",
+        "license": "İBB Open Data License"
+      },
+      "transitAccess": {
+        "source": "İETT Bus Stop Data (GeoJSON)",
+        "freshness": "Static — infrastructure changes slowly, re-fetched weekly",
+        "license": "İBB Open Data License"
+      },
+      "districtBoundary": {
+        "source": "OpenStreetMap / Nominatim",
+        "freshness": "Static (fetched once)",
+        "license": "ODbL"
+      }
+    },
+    "openSourceTitle": "Open source",
+    "openSourceBody": "SemtSkoru is fully open source under the MIT license — all of the code, including the scoring formulas, is public on <github>GitHub</github>. If you find a bug or a data source changes, you're welcome to contribute.",
+    "backLink": "← Back to all districts",
+    "jsonLdName": "About"
+  },
+  "Neighborhood": {
+    "titleSuffix": "Livability Score",
+    "description": "{name}'s air quality, green space, transportation, parking, healthcare, and public transit access scores - backed by real İBB open data, with source and freshness dates.",
+    "backLink": "← All districts",
+    "errorLoadingScore": "Something went wrong while loading the score.",
+    "breadcrumbHome": "Districts",
+    "shareTitle": "{name} Livability Score | SemtSkoru",
+    "shareText": "Check out {name}'s SemtSkoru livability score."
+  },
+  "SiteHeader": {
+    "districts": "Districts",
+    "compare": "Compare",
+    "assistant": "Assistant",
+    "about": "About",
+    "githubAria": "GitHub repository"
+  },
+  "SiteFooter": {
+    "description": "An open-source tool that turns Istanbul districts' air quality, green space, transportation, parking, healthcare, and public transit access into 0-100 scores using real İBB open data.",
+    "productHeading": "Product",
+    "districts": "Districts",
+    "compare": "Compare",
+    "about": "About",
+    "projectHeading": "Project",
+    "license": "MIT License",
+    "attribution": "© {year} SemtSkoru · Data from the <ibb>İBB Open Data Portal</ibb> (İBB Open Data License) and <osm>OpenStreetMap contributors</osm> (ODbL)."
+  },
+  "ScoreBand": {
+    "good": "Good",
+    "moderate": "Moderate",
+    "poor": "Poor",
+    "unknown": "No data"
+  },
+  "Dimensions": {
+    "airQuality": "Air Quality",
+    "greenSpace": "Green Space",
+    "transportation": "Transportation",
+    "parking": "Parking",
+    "healthAccess": "Healthcare Access",
+    "transitAccess": "Public Transit Access",
+    "methodology": {
+      "airQuality": "The AQI (0-500, EPA standard) from İBB's live air-quality monitoring station is mapped to 0-100 by splitting the EPA's 6 categories (Good → Hazardous) into equal bands and inverting them. Lower AQI = higher score.",
+      "greenSpace": "A linearly decreasing score based on distance to the nearest park: 0 meters scores 100, 2,000 meters (about a 25-minute walk) or more scores 0.",
+      "transportation": "A linear score based on the district's average traffic speed: Istanbul's urban speed limit of 50 km/h or higher scores 100, a full stop (0 km/h) scores 0.",
+      "parking": "The average share of open capacity across the district's İBB İSPARK parking facilities (open capacity / total capacity, unweighted average per facility): completely empty (100% open) scores 100, completely full scores 0. This only covers facilities operated by İSPARK, is a small sample, and doesn't reflect on-street parking.",
+      "healthAccess": "İBB publishes its \"34-Minute Istanbul\" Health Index at the neighborhood level; a district's average is the population-weighted average of its neighborhoods' health-access index values (neighborhoods with zero population are excluded from the average). İBB doesn't state that this index itself is on a 0-100 scale, so the MVP linearly scales the lowest and highest district averages actually observed across the real 39 districts to 0-100 (the lowest-scoring district gets 0, the highest gets 100).",
+      "transitAccess": "İETT's citywide bus-stop dataset (15,486 stops) is matched to each district's boundary with a point-in-polygon test (since stops' district-code field doesn't offer a reliable name match). Rather than the raw stop count, we use density (stops per km²) — the stop count divided by the district's actual land area (in km², computed with a simple planar approximation scaled to the district's average latitude) — so a district doesn't get an unfair advantage just for being large. This density is then linearly scaled to 0-100 using the lowest and highest values actually observed across the real 39 districts (the lowest-scoring district gets 0, the highest gets 100) — not an official standard, but an honestly documented MVP assumption."
+    }
+  },
+  "DataFreshness": {
+    "Stale": "Stale data",
+    "Historical": "Historical data"
+  },
+  "NeighborhoodScoreCard": {
+    "overallScoreLabel": "Overall score",
+    "howCalculated": "How is this calculated?",
+    "sourceLabel": "Source: {source} · {date}",
+    "incompleteNotice": "Some data dimensions aren't available yet."
+  },
+  "NeighborhoodComparisonTable": {
+    "overallScoreLabel": "Overall Score",
+    "sourceLabel": "Source: {source} · {date}",
+    "howCalculated": "How is this calculated?",
+    "indicatorAria": "{name} indicator"
+  },
+  "NeighborhoodListCard": {
+    "scoreFailedToLoad": "Score failed to load",
+    "overallScoreWithBand": "Overall score: {band}"
+  },
+  "DistrictPicker": {
+    "selectPlaceholder": "Select a district…",
+    "indicatorAria": "{label} indicator"
+  },
+  "DistrictSummaryBadge": {
+    "heading": "✨ Standout Traits"
+  },
+  "ShareCardButtons": {
+    "download": "Download",
+    "share": "Share",
+    "sharing": "Sharing…",
+    "shareFailed": "Sharing didn't work. You can download the image instead.",
+    "linkCopied": "Link copied to clipboard.",
+    "shareNotSupported": "Sharing isn't supported. Link: {url}",
+    "imageDownloadFailed": "Couldn't download the image"
+  },
+  "DataSourceBadge": {
+    "label": "Source · İBB Open Data"
+  },
+  "ThemeToggle": {
+    "toLight": "Switch to light theme",
+    "toDark": "Switch to dark theme"
+  },
+  "LocaleSwitcher": {
+    "label": "Language",
+    "tr": "Turkish",
+    "en": "English"
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "description": "We couldn't find that page or district. The address may be mistyped or the page may have been removed.",
+    "backLink": "← Back to all districts"
+  }
+}

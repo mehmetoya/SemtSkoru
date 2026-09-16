@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { NeighborhoodListCard } from "../NeighborhoodListCard";
-import { SAMPLE_BOUNDARY } from "../../lib/test-utils";
+import { createIntlWrapper, SAMPLE_BOUNDARY } from "../../lib/test-utils";
 
 describe("NeighborhoodListCard", () => {
   it("links to the district's detail page and shows its score band", () => {
@@ -12,6 +12,7 @@ describe("NeighborhoodListCard", () => {
         boundary={SAMPLE_BOUNDARY}
         overallScore={82}
       />,
+      { wrapper: createIntlWrapper() },
     );
 
     const link = screen.getByRole("link", { name: "Kadıköy" });
@@ -28,6 +29,7 @@ describe("NeighborhoodListCard", () => {
         boundary={SAMPLE_BOUNDARY}
         overallScore={null}
       />,
+      { wrapper: createIntlWrapper() },
     );
 
     expect(screen.getByText("Skor yüklenemedi")).toBeInTheDocument();

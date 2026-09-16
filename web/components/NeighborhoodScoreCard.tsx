@@ -1,45 +1,38 @@
+import { useFormatter, useTranslations } from "next-intl";
 import type { DimensionScore, NeighborhoodScore } from "../lib/types";
 import { getScoreBand, SCORE_BAND_STYLES } from "../lib/score-band";
-import { DIMENSION_METHODOLOGY } from "../lib/dimension-info";
 import { DataFreshnessBadge } from "./DataFreshnessBadge";
 import { DistrictShapeIcon } from "./DistrictShapeIcon";
 import { DistrictSummaryBadge } from "./DistrictSummaryBadge";
 import { ScoreBar } from "./ScoreBar";
 import { ShareCardButtons } from "./ShareCardButtons";
 
-const DIMENSIONS = [
-  { key: "airQuality", label: "Hava Kalitesi" },
-  { key: "greenSpace", label: "Yeşil Alan" },
-  { key: "transportation", label: "Ulaşım" },
-  { key: "parking", label: "Otopark" },
-  { key: "healthAccess", label: "Sağlık Erişimi" },
-  { key: "transitAccess", label: "Toplu Taşıma Erişimi" },
+const DIMENSION_KEYS = [
+  "airQuality",
+  "greenSpace",
+  "transportation",
+  "parking",
+  "healthAccess",
+  "transitAccess",
 ] as const;
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function DimensionRow({
   dimensionKey,
-  label,
   dimension,
 }: {
-  dimensionKey: keyof typeof DIMENSION_METHODOLOGY;
-  label: string;
+  dimensionKey: (typeof DIMENSION_KEYS)[number];
   dimension: DimensionScore;
 }) {
+  const t = useTranslations("NeighborhoodScoreCard");
+  const tDimensions = useTranslations("Dimensions");
+  const format = useFormatter();
   const hasData = dimension.score !== null;
 
   return (
     <div className="border-b border-slate-100 py-4 last:border-0 dark:border-slate-800">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className={`font-medium ${hasData ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500"}`}>
-          {label}
+          {tDimensions(dimensionKey)}
         </span>
         <ScoreBar score={dimension.score} />
       </div>
@@ -47,7 +40,14 @@ function DimensionRow({
         {dimension.sourceName && dimension.publishedAt && (
           <>
             <span>
-              Kaynak: {dimension.sourceName} · {formatDate(dimension.publishedAt)}
+              {t("sourceLabel", {
+                source: dimension.sourceName,
+                date: format.dateTime(new Date(dimension.publishedAt), {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                }),
+              })}
             </span>
             <DataFreshnessBadge freshness={dimension.freshness} />
           </>
@@ -55,9 +55,9 @@ function DimensionRow({
       </div>
       <details className="mt-1 text-xs text-slate-500 dark:text-slate-400">
         <summary className="cursor-pointer select-none font-medium text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
-          Nasıl hesaplanıyor?
+          {t("howCalculated")}
         </summary>
-        <p className="mt-1 max-w-prose">{DIMENSION_METHODOLOGY[dimensionKey]}</p>
+        <p className="mt-1 max-w-prose">{tDimensions(`methodology.${dimensionKey}`)}</p>
       </details>
     </div>
   );
@@ -88,6 +88,7 @@ export function NeighborhoodScoreCard({
   // <h1> instead, so the document keeps exactly one <h1>.
   headingLevel?: "h1" | "h2";
 }) {
+  const t = useTranslations("NeighborhoodScoreCard");
   const overallBand = getScoreBand(score.overall);
   const overallStyles = SCORE_BAND_STYLES[overallBand];
   const Heading = headingLevel;
@@ -108,7 +109,7 @@ export function NeighborhoodScoreCard({
             </span>
           </div>
           <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            Genel skor
+            {t("overallScoreLabel")}
           </p>
         </div>
       </div>
@@ -123,20 +124,15 @@ export function NeighborhoodScoreCard({
 
       {!score.isComplete && (
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-          Bazı veri boyutları henüz mevcut değil.
+          {t("incompleteNotice")}
         </p>
       )}
 
       <div className="mt-4">
-        {[...DIMENSIONS]
-          .sort((x, y) => Number(score[y.key].score !== null) - Number(score[x.key].score !== null))
-          .map(({ key, label }) => (
-            <DimensionRow
-              key={key}
-              dimensionKey={key}
-              label={label}
-              dimension={score[key]}
-            />
+        {[...DIMENSION_KEYS]
+          .sort((x, y) => Number(score[y].score !== null) - Number(score[x].score !== null))
+          .map((key) => (
+            <DimensionRow key={key} dimensionKey={key} dimension={score[key]} />
           ))}
       </div>
     </div>

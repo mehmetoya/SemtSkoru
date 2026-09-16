@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 type Theme = "light" | "dark";
 
@@ -18,6 +19,7 @@ export function ThemeToggle() {
   // hydration-mismatched whenever the client's real theme differed from the server's
   // always-"light" guess - suppressHydrationWarning only covers a node's own
   // attributes/text, not a structurally different child tree.)
+  const t = useTranslations("ThemeToggle");
   const [theme, setTheme] = useState<Theme>(() =>
     typeof window === "undefined" ? "light" : readTheme(),
   );
@@ -34,7 +36,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       suppressHydrationWarning
-      aria-label={theme === "dark" ? "Açık temaya geç" : "Koyu temaya geç"}
+      aria-label={theme === "dark" ? t("toLight") : t("toDark")}
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-100"
     >
       <svg viewBox="0 0 24 24" className="hidden h-4.5 w-4.5 dark:block" fill="none" aria-hidden="true">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { SAMPLE_BOUNDARY } from "../../lib/test-utils";
+import { createIntlWrapper, SAMPLE_BOUNDARY } from "../../lib/test-utils";
 import { NeighborhoodScoreCard } from "../NeighborhoodScoreCard";
 import type { NeighborhoodScore } from "../../lib/types";
 
@@ -49,7 +49,9 @@ describe("NeighborhoodScoreCard", () => {
       summary: null,
     };
 
-    render(<NeighborhoodScoreCard name="Kadıköy" boundary={SAMPLE_BOUNDARY} score={score} />);
+    render(<NeighborhoodScoreCard name="Kadıköy" boundary={SAMPLE_BOUNDARY} score={score} />, {
+      wrapper: createIntlWrapper(),
+    });
 
     expect(screen.getByText("Kadıköy")).toBeInTheDocument();
     expect(screen.getByText("94")).toBeInTheDocument();
@@ -98,7 +100,9 @@ describe("NeighborhoodScoreCard", () => {
       summary: null,
     };
 
-    render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />);
+    render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />, {
+      wrapper: createIntlWrapper(),
+    });
 
     expect(screen.getByText("Beşiktaş")).toBeInTheDocument();
     expect(screen.getByText("Veri yok")).toBeInTheDocument();
@@ -146,7 +150,9 @@ describe("NeighborhoodScoreCard", () => {
       summary: null,
     };
 
-    render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />);
+    render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />, {
+      wrapper: createIntlWrapper(),
+    });
 
     const labels = screen.getAllByText(/Hava Kalitesi|Yeşil Alan|Ulaşım/);
     expect(labels.map((el) => el.textContent)).toEqual([
@@ -170,7 +176,9 @@ describe("NeighborhoodScoreCard", () => {
       summary: null,
     };
 
-    render(<NeighborhoodScoreCard name="Kadıköy" score={score} headingLevel="h2" />);
+    render(<NeighborhoodScoreCard name="Kadıköy" score={score} headingLevel="h2" />, {
+      wrapper: createIntlWrapper(),
+    });
 
     expect(screen.getByRole("heading", { level: 2, name: "Kadıköy" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
@@ -190,7 +198,9 @@ describe("NeighborhoodScoreCard", () => {
       summary: null,
     };
 
-    const { rerender } = render(<NeighborhoodScoreCard name="Kadıköy" score={baseScore} />);
+    const { rerender } = render(<NeighborhoodScoreCard name="Kadıköy" score={baseScore} />, {
+      wrapper: createIntlWrapper(),
+    });
     expect(screen.queryByText("Öne Çıkan Özellikler")).not.toBeInTheDocument();
 
     rerender(

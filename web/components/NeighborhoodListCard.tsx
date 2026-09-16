@@ -1,5 +1,6 @@
-import Link from "next/link";
-import { getScoreBand, SCORE_BAND_LABELS, SCORE_BAND_STYLES } from "../lib/score-band";
+import { useTranslations } from "next-intl";
+import { Link } from "../i18n/navigation";
+import { getScoreBand, SCORE_BAND_STYLES } from "../lib/score-band";
 import { DistrictShapeIcon } from "./DistrictShapeIcon";
 
 export function NeighborhoodListCard({
@@ -13,6 +14,8 @@ export function NeighborhoodListCard({
   boundary: GeoJSON.Geometry;
   overallScore: number | null;
 }) {
+  const t = useTranslations("NeighborhoodListCard");
+  const tBand = useTranslations("ScoreBand");
   const band = getScoreBand(overallScore);
   const styles = SCORE_BAND_STYLES[band];
 
@@ -29,7 +32,7 @@ export function NeighborhoodListCard({
       </div>
       <div className="mt-2 flex items-center justify-between">
         <p className={`text-sm font-medium ${styles.text}`}>
-          {overallScore === null ? "Skor yüklenemedi" : `Genel skor: ${SCORE_BAND_LABELS[band]}`}
+          {overallScore === null ? t("scoreFailedToLoad") : t("overallScoreWithBand", { band: tBand(band) })}
         </p>
         <div
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${styles.bg} ${styles.text}`}

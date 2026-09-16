@@ -1,26 +1,38 @@
 import Link from "next/link";
-import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Sayfa bulunamadı",
-};
-
-export default function NotFound() {
+// Renders only when Next.js can't even resolve a valid `[locale]` segment (e.g. a request
+// for `/unknown.txt`, or a locale prefix that isn't "en"/nothing) - app/[locale]/layout.tsx
+// calls notFound() in exactly that case, before any locale (and so any translation) is
+// known, which is why this one can't be localized and stays hardcoded English. Every
+// normal "page not found" case (a real, unmatched path under a valid locale, e.g.
+// /mahalle/nonexistent) is handled by the translated app/[locale]/not-found.tsx instead -
+// see that file, and app/[locale]/[...rest]/page.tsx, which is what makes Next.js actually
+// reach it. Mirrors next-intl's own official app-router example structure. Uses next/link
+// (not the locale-aware Link from i18n/navigation) deliberately - there's no known locale
+// to prefix with here, so this always points at the Turkish (default) root.
+export default function GlobalNotFound() {
   return (
-    <main className="mx-auto flex max-w-2xl flex-col items-center px-4 py-20 text-center sm:px-6">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
-        Sayfa bulunamadı
-      </h1>
-      <p className="mt-3 text-base text-slate-600 dark:text-slate-400">
-        Aradığın sayfa ya da ilçe bulunamadı. Adres yanlış yazılmış ya da
-        kaldırılmış olabilir.
-      </p>
-      <Link
-        href="/"
-        className="mt-6 font-medium text-blue-700 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+    <html lang="en">
+      <body
+        style={{
+          display: "flex",
+          minHeight: "100vh",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "system-ui, sans-serif",
+          textAlign: "center",
+          padding: "2rem",
+        }}
       >
-        ← Tüm ilçelere dön
-      </Link>
-    </main>
+        <h1 style={{ fontSize: "1.75rem", fontWeight: 700 }}>Page not found</h1>
+        <p style={{ marginTop: "0.75rem", color: "#64748b" }}>
+          The page you requested doesn&apos;t exist.
+        </p>
+        <Link href="/" style={{ marginTop: "1.5rem", color: "#1d4ed8", fontWeight: 500 }}>
+          ← Back to SemtSkoru
+        </Link>
+      </body>
+    </html>
   );
 }

@@ -1,25 +1,17 @@
+import { useFormatter, useTranslations } from "next-intl";
 import type { DimensionScore, NeighborhoodScore } from "../lib/types";
-import { DIMENSION_METHODOLOGY } from "../lib/dimension-info";
 import { DataFreshnessBadge } from "./DataFreshnessBadge";
 import { ScoreBar } from "./ScoreBar";
 import { ShareCardButtons } from "./ShareCardButtons";
 
-const DIMENSIONS = [
-  { key: "airQuality", label: "Hava Kalitesi" },
-  { key: "greenSpace", label: "Yeşil Alan" },
-  { key: "transportation", label: "Ulaşım" },
-  { key: "parking", label: "Otopark" },
-  { key: "healthAccess", label: "Sağlık Erişimi" },
-  { key: "transitAccess", label: "Toplu Taşıma Erişimi" },
+const DIMENSION_KEYS = [
+  "airQuality",
+  "greenSpace",
+  "transportation",
+  "parking",
+  "healthAccess",
+  "transitAccess",
 ] as const;
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 // The colored dot carries A/B identity via aria-label (an attribute, not rendered
 // text) so a district name never repeats as a text node once per dimension row -
@@ -33,11 +25,12 @@ function IdentityRow({
   name: string;
   dimension: DimensionScore;
 }) {
+  const t = useTranslations("NeighborhoodComparisonTable");
   return (
     <div className="flex items-center gap-3">
       <span
         role="img"
-        aria-label={`${name} göstergesi`}
+        aria-label={t("indicatorAria", { name })}
         className={`h-2.5 w-2.5 shrink-0 rounded-full ${colorClass}`}
       />
       <div className="min-w-0 flex-1">
@@ -67,6 +60,14 @@ export function NeighborhoodComparisonTable({
     fallbackUrl: string;
   };
 }) {
+  const t = useTranslations("NeighborhoodComparisonTable");
+  const tDimensions = useTranslations("Dimensions");
+  const format = useFormatter();
+
+  function formatDate(iso: string): string {
+    return format.dateTime(new Date(iso), { day: "numeric", month: "long", year: "numeric" });
+  }
+
   const delta =
     scoreA.overall !== null && scoreB.overall !== null
       ? scoreB.overall - scoreA.overall
@@ -79,7 +80,7 @@ export function NeighborhoodComparisonTable({
     >
       <div className="border-b border-slate-100 pb-5 dark:border-slate-800">
         <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          Genel Skor
+          {t("overallScoreLabel")}
         </p>
         <div className="mt-2 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -112,28 +113,28 @@ export function NeighborhoodComparisonTable({
       </div>
 
       <div>
-        {DIMENSIONS.map(({ key, label }) => {
+        {DIMENSION_KEYS.map((key) => {
           const dimA = scoreA[key];
           const dimB = scoreB[key];
           const citation = dimA.sourceName ? dimA : dimB.sourceName ? dimB : null;
 
           return (
             <div key={key} className="border-b border-slate-100 py-4 last:border-0 dark:border-slate-800">
-              <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">{label}</p>
+              <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">{tDimensions(key)}</p>
               <div className="space-y-2">
                 <IdentityRow colorClass="bg-blue-600" name={nameA} dimension={dimA} />
                 <IdentityRow colorClass="bg-fuchsia-600" name={nameB} dimension={dimB} />
               </div>
               {citation && citation.publishedAt && (
                 <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                  Kaynak: {citation.sourceName} · {formatDate(citation.publishedAt)}
+                  {t("sourceLabel", { source: citation.sourceName ?? "", date: formatDate(citation.publishedAt) })}
                 </p>
               )}
               <details className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 <summary className="cursor-pointer select-none font-medium text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
-                  Nasıl hesaplanıyor?
+                  {t("howCalculated")}
                 </summary>
-                <p className="mt-1 max-w-prose">{DIMENSION_METHODOLOGY[key]}</p>
+                <p className="mt-1 max-w-prose">{tDimensions(`methodology.${key}`)}</p>
               </details>
             </div>
           );

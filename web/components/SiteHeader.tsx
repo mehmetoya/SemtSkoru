@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, usePathname } from "../i18n/navigation";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 
 const GITHUB_URL = "https://github.com/mehmetoya/SemtSkoru";
 
@@ -16,6 +17,7 @@ function GitHubIcon({ className = "" }: { className?: string }) {
 }
 
 export function SiteHeader() {
+  const t = useTranslations("SiteHeader");
   const pathname = usePathname();
 
   const linkClass = (href: string) =>
@@ -34,38 +36,39 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-3 text-sm sm:gap-5">
           <Link href="/" className={linkClass("/")} aria-current={pathname === "/" ? "page" : undefined}>
-            İlçeler
+            {t("districts")}
           </Link>
           <Link
             href="/karsilastir"
             className={linkClass("/karsilastir")}
             aria-current={pathname === "/karsilastir" ? "page" : undefined}
           >
-            Karşılaştır
+            {t("compare")}
           </Link>
           <Link
             href="/asistan"
             className={`whitespace-nowrap ${linkClass("/asistan")}`}
             aria-current={pathname === "/asistan" ? "page" : undefined}
           >
-            Asistan
+            {t("assistant")}
           </Link>
           <Link
             href="/hakkimizda"
             className={linkClass("/hakkimizda")}
             aria-current={pathname === "/hakkimizda" ? "page" : undefined}
           >
-            Hakkımızda
+            {t("about")}
           </Link>
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="GitHub deposu"
+            aria-label={t("githubAria")}
             className="text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-slate-100"
           >
             <GitHubIcon className="h-5 w-5" />
           </a>
+          <LocaleSwitcher />
           <ThemeToggle />
         </nav>
       </div>
