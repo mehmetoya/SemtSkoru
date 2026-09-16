@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 type Theme = "light" | "dark";
@@ -23,6 +23,28 @@ export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(() =>
     typeof window === "undefined" ? "light" : readTheme(),
   );
+
+  // ThemeScript (in <head>) only ever runs once, on the browser's real initial parse of the
+  // document. Switching locale re-renders the root layout (app/[locale]/layout.tsx, since it
+  // reads params.locale for <html lang>) - live-verified (2026-09-16) that at some point
+  // during/after that transition, Next's own DOM sync for <html> wipes the `dark` class
+  // ThemeScript/toggle() had set, even though localStorage and this component's own `theme`
+  // state are both untouched. Two narrower fixes were tried and empirically failed: a
+  // `[theme]`-only effect (ThemeToggle isn't remounted, so it never re-fires) and a
+  // `pathname`-dependent effect (fires too early - live-verified via request/timing logs that
+  // Next's own swap of the freshly server-rendered <html> lands AFTER this effect runs,
+  // re-wiping the class a second time). A MutationObserver sidesteps needing to win a race
+  // against exactly when/how many times that swap happens: it corrects the class immediately
+  // whenever the DOM disagrees with `theme`, no matter what caused the disagreement or when.
+  useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => root.classList.toggle("dark", theme === "dark");
+    sync();
+
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, [theme]);
 
   function toggle() {
     const next: Theme = theme === "dark" ? "light" : "dark";
