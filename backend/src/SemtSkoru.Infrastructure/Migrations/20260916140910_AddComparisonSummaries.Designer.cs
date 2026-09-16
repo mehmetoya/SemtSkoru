@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using SemtSkoru.Infrastructure.Persistence;
 namespace SemtSkoru.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260916140910_AddComparisonSummaries")]
+    partial class AddComparisonSummaries
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -93,30 +96,6 @@ namespace SemtSkoru.Infrastructure.Migrations
                     b.ToTable("DistrictSummaries", (string)null);
                 });
 
-            modelBuilder.Entity("SemtSkoru.Domain.DistrictTrendSummary", b =>
-                {
-                    b.Property<string>("NeighborhoodId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("ComparisonSignature")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<DateTimeOffset>("GeneratedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SummaryText")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.HasKey("NeighborhoodId");
-
-                    b.ToTable("DistrictTrendSummaries", (string)null);
-                });
-
             modelBuilder.Entity("SemtSkoru.Domain.GreenSpaceReading", b =>
                 {
                     b.Property<string>("NeighborhoodId")
@@ -188,36 +167,6 @@ namespace SemtSkoru.Infrastructure.Migrations
                     b.HasKey("NeighborhoodId");
 
                     b.ToTable("ParkingReadings", (string)null);
-                });
-
-            modelBuilder.Entity("SemtSkoru.Domain.ScoreSnapshot", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Dimension")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<string>("NeighborhoodId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("RecordedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Score")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NeighborhoodId", "RecordedAt");
-
-                    b.ToTable("ScoreSnapshots", (string)null);
                 });
 
             modelBuilder.Entity("SemtSkoru.Domain.TrafficReading", b =>

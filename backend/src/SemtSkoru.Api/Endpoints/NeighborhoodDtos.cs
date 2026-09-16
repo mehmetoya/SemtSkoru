@@ -1,5 +1,6 @@
 using NetTopologySuite.Geometries;
 using SemtSkoru.Application.Scoring;
+using SemtSkoru.Domain;
 
 namespace SemtSkoru.Api.Endpoints;
 
@@ -17,6 +18,24 @@ public sealed record DimensionScoreDto(int? Score, string? Freshness, string? So
 }
 
 public sealed record NeighborhoodComparisonDto(NeighborhoodScoreDto A, NeighborhoodScoreDto B);
+
+// Null whenever no usable AI comparison summary is available for this pair right now - no Gemini
+// key configured, the live generation call failed/timed out/was rate-limited, the model's
+// response wasn't usable, or neither district shares a scored dimension with the other (see
+// ComparisonSummaryOrchestrator/ComparisonSummaryService) - never a fabricated placeholder. Same
+// honest-absence contract as DistrictSummaryDto above; the frontend renders nothing for a null
+// summary here exactly like DistrictSummaryBadge does.
+public sealed record ComparisonSummaryDto(string Text, DateTimeOffset GeneratedAt)
+{
+    public static ComparisonSummaryDto From(ComparisonSummary summary) =>
+        new(summary.SummaryText, summary.GeneratedAt);
+}
+
+// GET /api/neighborhoods/compare/summary's whole response body - deliberately just this one
+// nullable field (no status/message discriminator like AssistantResponseDto has) because, unlike
+// the Assistant's interactive form, this is a passive auto-triggered fetch the frontend reacts to
+// the exact same way regardless of WHY a summary isn't available - see ComparisonSummaryBadge.tsx.
+public sealed record ComparisonSummaryResponseDto(ComparisonSummaryDto? Summary);
 
 // Null whenever no cached AI summary exists yet for this district - Gemini not configured, the
 // weekly DistrictSummaryGenerationJob hasn't run for it yet, or every generation attempt so far

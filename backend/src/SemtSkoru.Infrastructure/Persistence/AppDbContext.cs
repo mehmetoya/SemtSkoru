@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<DistrictSummary> DistrictSummaries => Set<DistrictSummary>();
     public DbSet<ScoreSnapshot> ScoreSnapshots => Set<ScoreSnapshot>();
     public DbSet<DistrictTrendSummary> DistrictTrendSummaries => Set<DistrictTrendSummary>();
+    public DbSet<ComparisonSummary> ComparisonSummaries => Set<ComparisonSummary>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

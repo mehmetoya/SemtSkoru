@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SemtSkoru.Api.RateLimiting;
+using SemtSkoru.Application.Comparisons;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Application.Summaries;
 using SemtSkoru.Application.Trends;
@@ -111,5 +112,56 @@ public static class NeighborhoodEndpoints
 
             return Results.Ok(new NeighborhoodComparisonDto(NeighborhoodScoreDto.From(scoreA!), NeighborhoodScoreDto.From(scoreB!)));
         }).RequireRateLimiting(RateLimitPolicies.Compare);
+
+        // Deliberately a SEPARATE endpoint from GET /api/neighborhoods/compare above, not a field
+        // bolted onto that one's response, for two reasons: (1) that endpoint only ever does cheap
+        // DB reads today and is rate-limited under RateLimitPolicies.Compare (a per-IP DB-cost
+        // budget) - this one may make a live Gemini call and MUST share the same scarce,
+        // app-wide, per-day Gemini budget as POST /api/asistan (RateLimitPolicies.AiAssistant -
+        // see RateLimiting/RateLimitingExtensions.cs), not get its own separate allowance; (2) the
+        // frontend can render the score table immediately from the (fast, DB-only) compare
+        // response while this one resolves independently and possibly slowly (a never-before-seen
+        // pair's first view is a live several-second Gemini call) - see
+        // web/lib/hooks/useComparisonSummary.ts and web/components/ComparisonSummaryBadge.tsx.
+        app.MapGet("/api/neighborhoods/compare/summary", async (
+            string? a,
+            string? b,
+            AppDbContext db,
+            INeighborhoodScoringService scoringService,
+            IComparisonSummaryOrchestrator orchestrator,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b))
+            {
+                return Results.BadRequest(new { error = "Query parameters 'a' and 'b' are both required." });
+            }
+
+            var scoreA = await scoringService.GetScoreAsync(a, ct);
+            var scoreB = await scoringService.GetScoreAsync(b, ct);
+
+            var unknownIds = new[] { (id: a, score: scoreA), (id: b, score: scoreB) }
+                .Where(x => x.score is null)
+                .Select(x => x.id)
+                .ToArray();
+
+            if (unknownIds.Length > 0)
+            {
+                return Results.BadRequest(new { error = $"Unknown neighborhood id(s): {string.Join(", ", unknownIds)}" });
+            }
+
+            var names = await db.Neighborhoods
+                .Where(n => n.Id == a || n.Id == b)
+                .ToDictionaryAsync(n => n.Id, n => n.Name, ct);
+
+            var summary = await orchestrator.GetOrGenerateAsync(
+                names.GetValueOrDefault(a, a), scoreA!, names.GetValueOrDefault(b, b), scoreB!, ct);
+
+            // Deliberately just { summary } - null covers every honest reason one might not be
+            // available right now (no key configured, the live call failed/timed out/was
+            // rate-limited, or nothing usable could be grounded in the real scores). The frontend
+            // treats this exactly like DistrictSummaryBadge treats a null district summary: render
+            // nothing, never an error for the rest of the page.
+            return Results.Ok(new ComparisonSummaryResponseDto(summary is null ? null : ComparisonSummaryDto.From(summary)));
+        }).RequireRateLimiting(RateLimitPolicies.AiAssistant);
     }
 }
