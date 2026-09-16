@@ -1,5 +1,6 @@
+import { useTranslations } from "next-intl";
 import type { NeighborhoodSummary } from "../lib/types";
-import { getScoreBand, SCORE_BAND_LABELS, SCORE_BAND_STYLES } from "../lib/score-band";
+import { getScoreBand, SCORE_BAND_STYLES } from "../lib/score-band";
 import { DistrictShapeIcon } from "./DistrictShapeIcon";
 
 // Matches NeighborhoodMap's COLOR_A/COLOR_B exactly (Tailwind's blue-600/fuchsia-600
@@ -24,6 +25,8 @@ export function DistrictPicker({
   value?: string;
   onChange: (id: string | undefined) => void;
 }) {
+  const t = useTranslations("DistrictPicker");
+  const tBand = useTranslations("ScoreBand");
   const styles = ACCENT[accent];
   const selected = neighborhoods.find((n) => n.id === value);
   const band = getScoreBand(selected?.overallScore ?? null);
@@ -35,7 +38,7 @@ export function DistrictPicker({
       <div className="flex items-center gap-2">
         <span
           role="img"
-          aria-label={`${label} göstergesi`}
+          aria-label={t("indicatorAria", { label })}
           className={`h-2.5 w-2.5 shrink-0 rounded-full ${styles.dot}`}
         />
         <label htmlFor={selectId} className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -49,7 +52,7 @@ export function DistrictPicker({
         onChange={(e) => onChange(e.target.value || undefined)}
         className={`mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${styles.ring}`}
       >
-        <option value="">İlçe seç…</option>
+        <option value="">{t("selectPlaceholder")}</option>
         {neighborhoods
           .filter((n) => n.id !== excludeId)
           .map((n) => (
@@ -64,7 +67,7 @@ export function DistrictPicker({
           <DistrictShapeIcon boundary={selected.boundary} className={`h-9 w-9 shrink-0 ${bandStyles.text}`} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{selected.name}</p>
-            <p className={`text-xs font-medium ${bandStyles.text}`}>{SCORE_BAND_LABELS[band]}</p>
+            <p className={`text-xs font-medium ${bandStyles.text}`}>{tBand(band)}</p>
           </div>
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${bandStyles.bg} ${bandStyles.text}`}

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "../i18n/navigation";
 import type { NeighborhoodSummary } from "../lib/types";
 import { getScoreBand, SCORE_BAND_STYLES } from "../lib/score-band";
 import { DistrictShapeIcon } from "./DistrictShapeIcon";

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DistrictSummaryBadge } from "../DistrictSummaryBadge";
+import { createIntlWrapper } from "../../lib/test-utils";
 
 describe("DistrictSummaryBadge", () => {
   it("renders nothing when there is no cached summary yet", () => {
-    const { container } = render(<DistrictSummaryBadge summary={null} />);
+    const { container } = render(<DistrictSummaryBadge summary={null} />, {
+      wrapper: createIntlWrapper(),
+    });
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -16,6 +19,7 @@ describe("DistrictSummaryBadge", () => {
           generatedAt: "2026-09-11T00:00:00Z",
         }}
       />,
+      { wrapper: createIntlWrapper() },
     );
 
     expect(

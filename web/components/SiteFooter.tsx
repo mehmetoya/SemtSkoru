@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "../i18n/navigation";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { Logo } from "./Logo";
 
@@ -13,6 +14,8 @@ function GitHubIcon({ className = "" }: { className?: string }) {
 }
 
 export function SiteFooter() {
+  const t = useTranslations("SiteFooter");
+
   return (
     <footer className="mt-16 border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -24,37 +27,33 @@ export function SiteFooter() {
                 SemtSkoru
               </span>
             </Link>
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-              İstanbul ilçelerinin hava kalitesi, yeşil alan, ulaşım, otopark,
-              sağlık ve toplu taşıma erişimini gerçek İBB açık verisiyle 0-100
-              arası skorlara çeviren açık kaynak bir araç.
-            </p>
+            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t("description")}</p>
             <DataSourceBadge className="mt-4" />
           </div>
 
           <div className="grid grid-cols-2 gap-8 text-sm sm:gap-16">
             <div>
-              <p className="font-semibold text-slate-900 dark:text-slate-100">Ürün</p>
+              <p className="font-semibold text-slate-900 dark:text-slate-100">{t("productHeading")}</p>
               <ul className="mt-3 space-y-2 text-slate-500 dark:text-slate-400">
                 <li>
                   <Link href="/" className="hover:text-slate-900 dark:hover:text-slate-100">
-                    İlçeler
+                    {t("districts")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/karsilastir" className="hover:text-slate-900 dark:hover:text-slate-100">
-                    Karşılaştır
+                    {t("compare")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/hakkimizda" className="hover:text-slate-900 dark:hover:text-slate-100">
-                    Hakkımızda
+                    {t("about")}
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <p className="font-semibold text-slate-900 dark:text-slate-100">Proje</p>
+              <p className="font-semibold text-slate-900 dark:text-slate-100">{t("projectHeading")}</p>
               <ul className="mt-3 space-y-2 text-slate-500 dark:text-slate-400">
                 <li>
                   <a
@@ -73,7 +72,7 @@ export function SiteFooter() {
                     rel="noopener noreferrer"
                     className="hover:text-slate-900 dark:hover:text-slate-100"
                   >
-                    MIT Lisansı
+                    {t("license")}
                   </a>
                 </li>
               </ul>
@@ -83,25 +82,29 @@ export function SiteFooter() {
 
         <div className="mt-10 border-t border-slate-100 pt-6 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
           <p>
-            © {new Date().getFullYear()} SemtSkoru · Veriler{" "}
-            <a
-              href="https://data.ibb.gov.tr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-slate-600 dark:hover:text-slate-300"
-            >
-              İBB Açık Veri Portalı
-            </a>{" "}
-            (İBB Açık Veri Lisansı) ve{" "}
-            <a
-              href="https://www.openstreetmap.org/copyright"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-slate-600 dark:hover:text-slate-300"
-            >
-              OpenStreetMap katkıda bulunanları
-            </a>{" "}
-            (ODbL) kaynaklıdır.
+            {t.rich("attribution", {
+              year: new Date().getFullYear(),
+              ibb: (chunks) => (
+                <a
+                  href="https://data.ibb.gov.tr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {chunks}
+                </a>
+              ),
+              osm: (chunks) => (
+                <a
+                  href="https://www.openstreetmap.org/copyright"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {chunks}
+                </a>
+              ),
+            })}
           </p>
         </div>
       </div>

@@ -1,10 +1,5 @@
+import { useTranslations } from "next-intl";
 import type { DataFreshness } from "../lib/types";
-
-const LABELS: Record<DataFreshness, string> = {
-  Fresh: "Güncel",
-  Stale: "Bayat veri",
-  Historical: "Tarihsel veri",
-};
 
 // Fresh data needs no badge -- only call this out when the source is overdue (Stale) or
 // permanently non-live by design (Historical), per SPEC.md's stale-data warning boundary.
@@ -13,6 +8,8 @@ export function DataFreshnessBadge({
 }: {
   freshness: DataFreshness | null;
 }) {
+  const t = useTranslations("DataFreshness");
+
   if (freshness === null || freshness === "Fresh") {
     return null;
   }
@@ -28,7 +25,7 @@ export function DataFreshnessBadge({
       }
     >
       {isStale && "⚠ "}
-      {LABELS[freshness]}
+      {t(freshness)}
     </span>
   );
 }

@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type { DistrictSummary } from "../lib/types";
 
 // Same violet-tinted "AI-attributed content" visual language as AssistantClient's disclosure
@@ -8,6 +9,9 @@ import type { DistrictSummary } from "../lib/types";
 // reasons that can be true (Gemini not configured, the weekly job hasn't reached this district
 // yet, or no usable summary could be grounded in its real scores).
 export function DistrictSummaryBadge({ summary }: { summary: DistrictSummary | null }) {
+  const t = useTranslations("DistrictSummaryBadge");
+  const tCommon = useTranslations("Common");
+
   if (!summary) {
     return null;
   }
@@ -15,12 +19,10 @@ export function DistrictSummaryBadge({ summary }: { summary: DistrictSummary | n
   return (
     <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-900 dark:bg-violet-950/40">
       <p className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
-        ✨ Öne Çıkan Özellikler
+        {t("heading")}
       </p>
       <p className="mt-1 text-sm text-violet-900 dark:text-violet-200">{summary.text}</p>
-      <p className="mt-2 text-[11px] text-violet-500 dark:text-violet-400">
-        Google Gemini ile oluşturuldu — SemtSkoru&apos;nun gerçek skor verilerine dayanır
-      </p>
+      <p className="mt-2 text-[11px] text-violet-500 dark:text-violet-400">{tCommon("aiAttribution")}</p>
     </div>
   );
 }

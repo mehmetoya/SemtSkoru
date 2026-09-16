@@ -85,10 +85,17 @@ describe("AssistantClient", () => {
     expect(screen.getByText("Veri yok")).toBeInTheDocument();
   });
 
-  it("shows the backend's honest Turkish message instead of a guess when no usable recommendation comes back", async () => {
+  it("shows this app's own translated status message, not the backend's raw `message` field, when no usable recommendation comes back", async () => {
+    // `message` is deliberately NOT what AssistantClient renders (see its own comment) -
+    // it's backend-authored Turkish and can't be localized from here. AssistantClient maps
+    // `status` to messages/tr.json's own Assistant.status.NoUsableRecommendations instead,
+    // which happens to read identically to the backend's Turkish message by design (same
+    // honest meaning) - this response's `message` is set to something else entirely to
+    // prove the assertion below is checking the frontend's translation, not an accidental
+    // pass-through.
     const response: AssistantResponse = {
       status: "NoUsableRecommendations",
-      message: "İsteğiniz için güvenilir bir öneri oluşturamadık. İlçeleri doğrudan karşılaştırmayı deneyebilirsiniz.",
+      message: "some other backend string that must never be rendered",
       recommendations: [],
     };
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
@@ -102,6 +109,9 @@ describe("AssistantClient", () => {
         screen.getByText("İsteğiniz için güvenilir bir öneri oluşturamadık. İlçeleri doğrudan karşılaştırmayı deneyebilirsiniz."),
       ).toBeInTheDocument(),
     );
+    expect(
+      screen.queryByText("some other backend string that must never be rendered"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a generic Turkish error message when the request fails outright", async () => {

@@ -1,7 +1,11 @@
+import { useTranslations } from "next-intl";
+
 // A small trust signal repeated wherever the site should remind a visitor (or an AI
 // crawler) that every score traces back to a real, named public data source - not a
 // generic "powered by open data" claim.
 export function DataSourceBadge({ className = "" }: { className?: string }) {
+  const t = useTranslations("DataSourceBadge");
+
   return (
     <span
       className={`inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 dark:border-emerald-900/60 dark:bg-slate-900 dark:text-slate-300 ${className}`}
@@ -28,7 +32,7 @@ export function DataSourceBadge({ className = "" }: { className?: string }) {
           strokeLinecap="round"
         />
       </svg>
-      Kaynak · İBB Açık Veri
+      {t("label")}
     </span>
   );
 }

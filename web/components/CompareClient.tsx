@@ -1,12 +1,22 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useNeighborhoods } from "../lib/hooks/useNeighborhoods";
 import { useCompareNeighborhoods } from "../lib/hooks/useCompareNeighborhoods";
 import { NeighborhoodComparisonTable } from "./NeighborhoodComparisonTable";
 import { DistrictPicker } from "./DistrictPicker";
 import { SITE_URL } from "../lib/site";
 import { useState } from "react";
+
+function MapLoadingFallback() {
+  const t = useTranslations("Compare");
+  return (
+    <div className="flex h-96 w-full animate-pulse items-center justify-center bg-slate-100 text-sm text-slate-400 lg:h-150 dark:bg-slate-800 dark:text-slate-500">
+      {t("mapLoading")}
+    </div>
+  );
+}
 
 // MapLibre GL is a large library (~1MB parsed) that only this page needs and that only ever
 // runs in the browser (it draws to a <canvas> via WebGL and touches `window` at import time -
@@ -15,17 +25,12 @@ import { useState } from "react";
 // parses in parallel with (not blocking) everything else on this page becoming interactive.
 const NeighborhoodMap = dynamic(
   () => import("./NeighborhoodMap").then((mod) => mod.NeighborhoodMap),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-96 w-full animate-pulse items-center justify-center bg-slate-100 text-sm text-slate-400 lg:h-150 dark:bg-slate-800 dark:text-slate-500">
-        Harita yükleniyor…
-      </div>
-    ),
-  },
+  { ssr: false, loading: MapLoadingFallback },
 );
 
 export function CompareClient() {
+  const t = useTranslations("Compare");
+  const tBand = useTranslations("ScoreBand");
   const { data: neighborhoods } = useNeighborhoods();
   const [a, setA] = useState<string | undefined>(undefined);
   const [b, setB] = useState<string | undefined>(undefined);
@@ -61,21 +66,21 @@ export function CompareClient() {
       <div className="order-2 lg:order-1">
         <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Birinci ilçe
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> {t("firstDistrict")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-fuchsia-600" /> İkinci ilçe
+            <span className="h-2.5 w-2.5 rounded-full bg-fuchsia-600" /> {t("secondDistrict")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> İyi
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> {tBand("good")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Orta
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> {tBand("moderate")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Düşük
+            <span className="h-2.5 w-2.5 rounded-full bg-red-500" /> {tBand("poor")}
           </span>
-          <span>Haritadan bir ilçeye tıklayarak da seçebilirsin.</span>
+          <span>{t("mapHint")}</span>
         </div>
         <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm dark:border-slate-800">
           <NeighborhoodMap
@@ -90,7 +95,7 @@ export function CompareClient() {
       <div className="order-1 flex flex-col gap-4 lg:order-2 lg:sticky lg:top-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
           <DistrictPicker
-            label="Birinci ilçe"
+            label={t("firstDistrict")}
             accent="a"
             neighborhoods={neighborhoods ?? []}
             excludeId={b}
@@ -98,7 +103,7 @@ export function CompareClient() {
             onChange={setA}
           />
           <DistrictPicker
-            label="İkinci ilçe"
+            label={t("secondDistrict")}
             accent="b"
             neighborhoods={neighborhoods ?? []}
             excludeId={a}
@@ -109,11 +114,11 @@ export function CompareClient() {
 
         {a && b && isPending && (
           <p role="status" className="text-sm text-slate-500 dark:text-slate-400">
-            Yükleniyor…
+            {t("loadingResult")}
           </p>
         )}
         {isError && (
-          <p className="text-sm text-red-700 dark:text-red-400">Karşılaştırma yüklenirken bir hata oluştu.</p>
+          <p className="text-sm text-red-700 dark:text-red-400">{t("errorLoadingComparison")}</p>
         )}
         {comparison && a && b && (
           <NeighborhoodComparisonTable
@@ -124,12 +129,13 @@ export function CompareClient() {
             share={{
               imageUrl: `/karsilastir/kart?${new URLSearchParams({ a, b })}`,
               fileName: `semtskoru-karsilastirma-${a}-${b}.png`,
-              shareTitle: `${nameOf(a)} - ${nameOf(b)} Karşılaştırması | SemtSkoru`,
-              shareText: `${nameOf(a)} ve ${nameOf(b)} ilçelerinin SemtSkoru karşılaştırmasını incele.`,
+              shareTitle: t("shareTitle", { nameA: nameOf(a), nameB: nameOf(b) }),
+              shareText: t("shareText", { nameA: nameOf(a), nameB: nameOf(b) }),
               // The comparison page itself doesn't persist the a/b selection in the URL,
               // so (unlike the single-district card, which can safely link back to its
               // own always-current page) the honest fallback link here is the generated
-              // image itself - a stable, timestamped snapshot of exactly this comparison.
+              // image itself - a stable, timestamped snapshot of exactly this comparison,
+              // and (like that image route) deliberately locale-agnostic.
               fallbackUrl: `${SITE_URL}/karsilastir/kart?${new URLSearchParams({ a, b })}`,
             }}
           />

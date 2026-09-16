@@ -1,0 +1,232 @@
+{
+  "Metadata": {
+    "titleDefault": "SemtSkoru — İstanbul İlçe Yaşam Skoru",
+    "titleTemplate": "%s | SemtSkoru",
+    "description": "İstanbul ilçelerinin hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimini gerçek İBB açık verisiyle 0-100 arası skorlara çeviren açık kaynak araç.",
+    "ogDescription": "Hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimini gerçek İBB açık verisiyle 0-100 arası skorlara çeviriyoruz.",
+    "websiteJsonLdDescription": "İstanbul ilçelerinin hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimi skorları."
+  },
+  "Common": {
+    "districtCount": "39 ilçe",
+    "airQualityCoverage": "Hava kalitesi verisi: 19/39 ilçe",
+    "ibbOpenData": "İBB Açık Veri Portalı",
+    "aiAttribution": "Google Gemini ile oluşturuldu — SemtSkoru'nun gerçek skor verilerine dayanır"
+  },
+  "Home": {
+    "title": "SemtSkoru — İstanbul İlçe Yaşam Skoru",
+    "description": "İstanbul'un 39 ilçesi için hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimini gerçek İBB açık verisiyle 0-100 arası skorlara çeviren açık kaynak araç.",
+    "heading": "İstanbul'u Verilerle Keşfet",
+    "intro": "İstanbul'un 39 ilçesini hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimi açısından 0-100 arası skorlara çeviriyoruz — tamamı gerçek İBB Açık Veri Portalı verisiyle, her skorun kaynağı ve güncellik tarihiyle birlikte. Bir ilçe seç, boyut boyut skorlarını ve nasıl hesaplandığını gör; ya da iki ilçeyi yan yana ve haritada karşılaştır.",
+    "errorLoadingList": "İlçe listesi yüklenirken bir hata oluştu.",
+    "highestScore": "En yüksek genel skor",
+    "lowestScore": "En düşük genel skor",
+    "compareCtaTitle": "İki ilçeyi karşılaştır →",
+    "compareCtaDescription": "Skorları yan yana ve haritada gör",
+    "assistantCtaTitle": "AI Semt Asistanı →",
+    "assistantCtaDescription": "Tercihini yaz, gerçek verilere dayanan öneri al",
+    "datasetJsonLdName": "SemtSkoru İlçe Yaşam Skorları",
+    "datasetJsonLdDescription": "İstanbul'un 39 ilçesi için hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimi skorları; İBB Açık Veri Portalı ve OpenStreetMap kaynaklı.",
+    "datasetJsonLdCreator": "İstanbul Büyükşehir Belediyesi Açık Veri Portalı"
+  },
+  "Compare": {
+    "title": "İlçe Karşılaştır",
+    "description": "İki İstanbul ilçesinin hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimi skorlarını yan yana ve haritada karşılaştır.",
+    "heading": "İlçe Karşılaştır",
+    "intro": "İki ilçe seç (aşağıdan veya haritadan tıklayarak), skorlarını yan yana ve haritada gör.",
+    "firstDistrict": "Birinci ilçe",
+    "secondDistrict": "İkinci ilçe",
+    "mapHint": "Haritadan bir ilçeye tıklayarak da seçebilirsin.",
+    "mapLoading": "Harita yükleniyor…",
+    "loadingResult": "Yükleniyor…",
+    "errorLoadingComparison": "Karşılaştırma yüklenirken bir hata oluştu.",
+    "shareTitle": "{nameA} - {nameB} Karşılaştırması | SemtSkoru",
+    "shareText": "{nameA} ve {nameB} ilçelerinin SemtSkoru karşılaştırmasını incele."
+  },
+  "Assistant": {
+    "title": "AI Semt Asistanı",
+    "description": "Tercihlerini birkaç cümleyle yaz; SemtSkoru'nun 39 ilçe için hesapladığı gerçek İBB açık veri skorlarına dayanan AI destekli ilçe önerilerini gör.",
+    "heading": "AI Semt Asistanı",
+    "intro": "Ne aradığını birkaç cümleyle yaz, SemtSkoru'nun 39 ilçe için hesapladığı gerçek skorlara bakarak sana 2-3 ilçe önersin. Öneriler her zaman gerçek İBB açık verisine dayanır — model, elindeki sayıların dışında İstanbul hakkında hiçbir şey uydurmaz.",
+    "geminiPowered": "Google Gemini destekli",
+    "promptLabel": "Ne arıyorsun?",
+    "examples": [
+      "Çocuklu bir aileyim, yeşil alan ve sağlık erişimi önemli, bütçem sınırlı.",
+      "Uzaktan çalışıyorum, hava kalitesi ve toplu taşımaya yakınlık önemli."
+    ],
+    "examplePrefix": "Örnek:",
+    "submit": "Öner",
+    "submitPending": "Öneriler hazırlanıyor…",
+    "clear": "Temizle",
+    "loadingStatus": "Gerçek skor verileriniz üzerinden değerlendiriliyor…",
+    "genericError": "Bir şeyler ters gitti. Lütfen daha sonra tekrar deneyin.",
+    "whyRecommended": "Neden {name}?",
+    "goToDistrict": "{name} sayfasına git →",
+    "status": {
+      "InvalidRequest": "Lütfen tercihlerinizi birkaç cümleyle yazın.",
+      "NotConfigured": "AI Semt Asistanı şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.",
+      "RateLimited": "AI Semt Asistanı şu anda çok yoğun. Lütfen birkaç dakika sonra tekrar deneyin.",
+      "Unavailable": "AI Semt Asistanı şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
+      "NoUsableRecommendations": "İsteğiniz için güvenilir bir öneri oluşturamadık. İlçeleri doğrudan karşılaştırmayı deneyebilirsiniz."
+    }
+  },
+  "About": {
+    "title": "Hakkımızda",
+    "description": "SemtSkoru neden var, skorları nasıl hesaplıyoruz ve hangi verilere dayanıyoruz - kaynak, lisans ve güncellik bilgisiyle birlikte.",
+    "heading": "Hakkımızda",
+    "whyTitle": "Neden SemtSkoru?",
+    "whyBody": "İstanbul için birçok açık veri projesi veriyi haritada gösterir, ama karşılaştırılabilir hale getirmez. SemtSkoru, hava kalitesi, yeşil alan erişimi, trafik yoğunluğu, otopark erişimi, sağlık hizmetlerine erişim ve toplu taşıma erişimini tek bir 0-100 skora indirip İstanbul'un 39 ilçesini gerçek veriyle keşfetmeni ve iki ilçeyi doğrudan karşılaştırmanı sağlar. Kişisel önceliklere göre ağırlıklandırılmış bir \"sana en uygun ilçe\" önerisi sunmaz — bu bilinçli bir kapsam kararı; her boyutu ayrı ayrı gösterip yorumu sana bırakır.",
+    "howTitle": "Nasıl skorluyoruz?",
+    "howIntro": "Her boyut, ilçenin ham veriden doğrusal bir formülle 0-100'e taşınan gerçek bir ölçümüdür — tahmin ya da öznel bir değerlendirme değil:",
+    "howFooter": "Genel skor, veri bulunan boyutların basit ortalamasıdır. Bir ilçe için bir boyutta veri yoksa (örneğin hava kalitesi istasyonu olmayan ilçelerde), o boyut ortalamaya dahil edilmez ve arayüzde açıkça \"Veri yok\" olarak gösterilir — hiçbir zaman tahmin veya enterpolasyonla doldurulmaz.",
+    "sourcesTitle": "Veri kaynakları",
+    "sourcesHeaders": {
+      "dimension": "Boyut",
+      "source": "Kaynak",
+      "freshness": "Güncellik",
+      "license": "Lisans"
+    },
+    "districtBoundaryLabel": "İlçe sınırları",
+    "sources": {
+      "airQuality": {
+        "source": "İBB Açık Veri Portalı (canlı API)",
+        "freshness": "Saatlik (kaynakta) — günlük senkronize edilir",
+        "license": "İBB Açık Veri Lisansı"
+      },
+      "greenSpace": {
+        "source": "İBB Açık Veri Portalı (GeoJSON)",
+        "freshness": "Yıllık",
+        "license": "İBB Açık Veri Lisansı"
+      },
+      "transportation": {
+        "source": "İBB Açık Veri Portalı (Ocak 2025 CSV)",
+        "freshness": "Tarihsel — canlı değil, UI'da açıkça etiketli",
+        "license": "İBB Açık Veri Lisansı"
+      },
+      "parking": {
+        "source": "İBB İSPARK Açık Veri Portalı (canlı API)",
+        "freshness": "Canlı",
+        "license": "İBB Açık Veri Lisansı"
+      },
+      "healthAccess": {
+        "source": "İBB 34 Dakika İstanbul Sağlık İndeksi (GeoJSON)",
+        "freshness": "Durağan — kaynak 2024'ten beri güncellenmedi, haftalık yeniden çekiliyor",
+        "license": "İBB Açık Veri Lisansı"
+      },
+      "transitAccess": {
+        "source": "İETT Otobüs Durakları Verisi (GeoJSON)",
+        "freshness": "Durağan — altyapı yavaş değişir, haftalık yeniden çekiliyor",
+        "license": "İBB Açık Veri Lisansı"
+      },
+      "districtBoundary": {
+        "source": "OpenStreetMap / Nominatim",
+        "freshness": "Statik (bir kez çekildi)",
+        "license": "ODbL"
+      }
+    },
+    "openSourceTitle": "Açık kaynak",
+    "openSourceBody": "SemtSkoru MIT lisansıyla tamamen açık kaynaktır — kodun tamamı, skor formülleri dahil, <github>GitHub'da</github> herkese açık. Bir hata bulursan veya bir veri kaynağı değişirse, katkı sağlayabilirsin.",
+    "backLink": "← Tüm ilçelere dön",
+    "jsonLdName": "Hakkımızda"
+  },
+  "Neighborhood": {
+    "titleSuffix": "Yaşam Skoru",
+    "description": "{name} için hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimi skorları - gerçek İBB açık verisiyle, kaynak ve güncellik tarihiyle birlikte.",
+    "backLink": "← Tüm ilçeler",
+    "errorLoadingScore": "Skor yüklenirken bir hata oluştu.",
+    "breadcrumbHome": "İlçeler",
+    "shareTitle": "{name} Yaşam Skoru | SemtSkoru",
+    "shareText": "{name} ilçesinin SemtSkoru yaşam skorunu incele."
+  },
+  "SiteHeader": {
+    "districts": "İlçeler",
+    "compare": "Karşılaştır",
+    "assistant": "Asistan",
+    "about": "Hakkımızda",
+    "githubAria": "GitHub deposu"
+  },
+  "SiteFooter": {
+    "description": "İstanbul ilçelerinin hava kalitesi, yeşil alan, ulaşım, otopark, sağlık ve toplu taşıma erişimini gerçek İBB açık verisiyle 0-100 arası skorlara çeviren açık kaynak bir araç.",
+    "productHeading": "Ürün",
+    "districts": "İlçeler",
+    "compare": "Karşılaştır",
+    "about": "Hakkımızda",
+    "projectHeading": "Proje",
+    "license": "MIT Lisansı",
+    "attribution": "© {year} SemtSkoru · Veriler <ibb>İBB Açık Veri Portalı</ibb> (İBB Açık Veri Lisansı) ve <osm>OpenStreetMap katkıda bulunanları</osm> (ODbL) kaynaklıdır."
+  },
+  "ScoreBand": {
+    "good": "İyi",
+    "moderate": "Orta",
+    "poor": "Düşük",
+    "unknown": "Veri yok"
+  },
+  "Dimensions": {
+    "airQuality": "Hava Kalitesi",
+    "greenSpace": "Yeşil Alan",
+    "transportation": "Ulaşım",
+    "parking": "Otopark",
+    "healthAccess": "Sağlık Erişimi",
+    "transitAccess": "Toplu Taşıma Erişimi",
+    "methodology": {
+      "airQuality": "İBB'nin canlı hava kalitesi istasyonundan alınan AQI (0-500, EPA standardı) değeri, EPA'nın 6 kategorisi (İyi → Tehlikeli) eşit dilimlere bölünüp ters çevrilerek 0-100'e taşınır. Düşük AQI = yüksek skor.",
+      "greenSpace": "En yakın parka olan mesafeye göre doğrusal azalan bir skor: 0 metre 100 puan, 2000 metre (~25 dakika yürüyüş) ve üzeri 0 puan.",
+      "transportation": "İlçedeki ortalama trafik hızına göre doğrusal bir skor: İstanbul'un şehir içi hız sınırı olan 50 km/sa ve üzeri 100 puan, durma noktası (0 km/sa) 0 puan.",
+      "parking": "İBB İSPARK otoparklarının ilçedeki ortalama boş kapasite oranı (boş kapasite / toplam kapasite, otopark başına ağırlıksız ortalama): tamamen boş %100 doluluk oranı 100 puan, tamamen dolu 0 puan. Yalnızca İSPARK'ın işlettiği otoparkları kapsar, küçük bir örneklemdir ve cadde üstü park durumunu yansıtmaz.",
+      "healthAccess": "İBB'nin '34 Dakika İstanbul Sağlık İndeksi' verisi mahalle bazında yayınlanır; ilçedeki her mahallenin sağlık erişim endeksi, o mahallenin nüfusuyla ağırlıklandırılarak ilçe ortalaması hesaplanır (nüfusu 0 olan mahalleler ortalamaya dahil edilmez). İBB bu endeksin kendisinin 0-100 arası olduğunu belirtmiyor; MVP, gerçek 39 ilçe üzerinden gözlemlenen en düşük ve en yüksek ilçe ortalamasını 0-100'e doğrusal olarak ölçekler (en düşük ilçe 0, en yüksek ilçe 100 puan alır).",
+      "transitAccess": "İETT'nin şehir genelindeki otobüs durağı verisi (15.486 durak), her ilçenin sınırına karşı nokta-içinde-mi testiyle eşleştirilir (durakların ilçe kodu alanı güvenilir bir isim eşlemesi sunmadığı için). Ham durak sayısı yerine, durak sayısının ilçenin gerçek yüzölçümüne (km², enlem ortalamasına göre ölçeklenmiş basit bir düzlem yaklaşıklığıyla hesaplanır) bölünmesiyle bulunan yoğunluk (durak/km²) kullanılır — büyük bir ilçe sadece geniş olduğu için haksız avantaj kazanmasın diye. Bu yoğunluğun gerçek 39 ilçe üzerinden gözlemlenen en düşük ve en yüksek değeri 0-100'e doğrusal olarak ölçeklenir (en düşük ilçe 0, en yüksek ilçe 100 puan alır) — resmi bir standart değil, dürüstçe belgelenmiş bir MVP varsayımı."
+    }
+  },
+  "DataFreshness": {
+    "Stale": "Bayat veri",
+    "Historical": "Tarihsel veri"
+  },
+  "NeighborhoodScoreCard": {
+    "overallScoreLabel": "Genel skor",
+    "howCalculated": "Nasıl hesaplanıyor?",
+    "sourceLabel": "Kaynak: {source} · {date}",
+    "incompleteNotice": "Bazı veri boyutları henüz mevcut değil."
+  },
+  "NeighborhoodComparisonTable": {
+    "overallScoreLabel": "Genel Skor",
+    "sourceLabel": "Kaynak: {source} · {date}",
+    "howCalculated": "Nasıl hesaplanıyor?",
+    "indicatorAria": "{name} göstergesi"
+  },
+  "NeighborhoodListCard": {
+    "scoreFailedToLoad": "Skor yüklenemedi",
+    "overallScoreWithBand": "Genel skor: {band}"
+  },
+  "DistrictPicker": {
+    "selectPlaceholder": "İlçe seç…",
+    "indicatorAria": "{label} göstergesi"
+  },
+  "DistrictSummaryBadge": {
+    "heading": "✨ Öne Çıkan Özellikler"
+  },
+  "ShareCardButtons": {
+    "download": "İndir",
+    "share": "Paylaş",
+    "sharing": "Paylaşılıyor…",
+    "shareFailed": "Paylaşım tamamlanamadı. Bunun yerine görseli indirebilirsin.",
+    "linkCopied": "Bağlantı panoya kopyalandı.",
+    "shareNotSupported": "Paylaşım desteklenmiyor. Bağlantı: {url}",
+    "imageDownloadFailed": "Görsel indirilemedi"
+  },
+  "DataSourceBadge": {
+    "label": "Kaynak · İBB Açık Veri"
+  },
+  "ThemeToggle": {
+    "toLight": "Açık temaya geç",
+    "toDark": "Koyu temaya geç"
+  },
+  "LocaleSwitcher": {
+    "label": "Dil",
+    "tr": "Türkçe",
+    "en": "İngilizce"
+  },
+  "NotFound": {
+    "title": "Sayfa bulunamadı",
+    "description": "Aradığın sayfa ya da ilçe bulunamadı. Adres yanlış yazılmış ya da kaldırılmış olabilir.",
+    "backLink": "← Tüm ilçelere dön"
+  }
+}

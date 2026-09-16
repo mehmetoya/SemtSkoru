@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 // Content-Security-Policy is scoped to what the app actually loads: MapLibre's tiles come
 // from OpenStreetMap (fetched via XHR/fetch internally, not plain <img> tags - needs
@@ -43,4 +44,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+export default withNextIntl(nextConfig);

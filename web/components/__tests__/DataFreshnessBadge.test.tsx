@@ -1,25 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DataFreshnessBadge } from "../DataFreshnessBadge";
+import { createIntlWrapper } from "../../lib/test-utils";
 
 describe("DataFreshnessBadge", () => {
   it("renders nothing when the data is fresh", () => {
-    const { container } = render(<DataFreshnessBadge freshness="Fresh" />);
+    const { container } = render(<DataFreshnessBadge freshness="Fresh" />, {
+      wrapper: createIntlWrapper(),
+    });
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders nothing when there is no freshness information", () => {
-    const { container } = render(<DataFreshnessBadge freshness={null} />);
+    const { container } = render(<DataFreshnessBadge freshness={null} />, {
+      wrapper: createIntlWrapper(),
+    });
     expect(container).toBeEmptyDOMElement();
   });
 
   it("shows a stale-data warning badge", () => {
-    render(<DataFreshnessBadge freshness="Stale" />);
+    render(<DataFreshnessBadge freshness="Stale" />, { wrapper: createIntlWrapper() });
     expect(screen.getByText(/Bayat veri/)).toBeInTheDocument();
   });
 
   it("shows a historical-data label badge", () => {
-    render(<DataFreshnessBadge freshness="Historical" />);
+    render(<DataFreshnessBadge freshness="Historical" />, { wrapper: createIntlWrapper() });
     expect(screen.getByText(/Tarihsel veri/)).toBeInTheDocument();
   });
 });

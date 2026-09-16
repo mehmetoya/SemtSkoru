@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ShareCardButtons } from "../ShareCardButtons";
+import { createIntlWrapper } from "../../lib/test-utils";
 
 const PROPS = {
   imageUrl: "/mahalle/kadikoy/kart",
@@ -16,7 +17,7 @@ describe("ShareCardButtons", () => {
   });
 
   it("renders a downloadable link pointing straight at the image route, no JS required", () => {
-    render(<ShareCardButtons {...PROPS} />);
+    render(<ShareCardButtons {...PROPS} />, { wrapper: createIntlWrapper() });
 
     const link = screen.getByRole("link", { name: "İndir" });
     expect(link).toHaveAttribute("href", PROPS.imageUrl);
@@ -32,7 +33,7 @@ describe("ShareCardButtons", () => {
       vi.fn().mockResolvedValue(new Response(new Blob(["fake-png"]), { status: 200 })),
     );
 
-    render(<ShareCardButtons {...PROPS} />);
+    render(<ShareCardButtons {...PROPS} />, { wrapper: createIntlWrapper() });
     fireEvent.click(screen.getByRole("button", { name: "Paylaş" }));
 
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
@@ -52,7 +53,7 @@ describe("ShareCardButtons", () => {
       vi.fn().mockResolvedValue(new Response(new Blob(["fake-png"]), { status: 200 })),
     );
 
-    render(<ShareCardButtons {...PROPS} />);
+    render(<ShareCardButtons {...PROPS} />, { wrapper: createIntlWrapper() });
     fireEvent.click(screen.getByRole("button", { name: "Paylaş" }));
 
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
@@ -67,7 +68,7 @@ describe("ShareCardButtons", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { ...navigator, share: undefined, clipboard: { writeText } });
 
-    render(<ShareCardButtons {...PROPS} />);
+    render(<ShareCardButtons {...PROPS} />, { wrapper: createIntlWrapper() });
     fireEvent.click(screen.getByRole("button", { name: "Paylaş" }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(PROPS.fallbackUrl));
@@ -84,7 +85,7 @@ describe("ShareCardButtons", () => {
       vi.fn().mockResolvedValue(new Response(new Blob(["fake-png"]), { status: 200 })),
     );
 
-    render(<ShareCardButtons {...PROPS} />);
+    render(<ShareCardButtons {...PROPS} />, { wrapper: createIntlWrapper() });
     fireEvent.click(screen.getByRole("button", { name: "Paylaş" }));
 
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1));

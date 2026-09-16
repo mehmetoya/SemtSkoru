@@ -1,4 +1,5 @@
-import { getScoreBand, SCORE_BAND_LABELS, SCORE_BAND_STYLES } from "../lib/score-band";
+import { useTranslations } from "next-intl";
+import { getScoreBand, SCORE_BAND_STYLES } from "../lib/score-band";
 
 const BAND_FILL: Record<string, string> = {
   good: "bg-emerald-500",
@@ -10,6 +11,7 @@ const BAND_FILL: Record<string, string> = {
 // A labeled 0-100 bar: the fill carries the color, the number stays neutral ink,
 // and the band word is repeated in its own chip so state is never color-alone.
 export function ScoreBar({ score }: { score: number | null }) {
+  const t = useTranslations("ScoreBand");
   const band = getScoreBand(score);
   const styles = SCORE_BAND_STYLES[band];
 
@@ -29,7 +31,7 @@ export function ScoreBar({ score }: { score: number | null }) {
       <span
         className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${styles.bg} ${styles.text}`}
       >
-        {SCORE_BAND_LABELS[band]}
+        {t(band)}
       </span>
     </div>
   );

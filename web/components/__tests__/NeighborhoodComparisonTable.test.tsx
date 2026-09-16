@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { NeighborhoodComparisonTable } from "../NeighborhoodComparisonTable";
+import { createIntlWrapper } from "../../lib/test-utils";
 import type { NeighborhoodScore } from "../../lib/types";
 
 function score(overrides: Partial<NeighborhoodScore>): NeighborhoodScore {
@@ -28,6 +29,7 @@ describe("NeighborhoodComparisonTable", () => {
         scoreA={score({ overall: 94 })}
         scoreB={score({ overall: 61 })}
       />,
+      { wrapper: createIntlWrapper() },
     );
 
     expect(screen.getByText("Kadıköy")).toBeInTheDocument();
@@ -47,6 +49,7 @@ describe("NeighborhoodComparisonTable", () => {
         scoreA={score({ overall: 60 })}
         scoreB={score({ overall: 94 })}
       />,
+      { wrapper: createIntlWrapper() },
     );
     expect(screen.getByText("▲ Üsküdar +34")).toBeInTheDocument();
 
@@ -72,6 +75,7 @@ describe("NeighborhoodComparisonTable", () => {
           isComplete: false,
         })}
       />,
+      { wrapper: createIntlWrapper() },
     );
 
     expect(screen.getByText("Veri yok")).toBeInTheDocument();
@@ -85,6 +89,7 @@ describe("NeighborhoodComparisonTable", () => {
         scoreA={score({})}
         scoreB={score({ overall: null })}
       />,
+      { wrapper: createIntlWrapper() },
     );
 
     expect(screen.getByText("—")).toBeInTheDocument();
