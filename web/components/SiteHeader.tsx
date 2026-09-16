@@ -34,7 +34,7 @@ export function SiteHeader() {
             SemtSkoru
           </span>
         </Link>
-        <nav className="flex items-center gap-3 text-sm sm:gap-5">
+        <nav className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 text-sm sm:gap-x-5">
           <Link href="/" className={linkClass("/")} aria-current={pathname === "/" ? "page" : undefined}>
             {t("districts")}
           </Link>
