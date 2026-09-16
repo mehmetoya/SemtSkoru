@@ -138,6 +138,36 @@ owner of table spatial_ref_sys`, Supabase'in kendi internal rolüne ait). Bunu d
 Supabase dashboard/support tarafında bir işlem gerektiriyor, migration'la yapılamıyor —
 Security Advisor'da bu tek kalem "ERROR" olarak görünmeye devam edecek.
 
+## Supabase güvenlik: PostGIS `extension_in_public` / `st_estimatedextent` (kabul edilen sınırlama)
+
+Security Advisor'da iki WARN kalemi var: PostGIS extension'ı `public` şemasında kurulu
+(`extension_in_public`) ve PostGIS'in kendi `st_estimatedextent` fonksiyonu (SECURITY
+DEFINER) `anon`/`authenticated` tarafından çağrılabilir. İkisi de denendi (2026-09-16),
+ikisi de `spatial_ref_sys` ile aynı sınıfta bir Supabase platform kısıtına takıldı:
+
+- **Extension'ı `extensions` şemasına taşıma:** PostGIS varsayılan olarak relocatable değil;
+  topluluğun belgelediği tek yöntem `UPDATE pg_extension SET extrelocatable = true ...` ile
+  önce bunu açmak. Bu yöntem yerelde gerçek bir Postgres superuser'ıyla (postgis/postgis:17-3.4
+  container, prod'daki PostgreSQL 17.6 + PostGIS 3.3.7'ye denk) uçtan uca doğrulandı — 39
+  ilçenin gerçek geometrisiyle, taşımadan önce/sonra tüm okuma/yazma/in-memory `Contains()`
+  kontrolleri (bu proje SQL tarafında hiç `ST_*` çağırmıyor, sadece geometry/geography kolon
+  tipi olarak kullanıyor) birebir aynı sonucu verdi, hiçbir nesne `public`'te kalmadı. Ama
+  canlıda `UPDATE pg_extension ...` adımı `permission denied for table pg_extension` ile
+  reddedildi — Supabase'in `postgres.<project-ref>` rolü gerçek superuser değil
+  (`rolsuper = false`), ve bu tek adım Postgres'te superuser gerektiriyor.
+- **`st_estimatedextent`'i `anon`/`authenticated`'dan `REVOKE EXECUTE` ile kapatma:**
+  şemayı taşımadan da denendi, ama fonksiyonların sahibi `postgres.<project-ref>` değil,
+  Supabase'in kendi `supabase_admin` rolü — `REVOKE` komutu hata vermeden çalışıyor ama
+  `WARNING: no privileges could be revoked for "st_estimatedextent"` ile sessizce hiçbir şey
+  yapmıyor (sahiplik/GRANT OPTION olmadığı için).
+
+Sonuç: ikisi de bu projenin rolünden değil, Supabase'in proje sahiplerine verdiği yetki
+seviyesinden kaynaklanıyor — dashboard/support üzerinden Supabase'in kendisi yapmadıkça
+migration'la düzeltilemiyor. `spatial_ref_sys` gibi, Security Advisor'da WARN olarak kalacak;
+DROP EXTENSION + yeniden kurulum tek teorik yol ama `CASCADE` 8 tablodaki tüm geometry
+kolonlarını düşürür — tek instance'lı, ücretsiz katman, production bir veritabanında bunu
+denemek WARN seviyesindeki bir bulgu için orantısız risk.
+
 ## Sıra
 
 Supabase → Render → Vercel → GitHub secret. Render'ın CORS origin'i Vercel URL'ine,
