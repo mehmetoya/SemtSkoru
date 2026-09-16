@@ -80,7 +80,9 @@ public sealed class DistrictSummaryService(IDistrictAssistantAiClient aiClient) 
         7. "summary" alanındaki serbest metni {{AiLocale.ToLanguageName(locale)}} dilinde yaz.
            Bunun dışındaki TÜM JSON anahtarları ve değerleri (dimension adları, "strength" gibi
            sabit değerler) verildiği gibi, DEĞİŞTİRMEDEN kalmalı - bunlar birer tanımlayıcı/sabit
-           değerdir, çeviri konusu değildir.
+           değerdir, çeviri konusu değildir. "summary" metninde bir boyuttan bahsederken
+           KESİNLİKLE bu ham JSON anahtarını (ör. "greenSpace") DEĞİL, şu doğal adı kullan:
+           {{AiLocale.DimensionDisplayNamesLine(locale)}}
         """;
 
     public async Task<DistrictSummaryOutcome> GenerateSummaryAsync(

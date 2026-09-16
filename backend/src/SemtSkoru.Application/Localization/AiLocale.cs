@@ -44,4 +44,49 @@ public static class AiLocale
     /// ("Türkçe"/"English") far more reliably than a raw locale code ("tr"/"en").</summary>
     public static string ToLanguageName(string? locale) =>
         NormalizeOrDefault(locale) == English ? "English" : "Türkçe";
+
+    /// <summary>The six dimension keys' natural-language display name in the given locale - the
+    /// EXACT same strings web/messages/{tr,en}.json's "Dimensions" namespace shows in the UI
+    /// (lowercased for natural mid-sentence prose), so an AI-generated sentence names a dimension
+    /// the same way the rest of the page around it does.
+    ///
+    /// Exists because of a real, live-verified bug: telling the model "leave dimension KEYS
+    /// unchanged" (so the structured "dimension"/"highlights[].dimension" JSON field keeps
+    /// matching KnownDimensions's literal camelCase strings) was ambiguous in English specifically
+    /// - camelCase keys like "greenSpace" already LOOK like English words, so the model applied
+    /// "leave it unchanged" to the free-text prose too and produced sentences like "Üsküdar stands
+    /// out in greenSpace, transportation, and transitAccess" instead of natural English. Turkish
+    /// never had this problem (a Turkish reader obviously can't mistake "greenSpace" for a Turkish
+    /// word, so the model already paraphrased it as "yeşil alan" on its own) - this mapping makes
+    /// the instruction unambiguous in EITHER language instead of relying on the model inferring
+    /// the right behavior only where the key happens not to look native.</summary>
+    public static string DimensionDisplayName(string dimensionKey, string? locale) =>
+        (dimensionKey, NormalizeOrDefault(locale) == English) switch
+        {
+            ("airQuality", true) => "air quality",
+            ("airQuality", false) => "hava kalitesi",
+            ("greenSpace", true) => "green space",
+            ("greenSpace", false) => "yeşil alan",
+            ("transportation", true) => "transportation",
+            ("transportation", false) => "ulaşım",
+            ("parking", true) => "parking",
+            ("parking", false) => "otopark",
+            ("healthAccess", true) => "healthcare access",
+            ("healthAccess", false) => "sağlık erişimi",
+            ("transitAccess", true) => "public transit access",
+            ("transitAccess", false) => "toplu taşıma erişimi",
+            _ => dimensionKey,
+        };
+
+    /// <summary>A single prompt-ready line listing every dimension's natural-language display name
+    /// for the given locale, in the fixed canonical order used everywhere else in this app (see
+    /// e.g. DistrictSummarySignature.Compute) - appended to a SystemInstruction right after the
+    /// "don't translate JSON keys" rule so the model has an explicit, unambiguous word to reach
+    /// for in prose instead of the literal key. See <see cref="DimensionDisplayName"/>.</summary>
+    public static string DimensionDisplayNamesLine(string? locale)
+    {
+        string[] keys = ["airQuality", "greenSpace", "transportation", "parking", "healthAccess", "transitAccess"];
+        var pairs = keys.Select(k => $"{k}=\"{DimensionDisplayName(k, locale)}\"");
+        return string.Join(", ", pairs);
+    }
 }

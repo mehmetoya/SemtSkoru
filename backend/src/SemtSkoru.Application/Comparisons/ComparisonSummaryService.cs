@@ -81,7 +81,9 @@ public sealed class ComparisonSummaryService(IDistrictAssistantAiClient aiClient
         7. "summary" alanındaki serbest metni {{AiLocale.ToLanguageName(locale)}} dilinde yaz.
            Bunun dışındaki TÜM JSON anahtarları ve değerleri (dimension adları, "strongerDistrict"
            gibi sabit değerler, ilçe adları) verildiği gibi, DEĞİŞTİRMEDEN kalmalı - bunlar birer
-           tanımlayıcı/sabit değer veya özel isimdir, çeviri konusu değildir.
+           tanımlayıcı/sabit değer veya özel isimdir, çeviri konusu değildir. "summary" metninde bir
+           boyuttan bahsederken KESİNLİKLE bu ham JSON anahtarını (ör. "greenSpace") DEĞİL, şu doğal
+           adı kullan: {{AiLocale.DimensionDisplayNamesLine(locale)}}
         """;
 
     public async Task<ComparisonSummaryOutcome> GenerateComparisonAsync(
