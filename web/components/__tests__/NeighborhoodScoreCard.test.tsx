@@ -46,6 +46,7 @@ describe("NeighborhoodScoreCard", () => {
       },
       overall: 94,
       isComplete: true,
+      summary: null,
     };
 
     render(<NeighborhoodScoreCard name="Kadıköy" boundary={SAMPLE_BOUNDARY} score={score} />);
@@ -94,6 +95,7 @@ describe("NeighborhoodScoreCard", () => {
       },
       overall: 100,
       isComplete: false,
+      summary: null,
     };
 
     render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />);
@@ -141,6 +143,7 @@ describe("NeighborhoodScoreCard", () => {
       },
       overall: 65,
       isComplete: false,
+      summary: null,
     };
 
     render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />);
@@ -164,11 +167,42 @@ describe("NeighborhoodScoreCard", () => {
       transitAccess: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
       overall: 97,
       isComplete: true,
+      summary: null,
     };
 
     render(<NeighborhoodScoreCard name="Kadıköy" score={score} headingLevel="h2" />);
 
     expect(screen.getByRole("heading", { level: 2, name: "Kadıköy" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+  });
+
+  it("shows the AI standout-traits summary when one is cached, and nothing when there isn't", () => {
+    const baseScore: NeighborhoodScore = {
+      neighborhoodId: "kadikoy",
+      airQuality: { score: 83, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      greenSpace: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      transportation: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      parking: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      healthAccess: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      transitAccess: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      overall: 97,
+      isComplete: true,
+      summary: null,
+    };
+
+    const { rerender } = render(<NeighborhoodScoreCard name="Kadıköy" score={baseScore} />);
+    expect(screen.queryByText("Öne Çıkan Özellikler")).not.toBeInTheDocument();
+
+    rerender(
+      <NeighborhoodScoreCard
+        name="Kadıköy"
+        score={{
+          ...baseScore,
+          summary: { text: "Bu ilçe hava kalitesinde güçlü.", generatedAt: "2026-09-11T00:00:00Z" },
+        }}
+      />,
+    );
+    expect(screen.getByText("Bu ilçe hava kalitesinde güçlü.")).toBeInTheDocument();
+    expect(screen.getByText(/Google Gemini ile oluşturuldu/)).toBeInTheDocument();
   });
 });

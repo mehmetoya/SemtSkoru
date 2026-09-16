@@ -25,6 +25,7 @@ function score(overrides: Partial<NeighborhoodScore> = {}): NeighborhoodScore {
     transitAccess: { score: 77, freshness: "Fresh", sourceName: "İETT Otobüs Durakları", publishedAt: "2026-03-18T00:00:00Z" },
     overall: 62,
     isComplete: true,
+    summary: null,
     ...overrides,
   };
 }

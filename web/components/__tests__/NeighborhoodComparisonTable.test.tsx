@@ -14,6 +14,7 @@ function score(overrides: Partial<NeighborhoodScore>): NeighborhoodScore {
     transitAccess: { score: 65, freshness: "Fresh", sourceName: "s", publishedAt: "2026-01-01" },
     overall: 80,
     isComplete: true,
+    summary: null,
     ...overrides,
   };
 }

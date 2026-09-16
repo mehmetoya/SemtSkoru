@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Scoring;
+using SemtSkoru.Application.Summaries;
 using SemtSkoru.Infrastructure.Persistence;
 
 namespace SemtSkoru.Api.Endpoints;
@@ -47,10 +48,24 @@ public static class NeighborhoodEndpoints
             return Results.Ok(names);
         }).RequireRateLimiting(RateLimitPolicies.Cheap);
 
-        app.MapGet("/api/neighborhoods/{id}/score", async (string id, INeighborhoodScoringService scoringService, CancellationToken ct) =>
+        app.MapGet("/api/neighborhoods/{id}/score", async (
+            string id,
+            INeighborhoodScoringService scoringService,
+            IDistrictSummaryRepository summaryRepository,
+            CancellationToken ct) =>
         {
             var result = await scoringService.GetScoreAsync(id, ct);
-            return result is null ? Results.NotFound() : Results.Ok(NeighborhoodScoreDto.From(result));
+            if (result is null)
+            {
+                return Results.NotFound();
+            }
+
+            // A cheap read against whatever DistrictSummaryGenerationJob already wrote (see its
+            // remarks) - never a live Gemini call on this request path.
+            var summary = await summaryRepository.GetAsync(id, ct);
+            var summaryDto = summary is null ? null : new DistrictSummaryDto(summary.SummaryText, summary.GeneratedAt);
+
+            return Results.Ok(NeighborhoodScoreDto.From(result, summaryDto));
         }).RequireRateLimiting(RateLimitPolicies.Standard);
 
         app.MapGet("/api/neighborhoods/compare", async (string? a, string? b, INeighborhoodScoringService scoringService, CancellationToken ct) =>

@@ -10,10 +10,12 @@ using SemtSkoru.Api.Endpoints;
 using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Assistant;
 using SemtSkoru.Application.Scoring;
+using SemtSkoru.Application.Summaries;
 using SemtSkoru.Infrastructure.ExternalApis;
 using SemtSkoru.Infrastructure.Ingestion;
 using SemtSkoru.Infrastructure.Persistence;
 using SemtSkoru.Infrastructure.Scoring;
+using SemtSkoru.Infrastructure.Summaries;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,6 +81,15 @@ builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringServi
 builder.Services.AddHttpClient<IDistrictAssistantAiClient, GeminiClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddScoped<INeighborhoodDirectory, NeighborhoodDirectory>();
 builder.Services.AddScoped<IDistrictAssistantService, DistrictAssistantService>();
+
+// AI district summary ("Öne Çıkan Özellikler") - reuses the SAME IDistrictAssistantAiClient/
+// GeminiClient/API key as the assistant above (see DistrictSummaryService's remarks for why one
+// client is enough for both features) rather than a second HttpClient registration. Generated
+// entirely by DistrictSummaryGenerationJob on its own Hangfire schedule below, never live on a
+// request path, so this service needs no rate-limit policy of its own.
+builder.Services.AddScoped<IDistrictSummaryService, DistrictSummaryService>();
+builder.Services.AddScoped<IDistrictSummaryRepository, DistrictSummaryRepository>();
+builder.Services.AddScoped<DistrictSummaryGenerationJob>();
 
 // See RateLimiting/RateLimitingExtensions.cs for the policies and their rationale: every
 // endpoint here is public and unauthenticated (no API keys - out of scope), and DB round trips
@@ -177,6 +188,25 @@ recurringJobs.AddOrUpdate<HealthAccessIngestionJob>(
 // slowly in practice, not a live feed like air quality/parking occupancy.
 recurringJobs.AddOrUpdate<TransitAccessIngestionJob>(
     "transit-access-ingestion",
+    job => job.RunAsync(CancellationToken.None),
+    Cron.Weekly());
+
+// Weekly - deliberately the SAME bucket as green space/health access/transit access above, not
+// daily like air quality/parking. This is the one recurring job whose cost is measured in a
+// separate, shared, hard-capped-per-day THIRD-PARTY quota (Gemini's free tier - see
+// RateLimiting/RateLimitingExtensions.cs) rather than just this app's own DB/API-fetch time, so
+// its cadence is chosen against that budget, not against how often the underlying scores change:
+// worst case (every district's score signature changed) this job spends 39 Gemini calls per run.
+// Daily, that would be up to 39 calls EVERY day against the same 150-request shared daily budget
+// the interactive AI Semt Asistanı also depends on - over a quarter of the whole day's budget,
+// every day, before a single real visitor asks the assistant anything. Weekly, the same worst
+// case amortizes to under 6 calls/day, and DistrictSummaryGenerationJob's own score-signature
+// skip (see its remarks) means a real run is usually far cheaper than that, since only air
+// quality/parking update daily and a district's *standout* dimensions rarely flip on a single
+// day's noise. A short lag between a real score change and this text catching up is an
+// acceptable trade for not competing with the assistant for the same scarce quota.
+recurringJobs.AddOrUpdate<DistrictSummaryGenerationJob>(
+    "district-summary-generation",
     job => job.RunAsync(CancellationToken.None),
     Cron.Weekly());
 

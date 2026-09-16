@@ -18,6 +18,11 @@ public sealed record DimensionScoreDto(int? Score, string? Freshness, string? So
 
 public sealed record NeighborhoodComparisonDto(NeighborhoodScoreDto A, NeighborhoodScoreDto B);
 
+// Null whenever no cached AI summary exists yet for this district - Gemini not configured, the
+// weekly DistrictSummaryGenerationJob hasn't run for it yet, or every generation attempt so far
+// came back unusable (see DistrictSummaryOutcome) - never a fabricated placeholder.
+public sealed record DistrictSummaryDto(string Text, DateTimeOffset GeneratedAt);
+
 public sealed record NeighborhoodScoreDto(
     string NeighborhoodId,
     DimensionScoreDto AirQuality,
@@ -27,9 +32,14 @@ public sealed record NeighborhoodScoreDto(
     DimensionScoreDto HealthAccess,
     DimensionScoreDto TransitAccess,
     int? Overall,
-    bool IsComplete)
+    bool IsComplete,
+    DistrictSummaryDto? Summary = null)
 {
-    public static NeighborhoodScoreDto From(NeighborhoodScoreResult result) => new(
+    // `summary` defaults to null for callers that don't have one handy (e.g. /compare and the AI
+    // Semt Asistanı's recommendation cards, which build this same DTO from a NeighborhoodScoreResult
+    // that was never joined against DistrictSummaries) - an honestly-absent field there, not a
+    // wrong one, since neither of those surfaces renders it today.
+    public static NeighborhoodScoreDto From(NeighborhoodScoreResult result, DistrictSummaryDto? summary = null) => new(
         result.NeighborhoodId,
         DimensionScoreDto.From(result.AirQuality),
         DimensionScoreDto.From(result.GreenSpace),
@@ -38,5 +48,6 @@ public sealed record NeighborhoodScoreDto(
         DimensionScoreDto.From(result.HealthAccess),
         DimensionScoreDto.From(result.TransitAccess),
         result.Overall?.Value,
-        result.IsComplete);
+        result.IsComplete,
+        summary);
 }

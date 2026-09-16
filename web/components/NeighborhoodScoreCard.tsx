@@ -3,6 +3,7 @@ import { getScoreBand, SCORE_BAND_STYLES } from "../lib/score-band";
 import { DIMENSION_METHODOLOGY } from "../lib/dimension-info";
 import { DataFreshnessBadge } from "./DataFreshnessBadge";
 import { DistrictShapeIcon } from "./DistrictShapeIcon";
+import { DistrictSummaryBadge } from "./DistrictSummaryBadge";
 import { ScoreBar } from "./ScoreBar";
 import { ShareCardButtons } from "./ShareCardButtons";
 
@@ -111,6 +112,8 @@ export function NeighborhoodScoreCard({
           </p>
         </div>
       </div>
+
+      <DistrictSummaryBadge summary={score.summary} />
 
       {share && (
         <div className="mt-4">
