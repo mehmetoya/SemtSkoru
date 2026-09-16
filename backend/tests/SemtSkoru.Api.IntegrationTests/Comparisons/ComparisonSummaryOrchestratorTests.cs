@@ -142,12 +142,23 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
         {
             var kadikoy = await ScoreAsync(context, "kadikoy");
             var uskudar = await ScoreAsync(context, "uskudar");
-            var result = await CreateOrchestrator(context, handler).GetOrGenerateAsync(
+            await CreateOrchestrator(context, handler).GetOrGenerateAsync(
                 "Kadıköy", kadikoy, "Üsküdar", uskudar, CancellationToken.None);
-            firstGeneratedAt = result!.GeneratedAt;
         }
 
         Assert.Equal(1, callCount);
+
+        // Re-read the persisted value through a fresh context rather than trusting the
+        // in-memory object GetOrGenerateAsync just returned: Postgres' `timestamp with time
+        // zone` only keeps microsecond precision, one digit less than .NET's DateTimeOffset
+        // ticks, so an in-memory value can differ from its own round-tripped copy by a few
+        // ticks - comparing two DB-round-tripped reads (this one and the one below) avoids that
+        // precision mismatch entirely, live-verified as the actual cause of an intermittent CI
+        // failure (2026-09-16) comparing the raw in-memory value against a freshly-read one.
+        await using (var context = CreateContext())
+        {
+            firstGeneratedAt = (await context.ComparisonSummaries.SingleAsync()).GeneratedAt;
+        }
 
         // A second request for the SAME pair (this time picked in the opposite order, as a real
         // visitor comparing the same two districts a second time might) must be a pure cache hit.
