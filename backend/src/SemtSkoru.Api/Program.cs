@@ -2,7 +2,9 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using NetTopologySuite.IO.Converters;
 using Npgsql;
 using Scalar.AspNetCore;
@@ -44,6 +46,19 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 // observed leak.
 builder.Services.AddProblemDetails();
 
+// /api/neighborhoods ships full GeoJSON boundary polygons for all 39 districts in one
+// response - JSON/GeoJSON compresses very well (typically 70-90% smaller with gzip/Brotli).
+// Safe over HTTPS here specifically because these are public, unauthenticated, non-personalized
+// responses with no secret/user-reflected content - the usual HTTPS-compression concern
+// (CRIME/BREACH, which needs a secret mixed with attacker-influenced input in the same
+// compressed stream) doesn't apply.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new GeoJsonConverterFactory()));
@@ -71,7 +86,13 @@ builder.Services.AddScoped<HealthAccessIngestionJob>();
 builder.Services.AddHttpClient<ITransitAccessApiClient, TransitAccessApiClient>();
 builder.Services.AddScoped<TransitAccessIngestionJob>();
 
-builder.Services.AddScoped<INeighborhoodScoringRepository, NeighborhoodScoringRepository>();
+// CachedNeighborhoodScoringRepository wraps the real repository with a short in-process cache -
+// see its remarks for why IMemoryCache (not a distributed cache) is the right call for a
+// single-instance free-tier deployment.
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<NeighborhoodScoringRepository>();
+builder.Services.AddScoped<INeighborhoodScoringRepository>(sp => new CachedNeighborhoodScoringRepository(
+    sp.GetRequiredService<NeighborhoodScoringRepository>(), sp.GetRequiredService<IMemoryCache>()));
 builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringService>();
 
 // AI Semt Asistanı - see GeminiClient.cs for the model/endpoint and
@@ -129,12 +150,13 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 });
 
 app.UseHttpsRedirection();
+app.UseResponseCompression();
 app.UseCors();
 app.UseRateLimiter();
 
 // Cheap liveness ping: a free-tier host that spins the container down after idle time
 // (e.g. Render) wakes it back up on any request, at which point Hangfire's own recurring-job
-// scheduler catches up on whatever was missed while asleep. See .github/workflows/daily-wake.yml.
+// scheduler catches up on whatever was missed while asleep. See .github/workflows/keep-warm.yml.
 // /health/live is the same check under the path an external uptime monitor (UptimeRobot)
 // was already configured to poll - added as an alias rather than asking that config to change.
 // Both verbs are mapped explicitly: Minimal APIs don't auto-answer HEAD for a GET-only
