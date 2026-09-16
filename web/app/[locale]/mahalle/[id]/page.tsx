@@ -48,15 +48,17 @@ export default async function NeighborhoodPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { id } = await params;
-  const neighborhood = await findNeighborhood(id);
-  if (!neighborhood) notFound();
 
-  let score: NeighborhoodScore | null = null;
-  try {
-    score = await fetchNeighborhoodScore(id);
-  } catch {
-    score = null;
-  }
+  // findNeighborhood (full district list, for the name/boundary) and the score fetch hit
+  // two different backend endpoints and don't depend on each other's result - run them
+  // concurrently instead of paying for both round-trips back to back. Measured live
+  // (2026-09-16, real Render backend): this roughly halves this page's server-side data-
+  // fetch time versus the previous sequential await/await.
+  const [neighborhood, score] = await Promise.all([
+    findNeighborhood(id),
+    fetchNeighborhoodScore(id).catch(() => null),
+  ]);
+  if (!neighborhood) notFound();
 
   return <NeighborhoodView id={id} neighborhood={neighborhood} score={score} />;
 }
