@@ -206,6 +206,10 @@
   "DistrictTrendBadge": {
     "heading": "📈 Trend Over Time"
   },
+  "ComparisonSummaryBadge": {
+    "heading": "✨ Comparison Summary",
+    "loading": "Generating comparison summary…"
+  },
   "ShareCardButtons": {
     "download": "Download",
     "share": "Share",

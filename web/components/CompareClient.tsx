@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useNeighborhoods } from "../lib/hooks/useNeighborhoods";
 import { useCompareNeighborhoods } from "../lib/hooks/useCompareNeighborhoods";
+import { useComparisonSummary } from "../lib/hooks/useComparisonSummary";
 import { NeighborhoodComparisonTable } from "./NeighborhoodComparisonTable";
 import { DistrictPicker } from "./DistrictPicker";
 import { SITE_URL } from "../lib/site";
@@ -40,6 +41,10 @@ export function CompareClient() {
     isPending,
     isError,
   } = useCompareNeighborhoods(a, b);
+
+  // Deliberately a separate fetch from the score comparison above (see useComparisonSummary's own
+  // remarks) - a slow or failed AI summary must never hold up or error the score table itself.
+  const { data: comparisonSummary, isPending: isComparisonSummaryPending } = useComparisonSummary(a, b);
 
   const nameOf = (id: string | undefined) =>
     neighborhoods?.find((n) => n.id === id)?.name ?? "";
@@ -126,6 +131,8 @@ export function CompareClient() {
             nameB={nameOf(b)}
             scoreA={comparison.a}
             scoreB={comparison.b}
+            comparisonSummary={comparisonSummary}
+            isComparisonSummaryLoading={isComparisonSummaryPending}
             share={{
               imageUrl: `/karsilastir/kart?${new URLSearchParams({ a, b })}`,
               fileName: `semtskoru-karsilastirma-${a}-${b}.png`,

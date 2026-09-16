@@ -206,6 +206,10 @@
   "DistrictTrendBadge": {
     "heading": "📈 Zaman İçindeki Değişim"
   },
+  "ComparisonSummaryBadge": {
+    "heading": "✨ Karşılaştırma Özeti",
+    "loading": "Karşılaştırma özeti oluşturuluyor…"
+  },
   "ShareCardButtons": {
     "download": "İndir",
     "share": "Paylaş",

@@ -67,6 +67,19 @@ export interface NeighborhoodComparison {
   b: NeighborhoodScore;
 }
 
+// The AI comparison sentence shown on the compare page (see ComparisonSummaryBadge) - generated
+// on demand and cached per district pair by the backend's ComparisonSummaryOrchestrator, never
+// pre-generated for all 741 possible pairs the way DistrictSummary is for all 39 districts (see
+// that class's own remarks for the quota math). `null` from fetchComparisonSummary covers every
+// reason one might not be available yet (Gemini not configured, the live generation call
+// failed/timed out/was rate-limited, or the two districts share no dimension either has real data
+// for) - never a fabricated placeholder, same contract as DistrictSummary above.
+export interface ComparisonSummary {
+  text: string;
+  // ISO 8601 string (System.Text.Json's default DateTimeOffset serialization).
+  generatedAt: string;
+}
+
 // Mirrors backend/src/SemtSkoru.Api/Endpoints/AssistantDtos.cs's AssistantOutcomeKind: every
 // non-"Ok" value means `recommendations` is empty and `message` carries the Turkish, user-facing
 // reason (rate limited, not configured, upstream down, or the model's response wasn't usable) -

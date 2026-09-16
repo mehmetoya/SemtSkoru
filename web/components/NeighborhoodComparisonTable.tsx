@@ -1,5 +1,6 @@
 import { useFormatter, useTranslations } from "next-intl";
-import type { DimensionScore, NeighborhoodScore } from "../lib/types";
+import type { ComparisonSummary, DimensionScore, NeighborhoodScore } from "../lib/types";
+import { ComparisonSummaryBadge } from "./ComparisonSummaryBadge";
 import { DataFreshnessBadge } from "./DataFreshnessBadge";
 import { ScoreBar } from "./ScoreBar";
 import { ShareCardButtons } from "./ShareCardButtons";
@@ -47,6 +48,8 @@ export function NeighborhoodComparisonTable({
   scoreA,
   scoreB,
   share,
+  comparisonSummary,
+  isComparisonSummaryLoading = false,
 }: {
   nameA: string;
   nameB: string;
@@ -59,6 +62,11 @@ export function NeighborhoodComparisonTable({
     shareText: string;
     fallbackUrl: string;
   };
+  // Optional: only CompareClient (which has a live useComparisonSummary() fetch to hand in) sets
+  // these. A caller that doesn't pass either (e.g. a future consumer that just wants the score
+  // table) simply never renders the AI badge, matching `share` above's own optional pattern.
+  comparisonSummary?: ComparisonSummary | null;
+  isComparisonSummaryLoading?: boolean;
 }) {
   const t = useTranslations("NeighborhoodComparisonTable");
   const tDimensions = useTranslations("Dimensions");
@@ -105,6 +113,8 @@ export function NeighborhoodComparisonTable({
             </span>
           </p>
         )}
+        <ComparisonSummaryBadge summary={comparisonSummary} isLoading={isComparisonSummaryLoading} />
+
         {share && (
           <div className="mt-4 flex justify-center">
             <ShareCardButtons {...share} />

@@ -1,5 +1,6 @@
 import type {
   AssistantResponse,
+  ComparisonSummary,
   NeighborhoodComparison,
   NeighborhoodName,
   NeighborhoodScore,
@@ -42,6 +43,20 @@ export function fetchNeighborhoodComparison(
   return getJson<NeighborhoodComparison>(
     `/api/neighborhoods/compare?${params.toString()}`,
   );
+}
+
+// A separate request from fetchNeighborhoodComparison above by design - see
+// useComparisonSummary.ts. Unwraps the `{ summary }` envelope here so callers just get the
+// summary itself (or null) rather than repeating that unwrap at every call site.
+export async function fetchComparisonSummary(
+  a: string,
+  b: string,
+): Promise<ComparisonSummary | null> {
+  const params = new URLSearchParams({ a, b });
+  const { summary } = await getJson<{ summary: ComparisonSummary | null }>(
+    `/api/neighborhoods/compare/summary?${params.toString()}`,
+  );
+  return summary;
 }
 
 // Unlike getJson() above, a non-2xx status here is still meaningful application state, not just
