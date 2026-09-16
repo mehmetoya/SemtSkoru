@@ -122,6 +122,22 @@ Repo Settings → Secrets and variables → Actions → yeni secret:
 
 - `API_BASE_URL` = Render API URL'i (örn. `https://semtskoru-api.onrender.com`, sonunda `/` olmadan)
 
+## Supabase güvenlik: Row Level Security
+
+Supabase her projede PostgREST'i (kendi otomatik REST API katmanı) varsayılan olarak açık
+tutuyor — bu proje hiç kullanmasa da. `public` şemasındaki bir tabloda RLS kapalıysa,
+`anon`/`authenticated` rolleri o tabloya bu API'yi hiç atlamadan, doğrudan internetten
+erişebiliyor (Supabase'in kendi Security Advisor'ı bunu `ERROR` seviyesinde işaretliyor).
+`EnableRowLevelSecurityOnAllTables` migration'ı (2026-09-16) bu yüzden her tabloda RLS'i
+policy eklemeden açıyor — `anon`/`authenticated` için tüm erişimi reddediyor, ama bu API'nin
+kendi bağlantısını (tablo sahibi rol) etkilemiyor (Postgres'te sahiplik RLS'i baypas eder).
+
+**`spatial_ref_sys` istisnası:** PostGIS'in kendi referans-sistemleri tablosu bu migration'a
+dahil değil — canlıda denendi, bu API'nin bağlandığı rol bu tablonun sahibi değil (`must be
+owner of table spatial_ref_sys`, Supabase'in kendi internal rolüne ait). Bunu düzeltmek
+Supabase dashboard/support tarafında bir işlem gerektiriyor, migration'la yapılamıyor —
+Security Advisor'da bu tek kalem "ERROR" olarak görünmeye devam edecek.
+
 ## Sıra
 
 Supabase → Render → Vercel → GitHub secret. Render'ın CORS origin'i Vercel URL'ine,
