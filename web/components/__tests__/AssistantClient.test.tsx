@@ -21,6 +21,7 @@ function fullScore(overrides: Partial<NeighborhoodScore> = {}): NeighborhoodScor
     overall: 83,
     isComplete: false,
     summary: null,
+    trend: null,
     ...overrides,
   };
 }

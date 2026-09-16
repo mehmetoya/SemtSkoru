@@ -23,6 +23,15 @@ public sealed record NeighborhoodComparisonDto(NeighborhoodScoreDto A, Neighborh
 // came back unusable (see DistrictSummaryOutcome) - never a fabricated placeholder.
 public sealed record DistrictSummaryDto(string Text, DateTimeOffset GeneratedAt);
 
+// Null whenever no cached trend summary exists yet for this district - covers every honest
+// reason from DistrictTrendOutcome (Gemini not configured, no usable text) PLUS the two reasons
+// unique to trends: no baseline snapshot old enough exists yet (cold start - see
+// ScoreSnapshotJob, true for every district for at least a week after this feature first
+// deploys) or nothing about the district's score changed enough since its baseline to be worth
+// narrating. Never a fabricated placeholder or a "check back later" filler - see
+// web/components/DistrictTrendBadge.tsx, which renders nothing at all when this is null.
+public sealed record DistrictTrendDto(string Text, DateTimeOffset GeneratedAt);
+
 public sealed record NeighborhoodScoreDto(
     string NeighborhoodId,
     DimensionScoreDto AirQuality,
@@ -33,13 +42,16 @@ public sealed record NeighborhoodScoreDto(
     DimensionScoreDto TransitAccess,
     int? Overall,
     bool IsComplete,
-    DistrictSummaryDto? Summary = null)
+    DistrictSummaryDto? Summary = null,
+    DistrictTrendDto? Trend = null)
 {
-    // `summary` defaults to null for callers that don't have one handy (e.g. /compare and the AI
-    // Semt Asistanı's recommendation cards, which build this same DTO from a NeighborhoodScoreResult
-    // that was never joined against DistrictSummaries) - an honestly-absent field there, not a
-    // wrong one, since neither of those surfaces renders it today.
-    public static NeighborhoodScoreDto From(NeighborhoodScoreResult result, DistrictSummaryDto? summary = null) => new(
+    // `summary`/`trend` default to null for callers that don't have one handy (e.g. /compare and
+    // the AI Semt Asistanı's recommendation cards, which build this same DTO from a
+    // NeighborhoodScoreResult that was never joined against DistrictSummaries/
+    // DistrictTrendSummaries) - an honestly-absent field there, not a wrong one, since neither of
+    // those surfaces renders either today.
+    public static NeighborhoodScoreDto From(
+        NeighborhoodScoreResult result, DistrictSummaryDto? summary = null, DistrictTrendDto? trend = null) => new(
         result.NeighborhoodId,
         DimensionScoreDto.From(result.AirQuality),
         DimensionScoreDto.From(result.GreenSpace),
@@ -49,5 +61,6 @@ public sealed record NeighborhoodScoreDto(
         DimensionScoreDto.From(result.TransitAccess),
         result.Overall?.Value,
         result.IsComplete,
-        summary);
+        summary,
+        trend);
 }

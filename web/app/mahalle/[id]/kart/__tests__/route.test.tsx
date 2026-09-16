@@ -28,6 +28,7 @@ function fullScore(): NeighborhoodScore {
     overall: 62,
     isComplete: true,
     summary: null,
+    trend: null,
   };
 }
 

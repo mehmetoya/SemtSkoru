@@ -47,6 +47,7 @@ describe("NeighborhoodScoreCard", () => {
       overall: 94,
       isComplete: true,
       summary: null,
+      trend: null,
     };
 
     render(<NeighborhoodScoreCard name="Kadıköy" boundary={SAMPLE_BOUNDARY} score={score} />, {
@@ -98,6 +99,7 @@ describe("NeighborhoodScoreCard", () => {
       overall: 100,
       isComplete: false,
       summary: null,
+      trend: null,
     };
 
     render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />, {
@@ -148,6 +150,7 @@ describe("NeighborhoodScoreCard", () => {
       overall: 65,
       isComplete: false,
       summary: null,
+      trend: null,
     };
 
     render(<NeighborhoodScoreCard name="Beşiktaş" boundary={SAMPLE_BOUNDARY} score={score} />, {
@@ -174,6 +177,7 @@ describe("NeighborhoodScoreCard", () => {
       overall: 97,
       isComplete: true,
       summary: null,
+      trend: null,
     };
 
     render(<NeighborhoodScoreCard name="Kadıköy" score={score} headingLevel="h2" />, {
@@ -196,6 +200,7 @@ describe("NeighborhoodScoreCard", () => {
       overall: 97,
       isComplete: true,
       summary: null,
+      trend: null,
     };
 
     const { rerender } = render(<NeighborhoodScoreCard name="Kadıköy" score={baseScore} />, {
@@ -214,5 +219,39 @@ describe("NeighborhoodScoreCard", () => {
     );
     expect(screen.getByText("Bu ilçe hava kalitesinde güçlü.")).toBeInTheDocument();
     expect(screen.getByText(/Google Gemini ile oluşturuldu/)).toBeInTheDocument();
+  });
+
+  it("shows the AI trend summary when one is cached, and nothing in the cold-start state where it isn't", () => {
+    const baseScore: NeighborhoodScore = {
+      neighborhoodId: "kadikoy",
+      airQuality: { score: 83, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      greenSpace: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      transportation: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      parking: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      healthAccess: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      transitAccess: { score: 100, freshness: "Fresh", sourceName: "s", publishedAt: "2026-09-11T00:00:00Z" },
+      overall: 97,
+      isComplete: true,
+      summary: null,
+      trend: null,
+    };
+
+    // No baseline snapshot old enough exists yet - this is the real state of every district
+    // immediately after this feature ships (see ScoreSnapshotJob), and must render nothing.
+    const { rerender } = render(<NeighborhoodScoreCard name="Kadıköy" score={baseScore} />, {
+      wrapper: createIntlWrapper(),
+    });
+    expect(screen.queryByText("Zaman İçindeki Değişim")).not.toBeInTheDocument();
+
+    rerender(
+      <NeighborhoodScoreCard
+        name="Kadıköy"
+        score={{
+          ...baseScore,
+          trend: { text: "Otopark skoru belirgin şekilde arttı.", generatedAt: "2026-09-16T00:00:00Z" },
+        }}
+      />,
+    );
+    expect(screen.getByText("Otopark skoru belirgin şekilde arttı.")).toBeInTheDocument();
   });
 });

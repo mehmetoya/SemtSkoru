@@ -13,11 +13,13 @@ using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Assistant;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Application.Summaries;
+using SemtSkoru.Application.Trends;
 using SemtSkoru.Infrastructure.ExternalApis;
 using SemtSkoru.Infrastructure.Ingestion;
 using SemtSkoru.Infrastructure.Persistence;
 using SemtSkoru.Infrastructure.Scoring;
 using SemtSkoru.Infrastructure.Summaries;
+using SemtSkoru.Infrastructure.Trends;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -111,6 +113,16 @@ builder.Services.AddScoped<IDistrictAssistantService, DistrictAssistantService>(
 builder.Services.AddScoped<IDistrictSummaryService, DistrictSummaryService>();
 builder.Services.AddScoped<IDistrictSummaryRepository, DistrictSummaryRepository>();
 builder.Services.AddScoped<DistrictSummaryGenerationJob>();
+
+// Score trend ("Zaman İçindeki Değişim") - takes a weekly ScoreSnapshot of every district's
+// scores (the first persisted score history this codebase has ever had - see ScoreSnapshot's
+// remarks) and, only once a district has a baseline snapshot old enough to compare against (see
+// ScoreSnapshotJob.MinimumBaselineAge), asks Gemini for a short grounded description of what
+// changed. Reuses the SAME IDistrictAssistantAiClient as the two AI features above rather than a
+// third client registration - see DistrictTrendService's remarks.
+builder.Services.AddScoped<IDistrictTrendService, DistrictTrendService>();
+builder.Services.AddScoped<IDistrictTrendRepository, DistrictTrendRepository>();
+builder.Services.AddScoped<ScoreSnapshotJob>();
 
 // See RateLimiting/RateLimitingExtensions.cs for the policies and their rationale: every
 // endpoint here is public and unauthenticated (no API keys - out of scope), and DB round trips
@@ -231,6 +243,34 @@ recurringJobs.AddOrUpdate<DistrictSummaryGenerationJob>(
     "district-summary-generation",
     job => job.RunAsync(CancellationToken.None),
     Cron.Weekly());
+
+// Weekly, the same bucket as green space/health access/transit access/district-summary-generation
+// above, for the same reason DistrictSummaryGenerationJob is weekly rather than daily: this job's
+// TREND half also spends a THIRD-PARTY quota (Gemini) worst case 39 calls/run, and weekly keeps
+// that amortized cost far below the shared 150-request daily budget. Its SNAPSHOT half doesn't
+// need weekly cadence for its own sake (it writes plain DB rows, no external quota involved) - it
+// runs at this cadence only because it's the same job as the trend generation that does.
+//
+// Scheduled 6 hours after the other weekly jobs' default midnight slot (Cron.Weekly() with no
+// arguments = Monday 00:00 UTC), specifically to avoid ever landing in the same Hangfire
+// worker-pool window as district-summary-generation above: that job's own worst-case run takes
+// ~3.5 minutes (see its remarks), so a 6-hour gap comfortably separates the two jobs' Gemini
+// calls in the normal case where both fire on schedule. This app's free-tier host (Render) can
+// spin its container down when idle and only wakes on a request (see the /health comment above
+// and .github/workflows/keep-warm.yml) - if it was asleep past BOTH jobs' trigger times, Hangfire
+// fires whatever it missed as soon as the process wakes, which could still momentarily line the
+// two up despite the staggered schedule. That collision is accepted, not specially guarded
+// against: with WorkerCount=2 they would run truly in parallel rather than queue, so the combined
+// per-minute Gemini rate could transiently exceed this app's own conservative internal target -
+// but each job already treats Gemini's own 429 as an expected, handled outcome (30s backoff, see
+// RateLimitBackoff in each job), and even a full 39-call run from BOTH jobs at once (78 calls
+// total) stays well under half of the 150-request DAILY cap that is this app's real backstop
+// (see DistrictSummaryGenerationJob's own remarks for why that daily figure, not the per-minute
+// one, is what every one of these jobs' worst-case reasoning is ultimately bounded by).
+recurringJobs.AddOrUpdate<ScoreSnapshotJob>(
+    "score-snapshot",
+    job => job.RunAsync(CancellationToken.None),
+    Cron.Weekly(DayOfWeek.Monday, 6));
 
 app.Run();
 

@@ -203,6 +203,9 @@
   "DistrictSummaryBadge": {
     "heading": "✨ Öne Çıkan Özellikler"
   },
+  "DistrictTrendBadge": {
+    "heading": "📈 Zaman İçindeki Değişim"
+  },
   "ShareCardButtons": {
     "download": "İndir",
     "share": "Paylaş",

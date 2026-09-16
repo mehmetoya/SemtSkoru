@@ -20,6 +20,7 @@ function emptyScore(neighborhoodId: string) {
     overall: null,
     isComplete: false,
     summary: null,
+    trend: null,
   };
 }
 

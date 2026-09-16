@@ -52,6 +52,7 @@ function score(overrides: Partial<NeighborhoodScore> = {}): NeighborhoodScore {
     overall: 62,
     isComplete: true,
     summary: null,
+    trend: null,
     ...overrides,
   };
 }

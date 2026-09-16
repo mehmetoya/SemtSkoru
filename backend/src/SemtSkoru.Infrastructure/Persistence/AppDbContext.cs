@@ -13,6 +13,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<HealthAccessReading> HealthAccessReadings => Set<HealthAccessReading>();
     public DbSet<TransitAccessReading> TransitAccessReadings => Set<TransitAccessReading>();
     public DbSet<DistrictSummary> DistrictSummaries => Set<DistrictSummary>();
+    public DbSet<ScoreSnapshot> ScoreSnapshots => Set<ScoreSnapshot>();
+    public DbSet<DistrictTrendSummary> DistrictTrendSummaries => Set<DistrictTrendSummary>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

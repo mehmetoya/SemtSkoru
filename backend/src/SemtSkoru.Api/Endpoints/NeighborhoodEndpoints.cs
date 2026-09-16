@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Application.Summaries;
+using SemtSkoru.Application.Trends;
 using SemtSkoru.Infrastructure.Persistence;
 
 namespace SemtSkoru.Api.Endpoints;
@@ -65,6 +66,7 @@ public static class NeighborhoodEndpoints
             string id,
             INeighborhoodScoringService scoringService,
             IDistrictSummaryRepository summaryRepository,
+            IDistrictTrendRepository trendRepository,
             CancellationToken ct) =>
         {
             SetCacheHeader(context);
@@ -74,12 +76,16 @@ public static class NeighborhoodEndpoints
                 return Results.NotFound();
             }
 
-            // A cheap read against whatever DistrictSummaryGenerationJob already wrote (see its
-            // remarks) - never a live Gemini call on this request path.
+            // Both are cheap reads against whatever their respective weekly Hangfire job already
+            // wrote (DistrictSummaryGenerationJob / ScoreSnapshotJob) - never a live Gemini call
+            // on this request path.
             var summary = await summaryRepository.GetAsync(id, ct);
             var summaryDto = summary is null ? null : new DistrictSummaryDto(summary.SummaryText, summary.GeneratedAt);
 
-            return Results.Ok(NeighborhoodScoreDto.From(result, summaryDto));
+            var trend = await trendRepository.GetAsync(id, ct);
+            var trendDto = trend is null ? null : new DistrictTrendDto(trend.SummaryText, trend.GeneratedAt);
+
+            return Results.Ok(NeighborhoodScoreDto.From(result, summaryDto, trendDto));
         }).RequireRateLimiting(RateLimitPolicies.Standard);
 
         app.MapGet("/api/neighborhoods/compare", async (HttpContext context, string? a, string? b, INeighborhoodScoringService scoringService, CancellationToken ct) =>

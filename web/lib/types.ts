@@ -34,6 +34,20 @@ export interface DistrictSummary {
   generatedAt: string;
 }
 
+// The AI "what changed" trend summary shown on a district's page (see DistrictTrendBadge) -
+// generated ahead of time by the backend's weekly ScoreSnapshotJob, never live on this request.
+// `null` on NeighborhoodScore.trend covers every honest reason from DistrictSummary's own list
+// PLUS the two reasons unique to trends: no snapshot old enough yet exists to compare against
+// (the cold-start state - true for every district for at least a week after this feature first
+// deploys, see ScoreSnapshotJob) or nothing about the score changed enough to be worth narrating.
+// Never a fabricated placeholder or "check back later" filler - DistrictTrendBadge renders
+// nothing at all when this is null.
+export interface DistrictTrend {
+  text: string;
+  // ISO 8601 string (System.Text.Json's default DateTimeOffset serialization).
+  generatedAt: string;
+}
+
 export interface NeighborhoodScore {
   neighborhoodId: string;
   airQuality: DimensionScore;
@@ -45,6 +59,7 @@ export interface NeighborhoodScore {
   overall: number | null;
   isComplete: boolean;
   summary: DistrictSummary | null;
+  trend: DistrictTrend | null;
 }
 
 export interface NeighborhoodComparison {

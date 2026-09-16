@@ -203,6 +203,9 @@
   "DistrictSummaryBadge": {
     "heading": "✨ Standout Traits"
   },
+  "DistrictTrendBadge": {
+    "heading": "📈 Trend Over Time"
+  },
   "ShareCardButtons": {
     "download": "Download",
     "share": "Share",
