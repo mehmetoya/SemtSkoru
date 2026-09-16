@@ -95,4 +95,38 @@ describe("NeighborhoodComparisonTable", () => {
 
     expect(screen.getByText("—")).toBeInTheDocument();
   });
+
+  it("renders nothing for the AI comparison summary section when the prop is omitted", () => {
+    render(
+      <NeighborhoodComparisonTable
+        nameA="Kadıköy"
+        nameB="Beşiktaş"
+        scoreA={score({})}
+        scoreB={score({})}
+      />,
+      { wrapper: createIntlWrapper() },
+    );
+
+    expect(screen.queryByText(/Google Gemini ile oluşturuldu/)).not.toBeInTheDocument();
+  });
+
+  it("passes the AI comparison summary through to ComparisonSummaryBadge when provided", () => {
+    render(
+      <NeighborhoodComparisonTable
+        nameA="Kadıköy"
+        nameB="Beşiktaş"
+        scoreA={score({})}
+        scoreB={score({})}
+        comparisonSummary={{
+          text: "Kadıköy hava kalitesinde öne çıkarken, Beşiktaş otoparkta daha güçlü.",
+          generatedAt: "2026-09-11T00:00:00Z",
+        }}
+      />,
+      { wrapper: createIntlWrapper() },
+    );
+
+    expect(
+      screen.getByText("Kadıköy hava kalitesinde öne çıkarken, Beşiktaş otoparkta daha güçlü."),
+    ).toBeInTheDocument();
+  });
 });
