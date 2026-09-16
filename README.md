@@ -109,7 +109,7 @@ docs/
   deployment.md                   → Ücretsiz katmanlarla adım adım yayına alma
 render.yaml                       → Render Blueprint (Docker web service tanımı)
 .github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve keep-warm (free-tier soğuk başlangıç önleme + ingestion catch-up)
-SPEC.md, tasks/plan.md, tasks/todo.md → Ürün spesifikasyonu ve uygulama planı
+SPEC.md, tasks/plan.md              → Ürün spesifikasyonu ve uygulama planı
 ```
 
 ## Kurulum (yaklaşık 5 dakika)
