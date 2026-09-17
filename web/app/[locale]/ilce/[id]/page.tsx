@@ -11,6 +11,21 @@ import { jsonLdScript } from "../../../../lib/json-ld";
 
 export const revalidate = 300;
 
+// Required for `revalidate` above to actually do anything at runtime - NOT just documentation.
+// Per node_modules/next/dist/docs/.../generate-static-params.md: "You must return an empty
+// array from generateStaticParams ... in order to revalidate (ISR) paths at runtime." Omitting
+// generateStaticParams entirely (as this route did before) doesn't just skip build-time
+// prerendering - it makes Next.js treat every request as fully dynamic forever, with zero
+// caching, no matter what `revalidate` says. Returning [] here does NOT prerender any district
+// at build time (so it costs nothing against this app's shared Gemini quota - see
+// DistrictSummaryGenerationJob's own remarks), it only tells Next.js this route IS eligible for
+// "render once per (locale, id) on first visit, then serve the cached result for 300s" - live
+// double-checked (2026-09-17) that this was the one remaining page still showing
+// `x-vercel-cache: MISS` on every single request after the setRequestLocale fix elsewhere.
+export function generateStaticParams() {
+  return [];
+}
+
 async function findNeighborhood(id: string): Promise<NeighborhoodSummary | undefined> {
   const neighborhoods = await fetchNeighborhoods();
   return neighborhoods.find((n) => n.id === id);
