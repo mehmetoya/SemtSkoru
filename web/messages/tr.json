@@ -154,7 +154,10 @@
     "errorLoadingScore": "Skor yüklenirken bir hata oluştu.",
     "breadcrumbHome": "İlçeler",
     "shareTitle": "{name} Yaşam Skoru | SemtSkoru",
-    "shareText": "{name} ilçesinin SemtSkoru yaşam skorunu incele."
+    "shareText": "{name} ilçesinin SemtSkoru yaşam skorunu incele.",
+    "districtNavLabel": "İlçeler arasında gezin",
+    "previousDistrict": "Önceki ilçe: {name}",
+    "nextDistrict": "Sonraki ilçe: {name}"
   },
   "SiteHeader": {
     "districts": "İlçeler",

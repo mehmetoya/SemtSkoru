@@ -26,13 +26,12 @@
 // next-intl call with no cached locale to fall back on; the one bit of a11y text is hardcoded
 // English, which is an intentional, narrow exception to this app's Turkish/English i18n for a
 // boundary that structurally can't know the locale.
+//
+// A plain <div>, not <main> - this renders inside app/[locale]/ilce/layout.tsx's own <main>
+// (which already carries this same spacing), so a second <main> here would be a nested landmark.
 export default function NeighborhoodLoading() {
   return (
-    <main
-      className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14"
-      role="status"
-      aria-label="Loading"
-    >
+    <div role="status" aria-label="Loading">
       <div className="h-5 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-800 dark:bg-slate-900">
@@ -61,6 +60,6 @@ export default function NeighborhoodLoading() {
           ))}
         </div>
       </div>
-    </main>
+    </div>
   );
 }

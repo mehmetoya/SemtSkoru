@@ -4,3 +4,89 @@
    class on <html> is what every `dark:` utility below responds to, set before first
    paint by ThemeScript. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Directional slide for the district detail page's previous/next carousel
+   (components/DistrictCarousel.tsx) - the "Add directional motion for navigation" pattern from
+   node_modules/next/dist/docs/01-app/02-guides/view-transitions.md, applied to a prev/next pair
+   instead of a forward/back gallery. Only that component's <ViewTransition> ever assigns the
+   "district-forward"/"district-back" classes below (via its `enter`/`exit` props, keyed to the
+   matching `transitionTypes` on its two <Link>s) - this is the only view-transition feature in
+   the app today, so none of this can affect any other page. */
+:root {
+  --district-duration-exit: 150ms;
+  --district-duration-enter: 210ms;
+  --district-duration-move: 400ms;
+}
+
+::view-transition-old(.district-forward) {
+  --slide-offset: -60px;
+  animation:
+    var(--district-duration-exit) ease-in both district-fade reverse,
+    var(--district-duration-move) ease-in-out both district-slide reverse;
+}
+::view-transition-new(.district-forward) {
+  --slide-offset: 60px;
+  animation:
+    var(--district-duration-enter) ease-out var(--district-duration-exit) both district-fade,
+    var(--district-duration-move) ease-in-out both district-slide;
+}
+
+::view-transition-old(.district-back) {
+  --slide-offset: 60px;
+  animation:
+    var(--district-duration-exit) ease-in both district-fade reverse,
+    var(--district-duration-move) ease-in-out both district-slide reverse;
+}
+::view-transition-new(.district-back) {
+  --slide-offset: -60px;
+  animation:
+    var(--district-duration-enter) ease-out var(--district-duration-exit) both district-fade,
+    var(--district-duration-move) ease-in-out both district-slide;
+}
+
+@keyframes district-fade {
+  from {
+    filter: blur(3px);
+    opacity: 0;
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+
+@keyframes district-slide {
+  from {
+    translate: var(--slide-offset);
+  }
+  to {
+    translate: 0;
+  }
+}
+
+/* Any active view transition still gets an implicit, unnamed "root" group for the rest of the
+   page - without this, the header and the carousel's own prev/next buttons (deliberately left
+   outside the <ViewTransition> above so they stay instantly clickable through the animation)
+   would cross-fade too, even though neither one actually changes on district navigation. Same
+   problem the guide's "Anchoring the header" section describes; suppressed globally here since
+   there is exactly one view-transition feature in this app to worry about. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Without this, the browser's view-transition overlay swallows pointer events for its whole
+   duration - including clicks on the carousel's prev/next buttons, which is exactly where
+   someone flipping through districts is most likely to click again right away. */
+::view-transition {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

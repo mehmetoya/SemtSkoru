@@ -154,7 +154,10 @@
     "errorLoadingScore": "Something went wrong while loading the score.",
     "breadcrumbHome": "Districts",
     "shareTitle": "{name} Livability Score | SemtSkoru",
-    "shareText": "Check out {name}'s SemtSkoru livability score."
+    "shareText": "Check out {name}'s SemtSkoru livability score.",
+    "districtNavLabel": "Browse other districts",
+    "previousDistrict": "Previous district: {name}",
+    "nextDistrict": "Next district: {name}"
   },
   "SiteHeader": {
     "districts": "Districts",

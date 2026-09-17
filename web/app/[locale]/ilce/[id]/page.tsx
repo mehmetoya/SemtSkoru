@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Link } from "../../../../i18n/navigation";
 import { fetchNeighborhoods, fetchNeighborhoodScore } from "../../../../lib/api-client";
+import { DistrictCarousel } from "../../../../components/DistrictCarousel";
 import { NeighborhoodScoreCard } from "../../../../components/NeighborhoodScoreCard";
 import type { NeighborhoodScore, NeighborhoodSummary } from "../../../../lib/types";
 import { SITE_URL, localizedAlternates, localizedPath } from "../../../../lib/site";
@@ -29,6 +30,31 @@ export function generateStaticParams() {
 async function findNeighborhood(id: string): Promise<NeighborhoodSummary | undefined> {
   const neighborhoods = await fetchNeighborhoods();
   return neighborhoods.find((n) => n.id === id);
+}
+
+interface NeighborhoodWithNeighbors {
+  neighborhood: NeighborhoodSummary;
+  previous: NeighborhoodSummary;
+  next: NeighborhoodSummary;
+}
+
+// Same already-sorted-by-name array findNeighborhood above works from (fetchNeighborhoods
+// mirrors the backend's `.OrderBy(n => n.Name)` - the same order the home page list and
+// sitemap already use) - reused here instead of a second lookup, so the prev/next carousel
+// (see DistrictCarousel and its use below) costs nothing beyond the one /api/neighborhoods call
+// this page already makes. Wraps at both ends deliberately: the alphabetically-last district's
+// "next" is the first one and vice versa, so the carousel feels endless instead of dead-ending -
+// not a bug.
+async function findNeighborhoodWithNeighbors(id: string): Promise<NeighborhoodWithNeighbors | undefined> {
+  const neighborhoods = await fetchNeighborhoods();
+  const index = neighborhoods.findIndex((n) => n.id === id);
+  if (index === -1) return undefined;
+
+  return {
+    neighborhood: neighborhoods[index],
+    previous: neighborhoods[(index - 1 + neighborhoods.length) % neighborhoods.length],
+    next: neighborhoods[(index + 1) % neighborhoods.length],
+  };
 }
 
 export async function generateMetadata({
@@ -68,30 +94,43 @@ export default async function NeighborhoodPage({
   // route out of the static rendering its `revalidate = 300` above is trying to get.
   setRequestLocale(locale);
 
-  // findNeighborhood (full district list, for the name/boundary) and the score fetch hit
-  // two different backend endpoints and don't depend on each other's result - run them
-  // concurrently instead of paying for both round-trips back to back. Measured live
-  // (2026-09-16, real Render backend): this roughly halves this page's server-side data-
-  // fetch time versus the previous sequential await/await. `locale` scopes the cached AI
-  // district summary/trend embedded in the score response (see fetchNeighborhoodScore) - the
-  // URL already includes [locale], so /tr/ilce/kadikoy and /en/ilce/kadikoy are already
-  // separate ISR cache entries (see `revalidate` above), no extra caching work needed here.
-  const [neighborhood, score] = await Promise.all([
-    findNeighborhood(id),
+  // findNeighborhoodWithNeighbors (full district list, for the name/boundary and the prev/next
+  // carousel below) and the score fetch hit two different backend endpoints and don't depend on
+  // each other's result - run them concurrently instead of paying for both round-trips back to
+  // back. Measured live (2026-09-16, real Render backend): this roughly halves this page's
+  // server-side data-fetch time versus the previous sequential await/await. `locale` scopes the
+  // cached AI district summary/trend embedded in the score response (see
+  // fetchNeighborhoodScore) - the URL already includes [locale], so /tr/ilce/kadikoy and
+  // /en/ilce/kadikoy are already separate ISR cache entries (see `revalidate` above), no extra
+  // caching work needed here.
+  const [found, score] = await Promise.all([
+    findNeighborhoodWithNeighbors(id),
     fetchNeighborhoodScore(id, locale).catch(() => null),
   ]);
-  if (!neighborhood) notFound();
+  if (!found) notFound();
 
-  return <NeighborhoodView id={id} neighborhood={neighborhood} score={score} />;
+  return (
+    <NeighborhoodView
+      id={id}
+      neighborhood={found.neighborhood}
+      previous={found.previous}
+      next={found.next}
+      score={score}
+    />
+  );
 }
 
 function NeighborhoodView({
   id,
   neighborhood,
+  previous,
+  next,
   score,
 }: {
   id: string;
   neighborhood: NeighborhoodSummary;
+  previous: NeighborhoodSummary;
+  next: NeighborhoodSummary;
   score: NeighborhoodScore | null;
 }) {
   const t = useTranslations("Neighborhood");
@@ -118,8 +157,11 @@ function NeighborhoodView({
     ],
   };
 
+  // No <main> wrapper here (or in a layout scoped to `[id]`) - see
+  // app/[locale]/ilce/layout.tsx's comment for why that landmark has to live one segment level
+  // up from this dynamic route for DistrictCarousel's slide animation to actually fire.
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
+    <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
@@ -130,7 +172,7 @@ function NeighborhoodView({
       >
         {t("backLink")}
       </Link>
-      <div className="mt-4">
+      <DistrictCarousel id={id} previous={previous} next={next}>
         {score ? (
           <NeighborhoodScoreCard
             name={neighborhood.name}
@@ -149,7 +191,7 @@ function NeighborhoodView({
             {t("errorLoadingScore")}
           </div>
         )}
-      </div>
-    </main>
+      </DistrictCarousel>
+    </>
   );
 }
