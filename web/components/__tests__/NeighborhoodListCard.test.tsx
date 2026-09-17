@@ -15,7 +15,9 @@ describe("NeighborhoodListCard", () => {
       { wrapper: createIntlWrapper() },
     );
 
-    const link = screen.getByRole("link", { name: "Kadıköy" });
+    // The whole card is one Link (see NeighborhoodListCard's own remarks), so its accessible
+    // name is the card's full text content, not just the district name - match a substring.
+    const link = screen.getByRole("link", { name: /Kadıköy/ });
     expect(link).toHaveAttribute("href", "/mahalle/kadikoy");
     expect(screen.getByText("82")).toBeInTheDocument();
     expect(screen.getByText("Genel skor: İyi")).toBeInTheDocument();
