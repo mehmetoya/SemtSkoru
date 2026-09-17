@@ -4,6 +4,7 @@ using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Comparisons;
 using SemtSkoru.Application.Localization;
 using SemtSkoru.Application.Scoring;
+using SemtSkoru.Application.Search;
 using SemtSkoru.Application.Summaries;
 using SemtSkoru.Application.Trends;
 using SemtSkoru.Infrastructure.Persistence;
@@ -170,6 +171,52 @@ public static class NeighborhoodEndpoints
             // treats this exactly like DistrictSummaryBadge treats a null district summary: render
             // nothing, never an error for the rest of the page.
             return Results.Ok(new ComparisonSummaryResponseDto(summary is null ? null : ComparisonSummaryDto.From(summary)));
+        }).RequireRateLimiting(RateLimitPolicies.AiAssistant);
+
+        // The home page's natural-language district search/filter box. GET (not POST) despite
+        // calling the same shared Gemini budget as the AI features above: this is a read with no
+        // side effects, `q` is a short free-text query that's RESTful as a query string (same
+        // style as GET /api/neighborhoods/compare's `a`/`b` above), and a GET is trivially
+        // shareable/bookmarkable/cacheable-by-intent even though this particular response isn't
+        // cached server-side (see DistrictSearchService's remarks for why: free-text queries are
+        // too varied for a persistent cache to meaningfully hit, exactly like POST /api/asistan).
+        // RequireRateLimiting(AiAssistant) - NOT a new policy - is the whole point of reusing that
+        // named policy: this endpoint draws from the SAME per-IP + global-per-minute +
+        // global-per-day Gemini budget as every other AI feature, never a separate allowance.
+        app.MapGet("/api/neighborhoods/search", async (
+            string? q,
+            IDistrictSearchService searchService,
+            CancellationToken ct) =>
+        {
+            var outcome = await searchService.SearchAsync(q ?? "", ct);
+
+            return outcome.Kind switch
+            {
+                DistrictSearchOutcomeKind.InvalidRequest => Results.BadRequest(
+                    new DistrictSearchResponseDto([], [], nameof(DistrictSearchOutcomeKind.InvalidRequest),
+                        "Lütfen aramak istediğiniz tercihi birkaç kelimeyle yazın.")),
+
+                DistrictSearchOutcomeKind.NotConfigured => Results.Json(
+                    new DistrictSearchResponseDto([], [], nameof(DistrictSearchOutcomeKind.NotConfigured),
+                        "Akıllı arama şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin."),
+                    statusCode: StatusCodes.Status503ServiceUnavailable),
+
+                DistrictSearchOutcomeKind.RateLimited => Results.Json(
+                    new DistrictSearchResponseDto([], [], nameof(DistrictSearchOutcomeKind.RateLimited),
+                        "Akıllı arama şu anda çok yoğun. Lütfen birkaç dakika sonra tekrar deneyin."),
+                    statusCode: StatusCodes.Status429TooManyRequests),
+
+                DistrictSearchOutcomeKind.Unavailable => Results.Json(
+                    new DistrictSearchResponseDto([], [], nameof(DistrictSearchOutcomeKind.Unavailable),
+                        "Akıllı arama şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin."),
+                    statusCode: StatusCodes.Status502BadGateway),
+
+                DistrictSearchOutcomeKind.NoUsableCriteria => Results.Ok(
+                    new DistrictSearchResponseDto([], [], nameof(DistrictSearchOutcomeKind.NoUsableCriteria),
+                        "Bu sorguyu anlayamadık. Lütfen farklı bir şekilde ifade etmeyi deneyin.")),
+
+                _ => Results.Ok(DistrictSearchResponseDto.From(outcome)),
+            };
         }).RequireRateLimiting(RateLimitPolicies.AiAssistant);
     }
 }

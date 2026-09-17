@@ -1,5 +1,6 @@
 using NetTopologySuite.Geometries;
 using SemtSkoru.Application.Scoring;
+using SemtSkoru.Application.Search;
 using SemtSkoru.Domain;
 
 namespace SemtSkoru.Api.Endpoints;
@@ -50,6 +51,30 @@ public sealed record DistrictSummaryDto(string Text, DateTimeOffset GeneratedAt)
 // narrating. Never a fabricated placeholder or a "check back later" filler - see
 // web/components/DistrictTrendBadge.tsx, which renders nothing at all when this is null.
 public sealed record DistrictTrendDto(string Text, DateTimeOffset GeneratedAt);
+
+// GET /api/neighborhoods/search's whole response body. Deliberately just ids - never names,
+// scores, or AI-authored reasoning - because the frontend already holds every district's full
+// summary in memory from its own earlier server-side fetch (see web/app/[locale]/page.tsx) and
+// only needs to know which real ids matched and in what order. `Dimensions` echoes back the
+// validated (never hallucinated) subset of the 6 real dimension keys the query was judged to
+// concern, purely for frontend transparency (e.g. showing "Filtering by: ..." chips) - mirrors
+// AssistantResponseDto's Status/Message shape: Status is a stable machine-readable discriminator
+// for the frontend (matches DistrictSearchOutcomeKind), Message is the Turkish, backend-authored
+// sentence for non-Ok statuses, which the frontend maps to its own translated copy rather than
+// rendering directly (see AssistantClient.tsx's own comment on why) - see
+// NeighborhoodEndpoints.cs for which HTTP status code each Status comes back with.
+public sealed record DistrictSearchResponseDto(
+    IReadOnlyList<string> MatchedIds,
+    IReadOnlyList<string> Dimensions,
+    string Status,
+    string? Message)
+{
+    public static DistrictSearchResponseDto From(DistrictSearchOutcome outcome) => new(
+        outcome.Matches.Select(m => m.NeighborhoodId).ToList(),
+        outcome.Dimensions,
+        nameof(DistrictSearchOutcomeKind.Ok),
+        null);
+}
 
 public sealed record NeighborhoodScoreDto(
     string NeighborhoodId,

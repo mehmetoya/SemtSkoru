@@ -13,6 +13,7 @@ using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Assistant;
 using SemtSkoru.Application.Comparisons;
 using SemtSkoru.Application.Scoring;
+using SemtSkoru.Application.Search;
 using SemtSkoru.Application.Summaries;
 using SemtSkoru.Application.Trends;
 using SemtSkoru.Infrastructure.Comparisons;
@@ -136,6 +137,15 @@ builder.Services.AddScoped<ScoreSnapshotJob>();
 // budget as POST /api/asistan.
 builder.Services.AddScoped<IComparisonSummaryService, ComparisonSummaryService>();
 builder.Services.AddScoped<IComparisonSummaryOrchestrator, ComparisonSummaryOrchestrator>();
+
+// Natural-language district search (home page search box, GET /api/neighborhoods/search) -
+// reuses the SAME IDistrictAssistantAiClient/GeminiClient/API key as the four features above
+// rather than a fifth client registration. Deliberately the SAFEST AI feature in this app: the
+// model is only ever asked which of the 6 real dimensions a free-text query concerns, never to
+// pick, name, or rank a district (see DistrictSearchService's remarks) - so it needs no
+// per-district data fetched into its prompt and no locale parameter (there's no free text for it
+// to write). Shares the SAME RateLimitPolicies.AiAssistant budget as every other AI feature below.
+builder.Services.AddScoped<IDistrictSearchService, DistrictSearchService>();
 
 // See RateLimiting/RateLimitingExtensions.cs for the policies and their rationale: every
 // endpoint here is public and unauthenticated (no API keys - out of scope), and DB round trips
