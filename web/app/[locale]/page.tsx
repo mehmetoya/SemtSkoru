@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { useLocale, useTranslations } from "next-intl";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "../../i18n/navigation";
 import { fetchNeighborhoods } from "../../lib/api-client";
 import type { NeighborhoodSummary } from "../../lib/types";
@@ -33,13 +33,26 @@ export async function generateMetadata({
   };
 }
 
-// Kept async purely for data-fetching: intentionally has no next-intl calls of its own
-// (next-intl/server's functions resolve to a "not supported" stub outside a real Next.js
-// RSC request - e.g. in this component's own Vitest unit test, which calls it directly -
-// see next-intl's own testing guidance to keep async Server Components free of hooks/its
-// server API and delegate all translated text to a plain, non-async child component
-// instead). All rendering - and every next-intl call - happens in HomeView below.
-export default async function Home() {
+// Kept async purely for data-fetching: aside from `setRequestLocale` (safe to call from an
+// async Server Component - it just writes into a request-scoped cache, no hooks involved),
+// this has no next-intl calls of its own (next-intl/server's functions resolve to a "not
+// supported" stub outside a real Next.js RSC request - e.g. in this component's own Vitest
+// unit test, which calls it directly - see next-intl's own testing guidance to keep async
+// Server Components free of hooks and delegate all translated text to a plain, non-async
+// child component instead). All rendering - and every other next-intl call - happens in
+// HomeView below.
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // See app/[locale]/layout.tsx's own comment on setRequestLocale for why this matters:
+  // without it, HomeView's useTranslations/useLocale calls below fall back to reading a
+  // request header, which opts this whole route out of the static rendering its
+  // `revalidate = 300` above is trying to get.
+  setRequestLocale(locale);
+
   let neighborhoods: NeighborhoodSummary[] = [];
   let listError = false;
   try {

@@ -6,19 +6,32 @@ import { jsonResponse, SAMPLE_BOUNDARY } from "../../../lib/test-utils";
 import type { NeighborhoodSummary } from "../../../lib/types";
 import trMessages from "../../../messages/tr.json";
 
+// Vitest's jsdom environment makes next-intl resolve "next-intl/server" to its
+// react-client build (there's no real RSC renderer here), where every export - including
+// setRequestLocale - is a stub that throws "not supported in Client Components" (see
+// node_modules/next-intl/dist/esm/development/server/react-client/index.js). Home() calls
+// setRequestLocale for a real reason in production (see its own comment: it opts the route
+// into static rendering), but that plumbing itself isn't what this suite is testing, so it's
+// stubbed out here the same way a real Next.js RSC render would just make it a no-op.
+vi.mock("next-intl/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next-intl/server")>()),
+  setRequestLocale: vi.fn(),
+}));
+
 const NEIGHBORHOODS: NeighborhoodSummary[] = [
   { id: "kadikoy", name: "Kadıköy", boundary: SAMPLE_BOUNDARY, overallScore: 80 },
   { id: "uskudar", name: "Üsküdar", boundary: SAMPLE_BOUNDARY, overallScore: 62 },
   { id: "besiktas", name: "Beşiktaş", boundary: SAMPLE_BOUNDARY, overallScore: null },
 ];
 
-// Home is an async Server Component (no hooks, no client-only APIs), so awaiting it and
-// rendering the resolved element works fine here - unlike app/[locale]/ilce/[id]/page.tsx,
-// which also calls next/navigation's notFound() and can't be exercised this way (see
-// Playwright e2e instead). Home itself makes no next-intl calls (see its own comment) - all
+// Home is an async Server Component (no hooks, no client-only APIs - setRequestLocale just
+// writes into a request-scoped cache), so awaiting it and rendering the resolved element
+// works fine here - unlike app/[locale]/ilce/[id]/page.tsx, which also calls
+// next/navigation's notFound() and can't be exercised this way (see Playwright e2e
+// instead). Home itself makes no next-intl *hook* calls (see its own comment) - all
 // translated text renders from its child HomeView, so wrapping the render in
 // NextIntlClientProvider (Turkish, the default locale, to match this suite's existing
-// assertions) is all that's needed - no params/locale plumbing into Home() itself.
+// assertions) is all that's needed alongside the `params` Home now needs.
 describe("Home", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
@@ -35,7 +48,7 @@ describe("Home", () => {
   it("lists the three districts, each linking to its score page", async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(NEIGHBORHOODS));
 
-    renderHome(await Home());
+    renderHome(await Home({ params: Promise.resolve({ locale: "tr" }) }));
 
     // NeighborhoodListCard wraps its whole card in one Link (see its own remarks), so each
     // link's accessible name is the full card text, not just the district name - match a
@@ -60,7 +73,7 @@ describe("Home", () => {
   it("shows an error message when the district list fails to load", async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(null, 500));
 
-    renderHome(await Home());
+    renderHome(await Home({ params: Promise.resolve({ locale: "tr" }) }));
 
     expect(
       screen.getByText("İlçe listesi yüklenirken bir hata oluştu."),

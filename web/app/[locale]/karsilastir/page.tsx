@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { useTranslations } from "next-intl";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CompareClient } from "../../../components/CompareClient";
 import { localizedAlternates, localizedPath } from "../../../lib/site";
 
@@ -22,7 +22,21 @@ export async function generateMetadata({
   };
 }
 
-export default function ComparePage() {
+// Kept async purely so setRequestLocale can run before ComparePageView's next-intl hooks -
+// see app/[locale]/layout.tsx's comment on why that matters. Not a hook itself, so this stays
+// safe to `await` directly in a test the way app/[locale]/page.tsx's Home does.
+export default async function ComparePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  return <ComparePageView />;
+}
+
+function ComparePageView() {
   const t = useTranslations("Compare");
   const tCommon = useTranslations("Common");
 

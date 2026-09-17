@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { useLocale, useTranslations } from "next-intl";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Link } from "../../../../i18n/navigation";
 import { fetchNeighborhoods, fetchNeighborhoodScore } from "../../../../lib/api-client";
@@ -48,6 +48,10 @@ export default async function NeighborhoodPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
+  // See app/[locale]/layout.tsx's comment on setRequestLocale: without this, NeighborhoodView's
+  // useTranslations/useLocale calls below fall back to a request-header lookup that opts this
+  // route out of the static rendering its `revalidate = 300` above is trying to get.
+  setRequestLocale(locale);
 
   // findNeighborhood (full district list, for the name/boundary) and the score fetch hit
   // two different backend endpoints and don't depend on each other's result - run them

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { useLocale, useTranslations } from "next-intl";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "../../../i18n/navigation";
 import { DIMENSION_METHODOLOGY_KEYS } from "../../../lib/dimension-info";
 import { DataSourceBadge } from "../../../components/DataSourceBadge";
@@ -27,7 +27,21 @@ export async function generateMetadata({
   };
 }
 
-export default function AboutPage() {
+// Kept async purely so setRequestLocale can run before AboutPageView's next-intl hooks - see
+// app/[locale]/layout.tsx's comment on why that matters. Not a hook itself, so this stays safe
+// to `await` directly in a test the way app/[locale]/page.tsx's Home does.
+export default async function AboutPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  return <AboutPageView />;
+}
+
+function AboutPageView() {
   const t = useTranslations("About");
   const tDimensions = useTranslations("Dimensions");
   const locale = useLocale();

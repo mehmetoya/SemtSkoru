@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { useTranslations } from "next-intl";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AssistantClient } from "../../../components/AssistantClient";
 import { localizedAlternates, localizedPath } from "../../../lib/site";
 
@@ -22,7 +22,21 @@ export async function generateMetadata({
   };
 }
 
-export default function AssistantPage() {
+// Kept async purely so setRequestLocale can run before AssistantPageView's next-intl hooks -
+// see app/[locale]/layout.tsx's comment on why that matters. Not a hook itself, so this stays
+// safe to `await` directly in a test the way app/[locale]/page.tsx's Home does.
+export default async function AssistantPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  return <AssistantPageView />;
+}
+
+function AssistantPageView() {
   const t = useTranslations("Assistant");
   const tCommon = useTranslations("Common");
 
