@@ -9,7 +9,7 @@ test("search for a district, then compare two districts", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Beşiktaş" })).toBeVisible();
 
   await kadikoyLink.click();
-  await expect(page).toHaveURL(/\/mahalle\/kadikoy$/);
+  await expect(page).toHaveURL(/\/ilce\/kadikoy$/);
   await expect(page.getByRole("heading", { name: "Kadıköy" })).toBeVisible();
   await expect(page.getByText("Genel skor")).toBeVisible();
 

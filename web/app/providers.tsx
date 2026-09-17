@@ -9,7 +9,7 @@ let browserQueryClient: QueryClient | undefined;
 // reconnect - wasteful here since none of this data (district scores) changes faster than
 // daily (see CachedNeighborhoodScoringRepository's remarks backend-side). 5 minutes matches
 // the backend's own Cache-Control max-age and the frontend's page-level ISR `revalidate = 300`
-// (web/app/[locale]/page.tsx, mahalle/[id]/page.tsx) - one number, three layers agreeing on it.
+// (web/app/[locale]/page.tsx, ilce/[id]/page.tsx) - one number, three layers agreeing on it.
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: { queries: { staleTime: 5 * 60 * 1000 } },

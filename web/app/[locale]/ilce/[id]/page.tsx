@@ -33,10 +33,10 @@ export async function generateMetadata({
     title,
     description,
     alternates: {
-      canonical: localizedPath(locale, `/mahalle/${id}`),
-      languages: localizedAlternates(`/mahalle/${id}`),
+      canonical: localizedPath(locale, `/ilce/${id}`),
+      languages: localizedAlternates(`/ilce/${id}`),
     },
-    openGraph: { title, description, url: `${SITE_URL}${localizedPath(locale, `/mahalle/${id}`)}` },
+    openGraph: { title, description, url: `${SITE_URL}${localizedPath(locale, `/ilce/${id}`)}` },
   };
 }
 
@@ -55,7 +55,7 @@ export default async function NeighborhoodPage({
   // (2026-09-16, real Render backend): this roughly halves this page's server-side data-
   // fetch time versus the previous sequential await/await. `locale` scopes the cached AI
   // district summary/trend embedded in the score response (see fetchNeighborhoodScore) - the
-  // URL already includes [locale], so /tr/mahalle/kadikoy and /en/mahalle/kadikoy are already
+  // URL already includes [locale], so /tr/ilce/kadikoy and /en/ilce/kadikoy are already
   // separate ISR cache entries (see `revalidate` above), no extra caching work needed here.
   const [neighborhood, score] = await Promise.all([
     findNeighborhood(id),
@@ -78,10 +78,10 @@ function NeighborhoodView({
   const t = useTranslations("Neighborhood");
   const locale = useLocale();
   // Turkish (the default locale) keeps its exact, already-shared URL shape
-  // (SITE_URL/mahalle/{id}, no prefix); only English adds its /en prefix - matches
+  // (SITE_URL/ilce/{id}, no prefix); only English adds its /en prefix - matches
   // localePrefix: "as-needed" and keeps a shared link pointed at the same language its
   // sender was actually looking at.
-  const localizedPageUrl = `${SITE_URL}${localizedPath(locale, `/mahalle/${id}`)}`;
+  const localizedPageUrl = `${SITE_URL}${localizedPath(locale, `/ilce/${id}`)}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -118,7 +118,7 @@ function NeighborhoodView({
             boundary={neighborhood.boundary}
             score={score}
             share={{
-              imageUrl: `/mahalle/${id}/kart`,
+              imageUrl: `/ilce/${id}/kart`,
               fileName: `semtskoru-${id}.png`,
               shareTitle: t("shareTitle", { name: neighborhood.name }),
               shareText: t("shareText", { name: neighborhood.name }),

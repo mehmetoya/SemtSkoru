@@ -13,7 +13,7 @@ const NEIGHBORHOODS: NeighborhoodSummary[] = [
 ];
 
 // Home is an async Server Component (no hooks, no client-only APIs), so awaiting it and
-// rendering the resolved element works fine here - unlike app/[locale]/mahalle/[id]/page.tsx,
+// rendering the resolved element works fine here - unlike app/[locale]/ilce/[id]/page.tsx,
 // which also calls next/navigation's notFound() and can't be exercised this way (see
 // Playwright e2e instead). Home itself makes no next-intl calls (see its own comment) - all
 // translated text renders from its child HomeView, so wrapping the render in
@@ -38,14 +38,14 @@ describe("Home", () => {
     renderHome(await Home());
 
     const kadikoyLink = screen.getByRole("link", { name: "Kadıköy" });
-    expect(kadikoyLink).toHaveAttribute("href", "/mahalle/kadikoy");
+    expect(kadikoyLink).toHaveAttribute("href", "/ilce/kadikoy");
     expect(screen.getByRole("link", { name: "Üsküdar" })).toHaveAttribute(
       "href",
-      "/mahalle/uskudar",
+      "/ilce/uskudar",
     );
     expect(screen.getByRole("link", { name: "Beşiktaş" })).toHaveAttribute(
       "href",
-      "/mahalle/besiktas",
+      "/ilce/besiktas",
     );
   });
 

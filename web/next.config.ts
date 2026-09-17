@@ -42,6 +42,23 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // The district route was renamed from the old MVP-era /mahalle/[id] ("mahalle" =
+  // neighborhood) to /ilce/[id] ("ilce" = district), matching what the rest of the product
+  // (UI copy, docs, SPEC.md) has always called these 39 İstanbul districts - "mahalle" was
+  // only ever a URL leftover. The site is already live and indexed (and was just shared
+  // publicly), so old /mahalle links must keep working, permanently, as 308s rather than
+  // 404ing - per next/dist/docs/.../redirects.md, config-level redirects run before Proxy,
+  // so this fires before next-intl's locale routing ever sees the request. Three shapes
+  // cover every existing URL: the unprefixed default-locale (tr) page, the /en-prefixed
+  // page (see i18n/routing.ts's localePrefix: "as-needed"), and the non-locale-prefixed
+  // share-card PNG route (see proxy.ts's own comment on why /kart stays unprefixed).
+  async redirects() {
+    return [
+      { source: "/mahalle/:id/kart", destination: "/ilce/:id/kart", permanent: true },
+      { source: "/mahalle/:id", destination: "/ilce/:id", permanent: true },
+      { source: "/en/mahalle/:id", destination: "/en/ilce/:id", permanent: true },
+    ];
+  },
 };
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");

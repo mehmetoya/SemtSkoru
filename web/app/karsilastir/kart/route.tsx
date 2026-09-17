@@ -7,7 +7,7 @@ import {
   formatGeneratedAt,
 } from "../../../lib/score-card-image";
 
-// Same reasoning as app/mahalle/[id]/kart/route.tsx: never cache a card whose entire
+// Same reasoning as app/ilce/[id]/kart/route.tsx: never cache a card whose entire
 // point is to be honest about exactly when it was generated.
 export const dynamic = "force-dynamic";
 

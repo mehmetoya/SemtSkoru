@@ -60,7 +60,7 @@ function mockApi(score: NeighborhoodScore | null) {
   });
 }
 
-describe("GET /mahalle/[id]/kart", () => {
+describe("GET /ilce/[id]/kart", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
   });
@@ -68,7 +68,7 @@ describe("GET /mahalle/[id]/kart", () => {
   it("renders a real PNG at the declared card size for a fully-scored district", async () => {
     mockApi(fullScore());
 
-    const response = await GET(new Request("http://test/mahalle/kadikoy/kart"), {
+    const response = await GET(new Request("http://test/ilce/kadikoy/kart"), {
       params: Promise.resolve({ id: "kadikoy" }),
     });
 
@@ -83,7 +83,7 @@ describe("GET /mahalle/[id]/kart", () => {
   it("renders successfully for a district missing half its dimensions ('Veri yok', not a crash)", async () => {
     mockApi(partialScore());
 
-    const response = await GET(new Request("http://test/mahalle/kadikoy/kart"), {
+    const response = await GET(new Request("http://test/ilce/kadikoy/kart"), {
       params: Promise.resolve({ id: "kadikoy" }),
     });
 
@@ -95,7 +95,7 @@ describe("GET /mahalle/[id]/kart", () => {
   it("404s for an unknown district instead of rendering a fabricated card", async () => {
     mockApi(null);
 
-    const response = await GET(new Request("http://test/mahalle/nope/kart"), {
+    const response = await GET(new Request("http://test/ilce/nope/kart"), {
       params: Promise.resolve({ id: "nope" }),
     });
 

@@ -16,7 +16,7 @@ const CARD_HEIGHT = 1350;
 
 export async function GET(
   _request: Request,
-  { params }: RouteContext<"/mahalle/[id]/kart">,
+  { params }: RouteContext<"/ilce/[id]/kart">,
 ) {
   const { id } = await params;
 

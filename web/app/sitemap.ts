@@ -40,6 +40,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...entriesFor("/karsilastir", "weekly", 0.8),
     ...entriesFor("/asistan", "monthly", 0.6),
     ...entriesFor("/hakkimizda", "monthly", 0.5),
-    ...neighborhoods.flatMap((n) => entriesFor(`/mahalle/${n.id}`, "daily", 0.9)),
+    ...neighborhoods.flatMap((n) => entriesFor(`/ilce/${n.id}`, "daily", 0.9)),
   ];
 }

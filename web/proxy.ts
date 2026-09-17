@@ -11,7 +11,7 @@ import { routing } from "./i18n/routing";
 const handleI18nRouting = createMiddleware(routing);
 
 export default function proxy(request: NextRequest) {
-  // The share/download score-card images (app/mahalle/[id]/kart, app/karsilastir/kart)
+  // The share/download score-card images (app/ilce/[id]/kart, app/karsilastir/kart)
   // render a fixed, Turkish-only, timestamped PNG snapshot regardless of site locale (see
   // lib/score-card-image.ts) - they live outside app/[locale] entirely and must never be
   // rewritten or redirected by locale negotiation.

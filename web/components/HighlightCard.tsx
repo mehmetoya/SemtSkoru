@@ -15,7 +15,7 @@ export function HighlightCard({
 
   return (
     <Link
-      href={`/mahalle/${neighborhood.id}`}
+      href={`/ilce/${neighborhood.id}`}
       className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
     >
       <DistrictShapeIcon boundary={neighborhood.boundary} className={`h-10 w-10 shrink-0 ${styles.text}`} />

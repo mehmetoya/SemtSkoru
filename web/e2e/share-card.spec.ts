@@ -8,7 +8,7 @@ test.use({ permissions: ["clipboard-read", "clipboard-write"] });
 const PNG_SIGNATURE = "89504e470d0a1a0a";
 
 test("downloads a real PNG score card and falls back to copying a link when sharing", async ({ page }) => {
-  await page.goto("/mahalle/kadikoy");
+  await page.goto("/ilce/kadikoy");
   await expect(page.getByRole("heading", { name: "Kadıköy" })).toBeVisible();
 
   const [download] = await Promise.all([
@@ -27,7 +27,7 @@ test("downloads a real PNG score card and falls back to copying a link when shar
   await page.getByRole("button", { name: "Paylaş" }).click();
   await expect(page.getByRole("status")).toHaveText("Bağlantı panoya kopyalandı.");
   const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
-  expect(clipboardText).toBe("https://semtskoru.vercel.app/mahalle/kadikoy");
+  expect(clipboardText).toBe("https://semtskoru.vercel.app/ilce/kadikoy");
 });
 
 test("downloads a real PNG comparison card once two districts are selected", async ({ page }) => {

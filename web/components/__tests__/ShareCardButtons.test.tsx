@@ -4,11 +4,11 @@ import { ShareCardButtons } from "../ShareCardButtons";
 import { createIntlWrapper } from "../../lib/test-utils";
 
 const PROPS = {
-  imageUrl: "/mahalle/kadikoy/kart",
+  imageUrl: "/ilce/kadikoy/kart",
   fileName: "semtskoru-kadikoy.png",
   shareTitle: "Kadıköy Yaşam Skoru | SemtSkoru",
   shareText: "Kadıköy ilçesinin SemtSkoru yaşam skorunu incele.",
-  fallbackUrl: "https://semtskoru.vercel.app/mahalle/kadikoy",
+  fallbackUrl: "https://semtskoru.vercel.app/ilce/kadikoy",
 };
 
 describe("ShareCardButtons", () => {

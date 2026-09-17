@@ -43,9 +43,9 @@ function ShareIcon({ className }: { className?: string }) {
 const GHOST_BUTTON =
   "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-3.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus:ring-offset-slate-950";
 
-// Shared by the single-district score card (app/[locale]/mahalle/[id]/page.tsx) and the
+// Shared by the single-district score card (app/[locale]/ilce/[id]/page.tsx) and the
 // comparison result (CompareClient.tsx) - both point this at their own
-// ImageResponse route (app/mahalle/[id]/kart or app/karsilastir/kart), which renders a
+// ImageResponse route (app/ilce/[id]/kart or app/karsilastir/kart), which renders a
 // fixed light-mode PNG, timestamped at generation time, honoring "Veri yok" for any
 // missing dimension. Downloading needs no JS at all (a plain `download` anchor); sharing
 // needs the Web Share API, with a clipboard-copy fallback for browsers without it.

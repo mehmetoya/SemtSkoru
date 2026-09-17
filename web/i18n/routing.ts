@@ -7,7 +7,7 @@ import { defineRouting } from "next-intl/routing";
 // prefixed) - see https://next-intl.dev/docs/routing#locale-prefix.
 //
 // Deliberately no `pathnames` config here: route segments (/asistan, /karsilastir,
-// /hakkimizda, /mahalle/[id]) stay identical in both locales by design (mirrors this
+// /hakkimizda, /ilce/[id]) stay identical in both locales by design (mirrors this
 // project's existing "English code identifiers, Turkish product surface" convention) -
 // see AGENTS.md / the "rename Turkish code identifiers to English" commit for the same
 // reasoning applied elsewhere in this codebase.

@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// Same reasoning as app/mahalle/[id]/kart/__tests__/route.test.tsx: a thin smoke test of
+// Same reasoning as app/ilce/[id]/kart/__tests__/route.test.tsx: a thin smoke test of
 // the real ImageResponse route (real Satori/resvg WASM), not just the pure data-shaping
 // helpers already covered by lib/__tests__/score-card-image.test.ts.
 import { beforeEach, describe, expect, it, vi } from "vitest";

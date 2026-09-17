@@ -24,7 +24,7 @@ export function NeighborhoodListCard({
     // interactive, so there's no reason to make a visitor aim for one line of text instead of
     // anywhere on the card (real user feedback: this was reported as confusing on mobile).
     <li className="group rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
-      <Link href={`/mahalle/${id}`} className="block p-5">
+      <Link href={`/ilce/${id}`} className="block p-5">
         <div className="flex items-center justify-between gap-4">
           <span className="text-lg font-semibold text-slate-900 group-hover:text-blue-700 dark:text-slate-100 dark:group-hover:text-blue-400">
             {name}

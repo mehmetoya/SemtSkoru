@@ -20,7 +20,7 @@ export function AssistantRecommendationCard({ recommendation }: { recommendation
       </div>
       <NeighborhoodScoreCard name={recommendation.neighborhoodName} score={recommendation.score} headingLevel="h2" />
       <Link
-        href={`/mahalle/${recommendation.neighborhoodId}`}
+        href={`/ilce/${recommendation.neighborhoodId}`}
         className="self-start text-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
       >
         {t("goToDistrict", { name: recommendation.neighborhoodName })}

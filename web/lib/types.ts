@@ -9,7 +9,7 @@ export interface NeighborhoodSummary {
 
 // Matches GET /api/neighborhoods/names: just the id/name pairs, no boundary geometry and no
 // scoring join. Use this instead of NeighborhoodSummary/fetchNeighborhoods() when a caller only
-// needs a district's display name (see web/app/mahalle/[id]/kart and web/app/karsilastir/kart).
+// needs a district's display name (see web/app/ilce/[id]/kart and web/app/karsilastir/kart).
 export interface NeighborhoodName {
   id: string;
   name: string;

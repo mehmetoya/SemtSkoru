@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "../../i18n/navigation";
 
 // The real "page not found" UI for any unmatched path under a valid locale (e.g.
-// /mahalle/nonexistent, or a district page's own notFound() call) - rendered inside
+// /ilce/nonexistent, or a district page's own notFound() call) - rendered inside
 // app/[locale]/layout.tsx, so it keeps the site's header/footer. Requires the sibling
 // app/[locale]/[...rest]/page.tsx catch-all route to exist, or Next.js never reaches this
 // file for an arbitrary unmatched path (see that file's comment).

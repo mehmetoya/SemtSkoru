@@ -5,7 +5,7 @@ import Link from "next/link";
 // calls notFound() in exactly that case, before any locale (and so any translation) is
 // known, which is why this one can't be localized and stays hardcoded English. Every
 // normal "page not found" case (a real, unmatched path under a valid locale, e.g.
-// /mahalle/nonexistent) is handled by the translated app/[locale]/not-found.tsx instead -
+// /ilce/nonexistent) is handled by the translated app/[locale]/not-found.tsx instead -
 // see that file, and app/[locale]/[...rest]/page.tsx, which is what makes Next.js actually
 // reach it. Mirrors next-intl's own official app-router example structure. Uses next/link
 // (not the locale-aware Link from i18n/navigation) deliberately - there's no known locale
