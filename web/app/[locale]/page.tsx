@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "../../i18n/navigation";
 import { fetchNeighborhoods } from "../../lib/api-client";
 import type { NeighborhoodSummary } from "../../lib/types";
-import { NeighborhoodListCard } from "../../components/NeighborhoodListCard";
+import { NeighborhoodSearchableList } from "../../components/NeighborhoodSearchableList";
 import { HighlightCard } from "../../components/HighlightCard";
 import { SITE_URL, localizedAlternates, localizedPath } from "../../lib/site";
 import { jsonLdScript } from "../../lib/json-ld";
@@ -153,19 +153,7 @@ function HomeView({
         </div>
       )}
 
-      {!listError && (
-        <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {neighborhoods.map((neighborhood) => (
-            <NeighborhoodListCard
-              key={neighborhood.id}
-              id={neighborhood.id}
-              name={neighborhood.name}
-              boundary={neighborhood.boundary}
-              overallScore={neighborhood.overallScore}
-            />
-          ))}
-        </ul>
-      )}
+      {!listError && <NeighborhoodSearchableList neighborhoods={neighborhoods} />}
     </main>
   );
 }

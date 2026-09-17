@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
 import Home from "../page";
-import { jsonResponse, SAMPLE_BOUNDARY } from "../../../lib/test-utils";
+import { createQueryWrapper, jsonResponse, SAMPLE_BOUNDARY } from "../../../lib/test-utils";
 import type { NeighborhoodSummary } from "../../../lib/types";
-import trMessages from "../../../messages/tr.json";
 
 // Vitest's jsdom environment makes next-intl resolve "next-intl/server" to its
 // react-client build (there's no real RSC renderer here), where every export - including
@@ -31,18 +29,18 @@ const NEIGHBORHOODS: NeighborhoodSummary[] = [
 // instead). Home itself makes no next-intl *hook* calls (see its own comment) - all
 // translated text renders from its child HomeView, so wrapping the render in
 // NextIntlClientProvider (Turkish, the default locale, to match this suite's existing
-// assertions) is all that's needed alongside the `params` Home now needs.
+// assertions) is all that's needed alongside the `params` Home now needs. Uses
+// createQueryWrapper() (not a bare NextIntlClientProvider) because HomeView now renders
+// NeighborhoodSearchableList -> DistrictSearchBar, a client component that calls
+// useMutation - in production this is satisfied by app/providers.tsx's app-wide
+// QueryClientProvider, which this standalone render of Home doesn't otherwise have.
 describe("Home", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
   });
 
   function renderHome(element: React.ReactElement) {
-    return render(
-      <NextIntlClientProvider locale="tr" messages={trMessages}>
-        {element}
-      </NextIntlClientProvider>,
-    );
+    return render(element, { wrapper: createQueryWrapper() });
   }
 
   it("lists the three districts, each linking to its score page", async () => {

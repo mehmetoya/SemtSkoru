@@ -69,6 +69,25 @@
       "NoUsableRecommendations": "We couldn't generate a reliable recommendation for your request. You can try comparing districts directly instead."
     }
   },
+  "Search": {
+    "label": "Search districts",
+    "placeholder": "e.g. districts with good air quality and lots of green space",
+    "submit": "Search",
+    "submitPending": "Searching…",
+    "clear": "Clear",
+    "loadingStatus": "Evaluating using your real score data…",
+    "genericError": "Something went wrong. Please try again later.",
+    "filteringBy": "Filtering by:",
+    "noMatches": "We couldn't find a district that matches this search in the real data. Try rephrasing, or browse the full list below.",
+    "resultCount": "{count} matching districts",
+    "status": {
+      "InvalidRequest": "Please describe what you're looking for in a few words.",
+      "NotConfigured": "Smart search isn't configured right now. Please try again later.",
+      "RateLimited": "Smart search is getting a lot of requests right now. Please try again in a few minutes.",
+      "Unavailable": "Smart search can't respond right now. Please try again later.",
+      "NoUsableCriteria": "We couldn't understand that query. Please try rephrasing it."
+    }
+  },
   "About": {
     "title": "About",
     "description": "Why SemtSkoru exists, how we calculate our scores, and what data we rely on - with source, license, and freshness details.",

@@ -69,6 +69,25 @@
       "NoUsableRecommendations": "İsteğiniz için güvenilir bir öneri oluşturamadık. İlçeleri doğrudan karşılaştırmayı deneyebilirsiniz."
     }
   },
+  "Search": {
+    "label": "İlçe ara",
+    "placeholder": "ör. hava kalitesi iyi ve yeşil alanı bol ilçeler",
+    "submit": "Ara",
+    "submitPending": "Aranıyor…",
+    "clear": "Temizle",
+    "loadingStatus": "Gerçek skor verileriniz üzerinden değerlendiriliyor…",
+    "genericError": "Bir şeyler ters gitti. Lütfen daha sonra tekrar deneyin.",
+    "filteringBy": "Şuna göre filtreleniyor:",
+    "noMatches": "Bu arama için gerçek verilerle eşleşen bir ilçe bulamadık. Farklı bir ifade deneyebilir veya aşağıdaki listeye göz atabilirsiniz.",
+    "resultCount": "{count} ilçe eşleşti",
+    "status": {
+      "InvalidRequest": "Lütfen aramak istediğiniz tercihi birkaç kelimeyle yazın.",
+      "NotConfigured": "Akıllı arama şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.",
+      "RateLimited": "Akıllı arama şu anda çok yoğun. Lütfen birkaç dakika sonra tekrar deneyin.",
+      "Unavailable": "Akıllı arama şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
+      "NoUsableCriteria": "Bu sorguyu anlayamadık. Lütfen farklı bir şekilde ifade etmeyi deneyin."
+    }
+  },
   "About": {
     "title": "Hakkımızda",
     "description": "SemtSkoru neden var, skorları nasıl hesaplıyoruz ve hangi verilere dayanıyoruz - kaynak, lisans ve güncellik bilgisiyle birlikte.",

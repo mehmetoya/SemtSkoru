@@ -1,6 +1,7 @@
 import type {
   AssistantResponse,
   ComparisonSummary,
+  DistrictSearchResponse,
   NeighborhoodComparison,
   NeighborhoodName,
   NeighborhoodScore,
@@ -85,4 +86,17 @@ export async function fetchAssistantRecommendations(
   });
 
   return (await response.json()) as AssistantResponse;
+}
+
+// Same "non-2xx is still meaningful application state" philosophy as
+// fetchAssistantRecommendations above: GET /api/neighborhoods/search always returns a structured
+// DistrictSearchResponse body - success or not (400/429/502/503, see
+// backend/src/SemtSkoru.Api/Endpoints/NeighborhoodEndpoints.cs) - with a Turkish `message`
+// explaining why, so the caller can render that honestly. No `locale` param here (unlike
+// fetchAssistantRecommendations) - this feature has no free-text AI prose for the backend to
+// generate in a given language, see DistrictSearchService's own remarks.
+export async function fetchDistrictSearch(query: string): Promise<DistrictSearchResponse> {
+  const params = new URLSearchParams({ q: query });
+  const response = await fetch(`${API_BASE_URL}/api/neighborhoods/search?${params.toString()}`);
+  return (await response.json()) as DistrictSearchResponse;
 }

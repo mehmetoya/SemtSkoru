@@ -106,3 +106,29 @@ export interface AssistantResponse {
   status: AssistantStatus;
   message: string | null;
 }
+
+// Mirrors backend/.../DistrictSearchOutcome.cs's DistrictSearchOutcomeKind: every non-"Ok" value
+// means `matchedIds`/`dimensions` are empty and `message` carries the Turkish, user-facing reason
+// - never a fabricated match standing in for a real one. Unlike AssistantStatus above, this
+// feature's model is never shown or allowed to name a single district (see
+// backend/.../DistrictSearchService.cs's remarks) - only which of the 6 real dimensions the query
+// concerns; the actual filtering/ranking of the 39 real districts happens entirely in backend
+// application code against real, already-computed scores, so there's no AI-authored reasoning
+// field here the way AssistantRecommendation has one.
+export type DistrictSearchStatus =
+  | "Ok"
+  | "InvalidRequest"
+  | "NotConfigured"
+  | "RateLimited"
+  | "Unavailable"
+  | "NoUsableCriteria";
+
+export interface DistrictSearchResponse {
+  matchedIds: string[];
+  // The validated (never hallucinated) subset of the 6 real dimension keys the query was judged
+  // to concern - only meaningful when status is "Ok". Purely for frontend transparency (showing
+  // which criteria a search actually matched on), never used to re-derive matches client-side.
+  dimensions: string[];
+  status: DistrictSearchStatus;
+  message: string | null;
+}
