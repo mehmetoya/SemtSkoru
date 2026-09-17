@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import Home from "../page";
 import { jsonResponse, SAMPLE_BOUNDARY } from "../../../lib/test-utils";
@@ -37,13 +37,21 @@ describe("Home", () => {
 
     renderHome(await Home());
 
-    const kadikoyLink = screen.getByRole("link", { name: "Kadıköy" });
+    // NeighborhoodListCard wraps its whole card in one Link (see its own remarks), so each
+    // link's accessible name is the full card text, not just the district name - match a
+    // substring, same as NeighborhoodListCard.test.tsx does directly. Scoped to the district
+    // <ul> specifically (not just screen.getByRole) because the highest/lowest-score
+    // HighlightCard above it links to the same district and also matches "Kadıköy" - Kadıköy
+    // is this fixture's highest score, so without scoping this query is ambiguous between the
+    // highlight callout and the actual list entry the test claims to check.
+    const list = screen.getByRole("list");
+    const kadikoyLink = within(list).getByRole("link", { name: /Kadıköy/ });
     expect(kadikoyLink).toHaveAttribute("href", "/ilce/kadikoy");
-    expect(screen.getByRole("link", { name: "Üsküdar" })).toHaveAttribute(
+    expect(within(list).getByRole("link", { name: /Üsküdar/ })).toHaveAttribute(
       "href",
       "/ilce/uskudar",
     );
-    expect(screen.getByRole("link", { name: "Beşiktaş" })).toHaveAttribute(
+    expect(within(list).getByRole("link", { name: /Beşiktaş/ })).toHaveAttribute(
       "href",
       "/ilce/besiktas",
     );
