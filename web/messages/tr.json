@@ -86,7 +86,8 @@
       "RateLimited": "Akıllı arama şu anda çok yoğun. Lütfen birkaç dakika sonra tekrar deneyin.",
       "Unavailable": "Akıllı arama şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
       "NoUsableCriteria": "Bu sorguyu anlayamadık. Lütfen farklı bir şekilde ifade etmeyi deneyin."
-    }
+    },
+    "keywordFallbackNotice": "Akıllı arama şu anda yanıt vermiyor, bu yüzden sorgunuz basit anahtar kelime eşleştirmesiyle yorumlandı. Eşleşen ilçeler yine gerçek skor verilerinden geliyor."
   },
   "About": {
     "title": "Hakkımızda",

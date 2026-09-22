@@ -67,13 +67,19 @@ public sealed record DistrictSearchResponseDto(
     IReadOnlyList<string> MatchedIds,
     IReadOnlyList<string> Dimensions,
     string Status,
-    string? Message)
+    string? Message,
+    // Only meaningful alongside an "Ok" Status: "Model" for the normal path, "KeywordFallback"
+    // when Gemini was unreachable and the dimensions came from DistrictSearchService's own keyword
+    // table instead (see DistrictSearchMatchSource). Defaulted rather than repeated at each of the
+    // non-Ok call sites in NeighborhoodEndpoints.cs, where no matching happened at all.
+    string MatchedBy = nameof(DistrictSearchMatchSource.Model))
 {
     public static DistrictSearchResponseDto From(DistrictSearchOutcome outcome) => new(
         outcome.Matches.Select(m => m.NeighborhoodId).ToList(),
         outcome.Dimensions,
         nameof(DistrictSearchOutcomeKind.Ok),
-        null);
+        null,
+        outcome.Source.ToString());
 }
 
 public sealed record NeighborhoodScoreDto(

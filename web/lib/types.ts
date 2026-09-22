@@ -123,6 +123,14 @@ export type DistrictSearchStatus =
   | "Unavailable"
   | "NoUsableCriteria";
 
+// Mirrors backend/.../DistrictSearchOutcome.cs's DistrictSearchMatchSource. Only meaningful
+// alongside status "Ok": "Model" is the normal path, "KeywordFallback" means Gemini was
+// unreachable and the backend worked the dimensions out from its own keyword table instead. The
+// matched districts are ranked from the same real scores either way - this says how the CRITERIA
+// were understood, not how the districts were picked - but the UI still says so plainly rather
+// than passing a blunter match off as the full thing.
+export type DistrictSearchMatchSource = "Model" | "KeywordFallback";
+
 export interface DistrictSearchResponse {
   matchedIds: string[];
   // The validated (never hallucinated) subset of the 6 real dimension keys the query was judged
@@ -131,4 +139,5 @@ export interface DistrictSearchResponse {
   dimensions: string[];
   status: DistrictSearchStatus;
   message: string | null;
+  matchedBy: DistrictSearchMatchSource;
 }

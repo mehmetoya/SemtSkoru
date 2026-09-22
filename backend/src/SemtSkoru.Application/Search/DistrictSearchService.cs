@@ -1,5 +1,8 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using SemtSkoru.Application.Assistant;
 using SemtSkoru.Application.Scoring;
 
@@ -98,17 +101,22 @@ public sealed class DistrictSearchService(
         {
             rawResponse = await aiClient.GenerateAsync(SystemInstruction, BuildUserPrompt(trimmedQuery), ct);
         }
+        // Every one of these means the model never gave an answer, so there is nothing to be
+        // honest ABOUT yet - the keyword table below gets a turn before the failure is passed on.
+        // Contrast with NoUsableCriteria further down, which is NOT routed here: there the model
+        // did answer and judged the query unrelated to all 6 dimensions, and second-guessing a
+        // real answer with a blunter one would make the feature less honest, not more available.
         catch (AiAssistantNotConfiguredException)
         {
-            return DistrictSearchOutcome.NotConfigured;
+            return await KeywordFallbackAsync(trimmedQuery, DistrictSearchOutcome.NotConfigured, ct);
         }
         catch (AiAssistantRateLimitedException)
         {
-            return DistrictSearchOutcome.RateLimited;
+            return await KeywordFallbackAsync(trimmedQuery, DistrictSearchOutcome.RateLimited, ct);
         }
         catch (AiAssistantUnavailableException)
         {
-            return DistrictSearchOutcome.Unavailable;
+            return await KeywordFallbackAsync(trimmedQuery, DistrictSearchOutcome.Unavailable, ct);
         }
 
         var parsed = TryParseModelResponse(rawResponse);
@@ -122,6 +130,108 @@ public sealed class DistrictSearchService(
         var matches = RankDistricts(scores, dimensions);
 
         return DistrictSearchOutcome.Ok(dimensions, matches);
+    }
+
+    /// <summary>
+    /// Last resort when Gemini cannot be reached at all. The model's only job in this feature is
+    /// to decide which of 6 fixed dimensions a query concerns - a small, closed classification,
+    /// not open-ended writing - so when it is unavailable the same decision can be approximated
+    /// in plain code instead of taking the whole search box down with it. Everything downstream
+    /// is untouched: the same RankDistricts pass over the same real scores produces the matches,
+    /// so this path can never invent a district or a number, only be blunter about which criteria
+    /// it recognized. When even the keywords find nothing, the original AI failure is returned
+    /// unchanged rather than an empty result that would imply we understood the query and found
+    /// no districts.
+    /// </summary>
+    private async Task<DistrictSearchOutcome> KeywordFallbackAsync(
+        string query, DistrictSearchOutcome aiFailureOutcome, CancellationToken ct)
+    {
+        var dimensions = ExtractDimensionsByKeyword(query);
+        if (dimensions.Count == 0)
+        {
+            return aiFailureOutcome;
+        }
+
+        var scores = await scoringService.GetAllScoresAsync(ct);
+        return DistrictSearchOutcome.Ok(
+            dimensions, RankDistricts(scores, dimensions), DistrictSearchMatchSource.KeywordFallback);
+    }
+
+    // Turkish and English cues for each of the 6 real dimensions, stored already folded (see Fold)
+    // so "yeşil", "yesil" and "YEŞİL" are all the same entry. Order matches KnownDimensions.
+    // Deliberately short and literal: this is a fallback meant to catch the obvious phrasings a
+    // visitor actually types, not a second natural-language system competing with the model.
+    private static readonly (string Dimension, string[] Keywords)[] KeywordTable =
+    [
+        ("airQuality", ["hava", "temiz hava", "kirlilik", "kirli", "nefes", "air", "pollution", "smog"]),
+        ("greenSpace", ["yesil", "park", "agac", "orman", "doga", "bahce", "green", "tree", "nature", "forest"]),
+        ("transportation", ["trafik", "ulasim", "yol", "sikisik", "traffic", "congestion", "commute"]),
+        ("parking", ["otopark", "park yeri", "arac", "araba", "parking"]),
+        ("healthAccess", ["saglik", "hastane", "doktor", "eczane", "health", "hospital", "clinic", "pharmacy"]),
+        ("transitAccess", ["metro", "otobus", "toplu tasima", "durak", "metrobus", "tramvay", "vapur", "transit", "bus", "subway", "public transport"]),
+    ];
+
+    // Word-START matching, not "contains": Turkish is agglutinative, so "parklar"/"parkları" must
+    // match "park" - but "otopark" must NOT, or every parking query would also claim to be about
+    // green space. A leading \b plus no trailing boundary is exactly that rule, and it is why the
+    // table can stay this small without the suffix explosion a whole-word match would need.
+    private static readonly Regex[] KeywordPatterns = KeywordTable
+        .Select(entry => new Regex(
+            string.Join("|", entry.Keywords.SelectMany(WithConsonantMutation).Select(k => @"\b" + Regex.Escape(k))),
+            RegexOptions.Compiled | RegexOptions.CultureInvariant))
+        .ToArray();
+
+    // Turkish softens a final "k" to "ğ" before a vowel suffix - "trafik" becomes "trafiği",
+    // "sağlık" becomes "sağlığı", "durak" becomes "durağı" - and Fold turns that "ğ" into a "g".
+    // A word-start match on the bare stem would therefore miss every inflected form, which is the
+    // form people actually type. Rather than listing both spellings for each affected keyword by
+    // hand (and forgetting one), the "g" variant is derived here from the rule itself.
+    private static IEnumerable<string> WithConsonantMutation(string keyword) =>
+        keyword.EndsWith('k') ? [keyword, string.Concat(keyword.AsSpan(0, keyword.Length - 1), "g")] : [keyword];
+
+    private static List<string> ExtractDimensionsByKeyword(string query)
+    {
+        var folded = Fold(query);
+        var result = new List<string>();
+        for (var i = 0; i < KeywordTable.Length; i++)
+        {
+            if (KeywordPatterns[i].IsMatch(folded))
+            {
+                result.Add(KeywordTable[i].Dimension);
+            }
+        }
+
+        return result;
+    }
+
+    // Lowercases and strips Turkish diacritics so a visitor typing "yesil alan" from a keyboard
+    // layout without them matches the same entry as "yeşil alan". The dotted/dotless i pair is
+    // mapped explicitly BEFORE the invariant lowercase, because invariant casing does not know
+    // that "İ" folds to "i" in Turkish - getting that wrong would silently break every keyword
+    // starting with one.
+    private static string Fold(string value)
+    {
+        var mapped = value
+            .Replace('İ', 'i').Replace('I', 'i').Replace('ı', 'i')
+            .Replace('Ş', 's').Replace('ş', 's')
+            .Replace('Ğ', 'g').Replace('ğ', 'g')
+            .Replace('Ü', 'u').Replace('ü', 'u')
+            .Replace('Ö', 'o').Replace('ö', 'o')
+            .Replace('Ç', 'c').Replace('ç', 'c')
+            .ToLowerInvariant();
+
+        // Catches any remaining accented forms (e.g. "â" in older spellings) without a second table.
+        var decomposed = mapped.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(decomposed.Length);
+        foreach (var ch in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(ch);
+            }
+        }
+
+        return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 
     // Deliberately just the query - no district data, no "here are the 39 real districts" JSON

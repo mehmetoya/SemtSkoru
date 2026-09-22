@@ -34,6 +34,7 @@ describe("DistrictSearchBar", () => {
       message: null,
       matchedIds: ["kadikoy", "besiktas"],
       dimensions: ["airQuality", "greenSpace"],
+      matchedBy: "Model",
     };
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
     const onResult = renderBar();
@@ -55,6 +56,7 @@ describe("DistrictSearchBar", () => {
       message: "some other backend string that must never be rendered",
       matchedIds: [],
       dimensions: [],
+      matchedBy: "Model",
     };
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
     const onResult = renderBar();
@@ -91,6 +93,7 @@ describe("DistrictSearchBar", () => {
       message: null,
       matchedIds: ["kadikoy"],
       dimensions: ["airQuality"],
+      matchedBy: "Model",
     };
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
     const onResult = renderBar();
@@ -103,5 +106,47 @@ describe("DistrictSearchBar", () => {
 
     expect(onResult).toHaveBeenLastCalledWith(null);
     expect(screen.getByLabelText("İlçe ara")).toHaveValue("");
+  });
+
+  // When Gemini is unreachable the backend still answers "Ok" with real, score-ranked districts,
+  // worked out from its own keyword table. The filtering must therefore behave exactly like a
+  // normal search - but the visitor has to be told the query was only keyword-matched.
+  it("filters normally but says so plainly when the backend fell back to keyword matching", async () => {
+    const response: DistrictSearchResponse = {
+      status: "Ok",
+      message: null,
+      matchedIds: ["kadikoy"],
+      dimensions: ["airQuality"],
+      matchedBy: "KeywordFallback",
+    };
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
+    const onResult = renderBar();
+
+    typeQuery("temiz hava");
+    fireEvent.click(screen.getByRole("button", { name: "Ara" }));
+
+    await waitFor(() =>
+      expect(onResult).toHaveBeenCalledWith({ matchedIds: ["kadikoy"], dimensions: ["airQuality"] }),
+    );
+    expect(screen.getByText(/basit anahtar kelime eşleştirmesiyle/)).toBeInTheDocument();
+  });
+
+  // The notice is only honest if it stays absent on the normal path.
+  it("does not show the keyword-matching notice when the model answered normally", async () => {
+    const response: DistrictSearchResponse = {
+      status: "Ok",
+      message: null,
+      matchedIds: ["kadikoy"],
+      dimensions: ["airQuality"],
+      matchedBy: "Model",
+    };
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
+    renderBar();
+
+    typeQuery("temiz hava");
+    fireEvent.click(screen.getByRole("button", { name: "Ara" }));
+
+    await waitFor(() => expect(screen.getByText("Hava Kalitesi")).toBeInTheDocument());
+    expect(screen.queryByText(/basit anahtar kelime eşleştirmesiyle/)).not.toBeInTheDocument();
   });
 });

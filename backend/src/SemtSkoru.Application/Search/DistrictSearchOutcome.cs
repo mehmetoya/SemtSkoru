@@ -38,13 +38,39 @@ public enum DistrictSearchOutcomeKind
 /// ids matched and in what order.</summary>
 public sealed record DistrictSearchMatch(string NeighborhoodId, int MatchScore);
 
+/// <summary>
+/// How an Ok outcome's Dimensions were arrived at. Orthogonal to DistrictSearchOutcomeKind on
+/// purpose: Kind answers "did the search produce criteria", this answers "what worked them out",
+/// so a caller that only wants to filter a list can keep looking at Kind alone. Note that this
+/// distinction stops at the dimensions - the Matches themselves are ranked by the exact same
+/// plain-code pass over the same real scores either way (DistrictSearchService.RankDistricts), so
+/// a KeywordFallback result is no less truthful about the districts it names, only blunter about
+/// which criteria it understood from the query.
+/// </summary>
+public enum DistrictSearchMatchSource
+{
+    /// <summary>Gemini read the query and named the dimensions (the normal path).</summary>
+    Model,
+
+    /// <summary>
+    /// Gemini was unreachable, so the dimensions came from DistrictSearchService's own hardcoded
+    /// Turkish/English keyword table instead. Surfaced to callers so the UI can say plainly that
+    /// this was basic keyword matching rather than quietly passing it off as the full thing.
+    /// </summary>
+    KeywordFallback,
+}
+
 public sealed record DistrictSearchOutcome(
     DistrictSearchOutcomeKind Kind,
     IReadOnlyList<string> Dimensions,
-    IReadOnlyList<DistrictSearchMatch> Matches)
+    IReadOnlyList<DistrictSearchMatch> Matches,
+    DistrictSearchMatchSource Source = DistrictSearchMatchSource.Model)
 {
-    public static DistrictSearchOutcome Ok(IReadOnlyList<string> dimensions, IReadOnlyList<DistrictSearchMatch> matches) =>
-        new(DistrictSearchOutcomeKind.Ok, dimensions, matches);
+    public static DistrictSearchOutcome Ok(
+        IReadOnlyList<string> dimensions,
+        IReadOnlyList<DistrictSearchMatch> matches,
+        DistrictSearchMatchSource source = DistrictSearchMatchSource.Model) =>
+        new(DistrictSearchOutcomeKind.Ok, dimensions, matches, source);
 
     public static readonly DistrictSearchOutcome InvalidRequest = new(DistrictSearchOutcomeKind.InvalidRequest, [], []);
     public static readonly DistrictSearchOutcome NotConfigured = new(DistrictSearchOutcomeKind.NotConfigured, [], []);

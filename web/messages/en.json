@@ -86,7 +86,8 @@
       "RateLimited": "Smart search is getting a lot of requests right now. Please try again in a few minutes.",
       "Unavailable": "Smart search can't respond right now. Please try again later.",
       "NoUsableCriteria": "We couldn't understand that query. Please try rephrasing it."
-    }
+    },
+    "keywordFallbackNotice": "Smart search isn't responding right now, so your query was interpreted with basic keyword matching. The matching districts still come from the real score data."
   },
   "About": {
     "title": "About",

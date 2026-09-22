@@ -45,6 +45,7 @@ describe("NeighborhoodSearchableList", () => {
       message: null,
       matchedIds: ["kadikoy", "besiktas"],
       dimensions: ["airQuality"],
+      matchedBy: "Model",
     };
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
     renderList();
@@ -64,6 +65,7 @@ describe("NeighborhoodSearchableList", () => {
       message: null,
       matchedIds: [],
       dimensions: ["airQuality"],
+      matchedBy: "Model",
     };
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
     renderList();
@@ -86,6 +88,7 @@ describe("NeighborhoodSearchableList", () => {
       message: "backend text",
       matchedIds: [],
       dimensions: [],
+      matchedBy: "Model",
     };
     vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
     renderList();

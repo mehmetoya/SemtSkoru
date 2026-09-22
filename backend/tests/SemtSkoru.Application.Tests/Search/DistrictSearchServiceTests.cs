@@ -261,6 +261,137 @@ public class DistrictSearchServiceTests
         Assert.DoesNotContain("UNIQUE_TAIL_MARKER", aiClient.CapturedUserPrompt);
     }
 
+
+    // --- Keyword fallback -------------------------------------------------
+    // Added after the 2026-09-22 incident, where Gemini's shared free-tier model answered 503 for
+    // over a day and took the whole search box down with it. The model's only job here is to pick
+    // from 6 fixed dimensions, so when it cannot be reached that one small decision is made in
+    // plain code rather than losing the feature. Everything downstream is deliberately unchanged -
+    // these tests exist to prove the fallback stays as honest as the normal path, not just that it
+    // returns something.
+    public static TheoryData<string, string> KeywordQueries => new()
+    {
+        { "temiz hava istiyorum", "airQuality" },
+        { "yeşil alanı bol olsun", "greenSpace" },
+        { "parkları çok olan ilçe", "greenSpace" },
+        // Inflected forms carrying the Turkish k -> ğ softening, which is what people actually
+        // type: "trafik"/"sağlık"/"durak" never appear in their bare form in a real sentence.
+        { "trafiği az bir yer", "transportation" },
+        { "sağlığı önemseyen biri için", "healthAccess" },
+        { "durağa yürüme mesafesi", "transitAccess" },
+        { "otopark bulmak kolay olsun", "parking" },
+        { "hastaneye yakın olsun", "healthAccess" },
+        { "metroya yakın olsun", "transitAccess" },
+        { "good air quality please", "airQuality" },
+        { "close to a hospital", "healthAccess" },
+    };
+
+    [Theory]
+    [MemberData(nameof(KeywordQueries))]
+    public async Task SearchAsync_falls_back_to_keyword_matching_when_the_model_is_unavailable(
+        string query, string expectedDimension)
+    {
+        var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantUnavailableException("down") };
+        var scoringService = new FakeScoringService(new Dictionary<string, NeighborhoodScoreResult>
+        {
+            ["kadikoy"] = new("kadikoy", Scored(90), Scored(90), Scored(90), Scored(90), Scored(90), Scored(90), new Score(90)),
+        });
+
+        var outcome = await CreateService(aiClient, scoringService).SearchAsync(query, CancellationToken.None);
+
+        Assert.Equal(DistrictSearchOutcomeKind.Ok, outcome.Kind);
+        Assert.Contains(expectedDimension, outcome.Dimensions);
+        Assert.Equal(DistrictSearchMatchSource.KeywordFallback, outcome.Source);
+        Assert.Equal("kadikoy", Assert.Single(outcome.Matches).NeighborhoodId);
+    }
+
+    // "otopark" contains "park", so a naive substring table would report every parking query as
+    // also being about green space. The matcher anchors on word starts precisely to avoid that,
+    // while still letting Turkish suffixes through ("parkları" above still matches greenSpace).
+    [Fact]
+    public async Task SearchAsync_keyword_fallback_does_not_confuse_otopark_with_a_green_space_park()
+    {
+        var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantUnavailableException("down") };
+        var scoringService = new FakeScoringService(new Dictionary<string, NeighborhoodScoreResult>());
+
+        var outcome = await CreateService(aiClient, scoringService).SearchAsync(
+            "otopark sorunu olmayan ilçe", CancellationToken.None);
+
+        Assert.Equal(["parking"], outcome.Dimensions);
+    }
+
+    // Typing without Turkish diacritics is completely normal on a non-Turkish keyboard layout.
+    [Fact]
+    public async Task SearchAsync_keyword_fallback_matches_queries_typed_without_turkish_diacritics()
+    {
+        var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantUnavailableException("down") };
+        var scoringService = new FakeScoringService(new Dictionary<string, NeighborhoodScoreResult>());
+
+        var outcome = await CreateService(aiClient, scoringService).SearchAsync(
+            "YESIL ALAN ve SAGLIK", CancellationToken.None);
+
+        Assert.Equal(["greenSpace", "healthAccess"], outcome.Dimensions);
+    }
+
+    // The fallback must never paper over the outage with a result it did not actually derive:
+    // no keyword hit means the real AI failure is what the caller gets, unchanged.
+    [Theory]
+    [InlineData("NotConfigured")]
+    [InlineData("RateLimited")]
+    [InlineData("Unavailable")]
+    public async Task SearchAsync_surfaces_the_real_ai_failure_when_no_keyword_matches(string failure)
+    {
+        Exception exception = failure switch
+        {
+            "NotConfigured" => new AiAssistantNotConfiguredException(),
+            "RateLimited" => new AiAssistantRateLimitedException(),
+            _ => new AiAssistantUnavailableException("down"),
+        };
+        var aiClient = new FakeAiClient { ExceptionToThrow = exception };
+        var scoringService = new FakeScoringService(new Dictionary<string, NeighborhoodScoreResult>());
+
+        var outcome = await CreateService(aiClient, scoringService).SearchAsync(
+            "burada anahtar kelime yok", CancellationToken.None);
+
+        Assert.Equal(Enum.Parse<DistrictSearchOutcomeKind>(failure), outcome.Kind);
+        Assert.Empty(outcome.Dimensions);
+        Assert.Empty(outcome.Matches);
+    }
+
+    // The fallback is for a model that never answered. A model that DID answer and judged the
+    // query unrelated to all 6 dimensions is a real answer, and overriding it with a blunter guess
+    // would make the feature less honest rather than more available.
+    [Fact]
+    public async Task SearchAsync_does_not_use_the_keyword_fallback_when_the_model_answered_with_no_dimensions()
+    {
+        var aiClient = new FakeAiClient { Response = """{"dimensions":[]}""" };
+        var scoringService = new FakeScoringService(new Dictionary<string, NeighborhoodScoreResult>());
+
+        // Contains "hava", which the keyword table would otherwise have matched.
+        var outcome = await CreateService(aiClient, scoringService).SearchAsync(
+            "hava durumu nasıl", CancellationToken.None);
+
+        Assert.Equal(DistrictSearchOutcomeKind.NoUsableCriteria, outcome.Kind);
+        Assert.Empty(outcome.Dimensions);
+    }
+
+    // A successful model call must stay marked as such - the transparency flag is only meaningful
+    // if it actually distinguishes the two paths.
+    [Fact]
+    public async Task SearchAsync_marks_a_normal_model_result_as_coming_from_the_model()
+    {
+        var aiClient = new FakeAiClient { Response = """{"dimensions":["airQuality"]}""" };
+        var scoringService = new FakeScoringService(new Dictionary<string, NeighborhoodScoreResult>
+        {
+            ["kadikoy"] = new("kadikoy", Scored(90), DimensionScore.NoData, DimensionScore.NoData, DimensionScore.NoData, DimensionScore.NoData, DimensionScore.NoData, new Score(90)),
+        });
+
+        var outcome = await CreateService(aiClient, scoringService).SearchAsync("temiz hava", CancellationToken.None);
+
+        Assert.Equal(DistrictSearchOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal(DistrictSearchMatchSource.Model, outcome.Source);
+    }
+
     private sealed class FakeAiClient : IDistrictAssistantAiClient
     {
         public string Response { get; set; } = "";

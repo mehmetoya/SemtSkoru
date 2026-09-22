@@ -137,6 +137,15 @@ export function DistrictSearchBar({
         </p>
       )}
 
+      {/* The search still worked and the districts below are ranked from the same real scores,
+          so this is a note rather than an error - but it says plainly that the query itself was
+          only keyword-matched, instead of letting a blunter result pass for the full thing. */}
+      {data && data.status === "Ok" && data.matchedBy === "KeywordFallback" && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+          {t("keywordFallbackNotice")}
+        </p>
+      )}
+
       {data && data.status === "Ok" && data.dimensions.length > 0 && (
         <p className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <span>{t("filteringBy")}</span>
