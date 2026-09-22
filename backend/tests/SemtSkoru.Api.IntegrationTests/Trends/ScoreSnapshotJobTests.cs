@@ -86,7 +86,7 @@ public class ScoreSnapshotJobTests : IAsyncLifetime
         AppDbContext context, DateTimeOffset now, HttpMessageHandler geminiHandler, string? apiKey = "test-key") => new(
         new NeighborhoodDirectory(context),
         new NeighborhoodScoringService(new NeighborhoodScoringRepository(context), TimeProvider.System),
-        new DistrictTrendService(new GeminiClient(new HttpClient(geminiHandler), ConfigWithKey(apiKey))),
+        new DistrictTrendService(new GeminiClient(new HttpClient(geminiHandler), ConfigWithKey(apiKey), NullLogger<GeminiClient>.Instance, TimeProvider.System)),
         context,
         NullLogger<ScoreSnapshotJob>.Instance,
         new FakeTimeProvider(now));

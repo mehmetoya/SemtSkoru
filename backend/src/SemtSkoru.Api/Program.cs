@@ -104,7 +104,11 @@ builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringServi
 // RateLimiting/RateLimitingExtensions.cs for why this gets its own dedicated rate-limit policy.
 // A short, bounded timeout: this feature calls Gemini synchronously inside an HTTP request a
 // real visitor is waiting on, unlike the ingestion clients above which run as background jobs.
-builder.Services.AddHttpClient<IDistrictAssistantAiClient, GeminiClient>(c => c.Timeout = TimeSpan.FromSeconds(20));
+// This is a PER-ATTEMPT timeout, not the ceiling for the whole call - GeminiClient retries a
+// transient 503/500 with backoff (see its remarks), and its own TotalRetryBudget bounds the sum.
+// Lowered from 20s to 10s when that retry was added so the worst case stayed in the same range:
+// a single attempt has never legitimately needed more than a few seconds on this model.
+builder.Services.AddHttpClient<IDistrictAssistantAiClient, GeminiClient>(c => c.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddScoped<INeighborhoodDirectory, NeighborhoodDirectory>();
 builder.Services.AddScoped<IDistrictAssistantService, DistrictAssistantService>();
 

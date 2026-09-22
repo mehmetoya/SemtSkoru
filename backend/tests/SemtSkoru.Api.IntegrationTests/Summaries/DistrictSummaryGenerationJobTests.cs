@@ -76,7 +76,7 @@ public class DistrictSummaryGenerationJobTests : IAsyncLifetime
         AppDbContext context, HttpMessageHandler geminiHandler, string? apiKey = "test-key") => new(
         new SemtSkoru.Infrastructure.Persistence.NeighborhoodDirectory(context),
         new NeighborhoodScoringService(new NeighborhoodScoringRepository(context), TimeProvider.System),
-        new DistrictSummaryService(new GeminiClient(new HttpClient(geminiHandler), ConfigWithKey(apiKey))),
+        new DistrictSummaryService(new GeminiClient(new HttpClient(geminiHandler), ConfigWithKey(apiKey), NullLogger<GeminiClient>.Instance, TimeProvider.System)),
         context,
         NullLogger<DistrictSummaryGenerationJob>.Instance,
         TimeProvider.System);

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using SemtSkoru.Application.Comparisons;
 using SemtSkoru.Application.Scoring;
 using SemtSkoru.Domain;
@@ -71,7 +72,7 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
 
     private static ComparisonSummaryOrchestrator CreateOrchestrator(
         AppDbContext context, HttpMessageHandler geminiHandler, string? apiKey = "test-key") => new(
-        new ComparisonSummaryService(new GeminiClient(new HttpClient(geminiHandler), ConfigWithKey(apiKey))),
+        new ComparisonSummaryService(new GeminiClient(new HttpClient(geminiHandler), ConfigWithKey(apiKey), NullLogger<GeminiClient>.Instance, TimeProvider.System)),
         context,
         TimeProvider.System);
 
