@@ -71,7 +71,7 @@
   },
   "Search": {
     "label": "Search districts",
-    "placeholder": "e.g. districts with good air quality and lots of green space",
+    "placeholder": "e.g. Bağcılar — or districts with good air quality and lots of green space",
     "submit": "Search",
     "submitPending": "Searching…",
     "clear": "Clear",

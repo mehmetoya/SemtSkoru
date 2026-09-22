@@ -9,8 +9,17 @@ describe("DistrictSearchBar", () => {
     vi.stubGlobal("fetch", vi.fn());
   });
 
-  function renderBar(onResult = vi.fn()) {
-    render(<DistrictSearchBar onResult={onResult} />, { wrapper: createQueryWrapper() });
+  // matchesDistrictName is what the parent tells the bar when the typed text already names a real
+  // district; these tests are about the AI preference search, so it defaults to false.
+  function renderBar(onResult = vi.fn(), matchesDistrictName = false, onQueryChange = vi.fn()) {
+    render(
+      <DistrictSearchBar
+        onResult={onResult}
+        onQueryChange={onQueryChange}
+        matchesDistrictName={matchesDistrictName}
+      />,
+      { wrapper: createQueryWrapper() },
+    );
     return onResult;
   }
 
@@ -148,5 +157,27 @@ describe("DistrictSearchBar", () => {
 
     await waitFor(() => expect(screen.getByText("Hava Kalitesi")).toBeInTheDocument());
     expect(screen.queryByText(/basit anahtar kelime eşleştirmesiyle/)).not.toBeInTheDocument();
+  });
+
+  // Typing a district name must never reach the AI endpoint: the page already filters the loaded
+  // list by name live, and a request here would spend shared, rate-limited Gemini quota only to
+  // answer "couldn't understand that" underneath correct results.
+  it("never calls the search endpoint while the query names a district", async () => {
+    renderBar(vi.fn(), true);
+
+    typeQuery("Bağcılar");
+    fireEvent.click(screen.getByRole("button", { name: "Ara" }));
+
+    await waitFor(() => expect(screen.getByLabelText("İlçe ara")).toHaveValue("Bağcılar"));
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("reports every keystroke upward so the parent can filter by name as the user types", () => {
+    const onQueryChange = vi.fn();
+    renderBar(vi.fn(), false, onQueryChange);
+
+    typeQuery("Bağ");
+
+    expect(onQueryChange).toHaveBeenLastCalledWith("Bağ");
   });
 });

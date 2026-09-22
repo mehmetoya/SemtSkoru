@@ -106,4 +106,60 @@ describe("NeighborhoodSearchableList", () => {
     expect(within(list).getByText("Üsküdar")).toBeInTheDocument();
     expect(within(list).getByText("Beşiktaş")).toBeInTheDocument();
   });
+
+  // The behaviour this whole client-side path exists for: typing a district's name narrows the
+  // grid immediately, with no submit and no request. "Bağcılar yazınca Bağcılar gelsin."
+  it("filters the grid by district name as the user types, without any request", async () => {
+    renderList();
+
+    fireEvent.change(screen.getByLabelText("İlçe ara"), { target: { value: "Kadı" } });
+
+    const list = screen.getByRole("list");
+    expect(within(list).getByText("Kadıköy")).toBeInTheDocument();
+    expect(within(list).queryByText("Üsküdar")).not.toBeInTheDocument();
+    expect(within(list).queryByText("Beşiktaş")).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("matches a name typed without Turkish diacritics", () => {
+    renderList();
+
+    fireEvent.change(screen.getByLabelText("İlçe ara"), { target: { value: "uskudar" } });
+
+    const list = screen.getByRole("list");
+    expect(within(list).getByText("Üsküdar")).toBeInTheDocument();
+    expect(within(list).queryByText("Kadıköy")).not.toBeInTheDocument();
+  });
+
+  it("restores the full list when the query is cleared", () => {
+    renderList();
+
+    fireEvent.change(screen.getByLabelText("İlçe ara"), { target: { value: "Kadı" } });
+    fireEvent.change(screen.getByLabelText("İlçe ara"), { target: { value: "" } });
+
+    const list = screen.getByRole("list");
+    expect(within(list).getByText("Kadıköy")).toBeInTheDocument();
+    expect(within(list).getByText("Üsküdar")).toBeInTheDocument();
+    expect(within(list).getByText("Beşiktaş")).toBeInTheDocument();
+  });
+
+  // A query that names no district still belongs to the AI preference search, unchanged.
+  it("still runs the preference search for a query that names no district", async () => {
+    const response: DistrictSearchResponse = {
+      status: "Ok",
+      message: null,
+      matchedIds: ["kadikoy"],
+      dimensions: ["airQuality"],
+      matchedBy: "Model",
+    };
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(response));
+    renderList();
+
+    search("hava kalitesi iyi olsun");
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const list = screen.getByRole("list");
+    expect(within(list).getByText("Kadıköy")).toBeInTheDocument();
+    expect(within(list).queryByText("Üsküdar")).not.toBeInTheDocument();
+  });
 });

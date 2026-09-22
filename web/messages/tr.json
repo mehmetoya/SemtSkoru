@@ -71,7 +71,7 @@
   },
   "Search": {
     "label": "İlçe ara",
-    "placeholder": "ör. hava kalitesi iyi ve yeşil alanı bol ilçeler",
+    "placeholder": "ör. Bağcılar — ya da hava kalitesi iyi, yeşil alanı bol ilçeler",
     "submit": "Ara",
     "submitPending": "Aranıyor…",
     "clear": "Temizle",
