@@ -52,6 +52,20 @@ public class AirQualityIngestionTests : IAsyncLifetime
         Content = new StringContent(json, Encoding.UTF8, "application/json"),
     };
 
+    // A reading time recent enough to still count as Fresh, expressed in Turkey local time
+    // because that is the frame İBB's feed reports ReadTime in (see AirQualityApiClient's
+    // TurkeyOffset, which is what turns it into the UTC PublishedAt this test asserts on).
+    //
+    // Deliberately relative to now rather than a fixed date. The freshness assertion below is the
+    // only one in this file that compares ingested metadata against the real clock, and with the
+    // hardcoded 2026-09-11 fixture it previously used, it was a time bomb: CI went red on
+    // 2026-09-18 - exactly LiveStaleThreshold (7 days) later - with no code change behind it, and
+    // the failure ("Expected: Fresh, Actual: Stale") pointed at the ingestion job rather than at
+    // the fixture that had simply aged out. The other ReadTime fixtures in this file stay
+    // hardcoded on purpose: they only exercise ordering and averaging, which no clock can break.
+    private static string RecentReadTime() =>
+        DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).AddHours(-1).ToString("yyyy-MM-ddTHH:mm:ss");
+
     private static string StationsJson(params (string Id, string Location)[] stations) =>
         "[" + string.Join(",", stations.Select(s =>
             $$"""{"Id":"{{s.Id}}","Name":"test","Adress":"test","Location":"{{s.Location}}"}""")) + "]";
@@ -79,7 +93,7 @@ public class AirQualityIngestionTests : IAsyncLifetime
     {
         var handler = RoutingHandler(
             StationsJson((KadikoyStationId, KadikoyStationLocation)),
-            _ => JsonResponse("""[{"ReadTime":"2026-09-11T10:00:00","AQI":{"AQIIndex":42.0}}]"""));
+            _ => JsonResponse($$$"""[{"ReadTime":"{{{RecentReadTime()}}}","AQI":{"AQIIndex":42.0}}]"""));
 
         await using var context = CreateContext();
         var job = CreateJob(context, handler);
