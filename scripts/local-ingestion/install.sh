@@ -41,7 +41,7 @@ if ! /usr/bin/security find-generic-password -s "$KEYCHAIN_SERVICE" >/dev/null 2
 The Supabase connection string is not in your Keychain yet. Add it with this one command
 (it prompts for the value twice, so the secret never lands in your shell history or on disk):
 
-  security add-generic-password -s $KEYCHAIN_SERVICE -a "\$USER" -w
+  security add-generic-password -U -s $KEYCHAIN_SERVICE -a "\$USER" -w
 
 Paste the Session pooler connection string in key=value form, the same one Render uses
 (Host=...pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.<ref>;Password=...;SSL Mode=Require

@@ -68,8 +68,16 @@ internal static class Program
             return 2;
         }
 
-        builder.Services.AddAppDbContext(InfrastructureServiceCollectionExtensions.WithMaxPoolSize(
-            rawConnectionString, MaxPoolSize, applicationName: "semtskoru-ingest"));
+        var (normalizedConnectionString, connectionStringError) = ConnectionPreflight.Normalize(rawConnectionString);
+        if (normalizedConnectionString is null)
+        {
+            await Console.Error.WriteLineAsync(connectionStringError);
+            return 2;
+        }
+
+        var connectionString = InfrastructureServiceCollectionExtensions.WithMaxPoolSize(
+            normalizedConnectionString, MaxPoolSize, applicationName: "semtskoru-ingest");
+        builder.Services.AddAppDbContext(connectionString);
         builder.Services.AddIbbIngestionJobs();
         builder.Services.AddScoped<IngestionSyncStatusReader>();
         builder.Services.AddSingleton<IngestionRunner>();
@@ -90,6 +98,14 @@ internal static class Program
             context.Cancel = true;
             cts.Cancel();
         });
+
+        // One login attempt before anything else - see ConnectionPreflight for why six separate
+        // failed logins (one per job) are worse than useless.
+        if (await ConnectionPreflight.CheckAsync(connectionString, cts.Token) is { } preflightError)
+        {
+            logger.LogError("Run aborted before any job: {Reason}", preflightError);
+            return 1;
+        }
 
         var runner = host.Services.GetRequiredService<IngestionRunner>();
         try

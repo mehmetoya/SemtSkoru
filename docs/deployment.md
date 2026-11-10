@@ -209,13 +209,21 @@ kalması gereken İBB dışı bir ingestion job'ı yok.
 
 Ön koşul: .NET 10 SDK (`/usr/local/share/dotnet/dotnet`) ve bu repo'nun bir kopyası.
 
-1. Supabase bağlantı dizesini Keychain'e ekle (Render'daki `ConnectionStrings__Default` ile aynı,
-   adım 1.3'teki anahtar=değer formatı). Komut değeri iki kez sorar, böylece shell geçmişine
-   ya da diske hiç yazılmaz:
+1. Supabase bağlantı dizesini Keychain'e ekle. En güvenlisi Render'daki `ConnectionStrings__Default`
+   değerini **elle yazmadan, kopyalayıp** yapıştırmak (adım 1.3'teki anahtar=değer formatı;
+   Supabase panelindeki `postgresql://...` URI biçimi de kabul ediliyor). Komut değeri iki kez
+   sorar, böylece shell geçmişine ya da diske hiç yazılmaz. `-U` varsa mevcut kaydın üzerine yazar
+   (`-U` olmadan, kayıt zaten varsa yeni değer **sessizce kaydedilmez**):
 
    ```bash
-   security add-generic-password -s semtskoru-supabase -a "$USER" -w
+   security add-generic-password -U -s semtskoru-supabase -a "$USER" -w
    ```
+
+   **Şifre yanlışsa tekrar tekrar deneme:** Supabase'in pooler'ı birkaç başarısız girişten sonra
+   yeni bağlantıları bir süre engelliyor (`ECIRCUITBREAKER`); engel düzelmiş şifreyi de reddeder.
+   Runner bu yüzden her çalıştırmada job'lardan önce **tek bir** giriş denemesi yapıp, başarısızsa
+   hiçbir job'a geçmeden duruyor. Bu hatayı görürsen 10-15 dakika bekle, sonra bir kez `--list` ile
+   dene.
 
 2. Kur:
 
