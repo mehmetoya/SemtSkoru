@@ -332,6 +332,89 @@ public class ComparisonSummaryServiceTests
         Assert.Contains(expectedLanguageName, aiClient.CapturedSystemInstruction);
     }
 
+    // Regression test for the live compare-page output of 2026-11-10: "Beşiktaşhava kalitesi ve
+    // ulaşım boyutlarında öne çıkarken, Kadıköy ...". Every highlight below is real and grounded
+    // (Beşiktaş really does lead parking 80-20, Kadıköy really leads air quality 90-30), so only
+    // the run-together name stops it - proving a grounded-but-garbled sentence is no longer
+    // shown (or cached) as if it were fine.
+    [Fact]
+    public async Task GenerateComparisonAsync_rejects_a_grounded_summary_whose_district_name_runs_into_the_next_word()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"highlights":[{"dimension":"parking","strongerDistrict":"b"},{"dimension":"airQuality","strongerDistrict":"a"}],
+                 "summary":"Beşiktaşotoparkta öne çıkarken, Kadıköy hava kalitesinde daha yüksek skora sahiptir."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateComparisonAsync(
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
+
+        Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
+        Assert.Null(outcome.SummaryText);
+    }
+
+    // The same sentence written correctly (including a Turkish suffix behind an apostrophe) must
+    // still go through - the check rejects broken text, not district names followed by suffixes.
+    [Fact]
+    public async Task GenerateComparisonAsync_accepts_the_same_summary_with_the_names_correctly_separated()
+    {
+        const string summary = "Beşiktaş otoparkta öne çıkarken, Kadıköy'ün hava kalitesi skoru daha yüksektir.";
+        var aiClient = new FakeAiClient
+        {
+            Response = $$"""
+                {"highlights":[{"dimension":"parking","strongerDistrict":"b"},{"dimension":"airQuality","strongerDistrict":"a"}],
+                 "summary":"{{summary}}"}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateComparisonAsync(
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), "tr", CancellationToken.None);
+
+        Assert.Equal(ComparisonSummaryOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal(summary, outcome.SummaryText);
+    }
+
+    [Theory]
+    [InlineData("tr", "Kadıköy airQuality alanında öne çıkıyor.")]
+    [InlineData("en", "Kadıköy stands out in airQuality.")]
+    public async Task GenerateComparisonAsync_rejects_a_summary_that_names_a_dimension_by_its_raw_key(string locale, string summary)
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = $$"""{"highlights":[{"dimension":"airQuality","strongerDistrict":"a"}],"summary":"{{summary}}"}""",
+        };
+
+        var outcome = await CreateService(aiClient).GenerateComparisonAsync(
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), locale, CancellationToken.None);
+
+        Assert.Equal(ComparisonSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
+    }
+
+    // The prompt-side half of both fixes, for both locales: the district names reach the model as
+    // the literal words it has to write back (not "Beşiktaş" escapes - see
+    // AiProse.PromptJsonEncoder), the instruction maps every camelCase key to the locale's natural
+    // name, and the name-spacing rule is present.
+    [Theory]
+    [InlineData("tr", "greenSpace=\"yeşil alan\"", "airQuality=\"hava kalitesi\"")]
+    [InlineData("en", "greenSpace=\"green space\"", "airQuality=\"air quality\"")]
+    public async Task GenerateComparisonAsync_prompt_carries_literal_names_natural_dimension_names_and_the_spacing_rule(
+        string locale, string expectedGreenSpaceMapping, string expectedAirQualityMapping)
+    {
+        var aiClient = new FakeAiClient { Response = """{"highlights":[],"summary":""}""" };
+
+        await CreateService(aiClient).GenerateComparisonAsync(
+            "Kadıköy", KadikoyScore(), "Beşiktaş", BesiktasScore(), locale, CancellationToken.None);
+
+        Assert.Contains("\"name\":\"Kadıköy\"", aiClient.CapturedUserPrompt);
+        Assert.Contains("\"name\":\"Beşiktaş\"", aiClient.CapturedUserPrompt);
+        Assert.DoesNotContain(@"\u", aiClient.CapturedUserPrompt);
+        Assert.Contains(expectedGreenSpaceMapping, aiClient.CapturedSystemInstruction);
+        Assert.Contains(expectedAirQualityMapping, aiClient.CapturedSystemInstruction);
+        Assert.Contains("Beşiktaşhava kalitesi", aiClient.CapturedSystemInstruction); // the spacing rule's "YANLIŞ" example.
+    }
+
     private sealed class FakeAiClient : IDistrictAssistantAiClient
     {
         public string Response { get; set; } = "";

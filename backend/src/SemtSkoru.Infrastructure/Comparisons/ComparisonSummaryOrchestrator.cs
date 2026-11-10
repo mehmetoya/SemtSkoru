@@ -60,7 +60,15 @@ public sealed class ComparisonSummaryOrchestrator(
         // the exact same order (NeighborhoodIdA, NeighborhoodIdB, Locale) - see that
         // configuration's remarks for why the array order below must match it exactly.
         var existing = await db.ComparisonSummaries.FindAsync([idLo, idHi, normalizedLocale], ct);
-        if (existing is not null && existing.ScoreSignature == signature)
+        // A cached row is only reused if its text would still pass today's presentability check
+        // (AiProse.IsPresentable - the same one ComparisonSummaryService now runs before anything
+        // is cached). Without this, a sentence cached before that check existed - e.g. the
+        // "Beşiktaşhava kalitesi ..." row observed live on 2026-11-10 - would keep being served
+        // for as long as neither district's scores change, which can be indefinitely. A failing
+        // row is treated exactly like a stale one: regenerate, and serve nothing if that fails.
+        if (existing is not null
+            && existing.ScoreSignature == signature
+            && AiProse.IsPresentable(existing.SummaryText, nameLo, nameHi))
         {
             return existing; // cache hit: neither district's scores changed since this (pair, locale) was written.
         }

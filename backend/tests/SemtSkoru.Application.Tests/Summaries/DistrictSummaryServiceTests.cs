@@ -279,6 +279,43 @@ public class DistrictSummaryServiceTests
         Assert.Contains(expectedLanguageName, aiClient.CapturedSystemInstruction);
     }
 
+    // Same two output defects observed live on 2026-11-10 in the assistant/comparison features -
+    // this feature shares the prompt shape that produced them, so it shares the check too (see
+    // AiProse). Each response below is otherwise fully grounded; only the prose is broken.
+    [Theory]
+    [InlineData("tr", "Kadıköyhava kalitesinde güçlü.")]
+    [InlineData("tr", "Kadıköy 83 airQuality skoruyla güçlü.")]
+    [InlineData("en", "Kadıköy is strong in airQuality.")]
+    public async Task GenerateSummaryAsync_rejects_a_grounded_summary_with_a_run_together_name_or_a_raw_dimension_key(
+        string locale, string summary)
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = $$"""{"highlights":[{"dimension":"airQuality","strength":"strong"}],"summary":"{{summary}}"}""",
+        };
+
+        var outcome = await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), locale, CancellationToken.None);
+
+        Assert.Equal(DistrictSummaryOutcomeKind.NoUsableSummary, outcome.Kind);
+        Assert.Null(outcome.SummaryText);
+    }
+
+    [Theory]
+    [InlineData("tr", "greenSpace=\"yeşil alan\"")]
+    [InlineData("en", "greenSpace=\"green space\"")]
+    public async Task GenerateSummaryAsync_prompt_carries_the_literal_name_natural_dimension_names_and_the_spacing_rule(
+        string locale, string expectedGreenSpaceMapping)
+    {
+        var aiClient = new FakeAiClient { Response = """{"highlights":[],"summary":""}""" };
+
+        await CreateService(aiClient).GenerateSummaryAsync("Kadıköy", FullyScored(), locale, CancellationToken.None);
+
+        Assert.Contains("\"name\":\"Kadıköy\"", aiClient.CapturedUserPrompt);
+        Assert.DoesNotContain(@"\u", aiClient.CapturedUserPrompt);
+        Assert.Contains(expectedGreenSpaceMapping, aiClient.CapturedSystemInstruction);
+        Assert.Contains("Beşiktaşhava kalitesi", aiClient.CapturedSystemInstruction); // the spacing rule's "YANLIŞ" example.
+    }
+
     private sealed class FakeAiClient : IDistrictAssistantAiClient
     {
         public string Response { get; set; } = "";

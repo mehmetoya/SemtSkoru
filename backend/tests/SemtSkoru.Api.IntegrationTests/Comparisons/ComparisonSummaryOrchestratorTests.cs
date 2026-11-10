@@ -175,6 +175,50 @@ public class ComparisonSummaryOrchestratorTests : IAsyncLifetime
         }
     }
 
+    // A row written before ComparisonSummaryService started rejecting run-together names (the
+    // live "Beşiktaşhava kalitesi ..." text, 2026-11-10) still carries a matching signature, so
+    // the signature check alone would serve it forever. It must instead be regenerated - and
+    // replaced - exactly like a stale row.
+    [Fact]
+    public async Task GetOrGenerateAsync_regenerates_a_cached_row_whose_text_is_no_longer_presentable_even_if_scores_are_unchanged()
+    {
+        await SeedTwoDistrictsWithDistinctAirQualityAsync();
+        var callCount = 0;
+        var handler = new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); });
+
+        await using (var context = CreateContext())
+        {
+            var kadikoy = await ScoreAsync(context, "kadikoy");
+            var uskudar = await ScoreAsync(context, "uskudar");
+            context.ComparisonSummaries.Add(new ComparisonSummary
+            {
+                NeighborhoodIdA = "kadikoy",
+                NeighborhoodIdB = "uskudar",
+                Locale = "tr",
+                SummaryText = "Kadıköyhava kalitesinde öne çıkıyor.",
+                GeneratedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                ScoreSignature = ComparisonSummarySignature.Compute(kadikoy, uskudar),
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = CreateContext())
+        {
+            var kadikoy = await ScoreAsync(context, "kadikoy");
+            var uskudar = await ScoreAsync(context, "uskudar");
+            var result = await CreateOrchestrator(context, handler).GetOrGenerateAsync(
+                "Kadıköy", kadikoy, "Üsküdar", uskudar, "tr", CancellationToken.None);
+
+            Assert.Equal(1, callCount);
+            Assert.Equal("Kadıköy hava kalitesinde öne çıkıyor.", result!.SummaryText);
+        }
+
+        await using (var context = CreateContext())
+        {
+            Assert.Equal("Kadıköy hava kalitesinde öne çıkıyor.", (await context.ComparisonSummaries.SingleAsync()).SummaryText);
+        }
+    }
+
     [Fact]
     public async Task GetOrGenerateAsync_regenerates_once_either_districts_score_actually_changes()
     {
