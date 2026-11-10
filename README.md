@@ -31,10 +31,13 @@ AI Semt Asistanı, isteğe göre 2-3 ilçe önerip nedenini gerçek skorlara day
 - Her ilçe sayfasında "Öne Çıkan Özellikler" AI özeti ve "Zaman İçindeki Değişim" AI trend özeti (yalnızca gerçek, anlamlı bir skor değişimi olduğunda gösterilir)
 - Karşılaştırma sayfasında iki ilçenin hangi boyut(lar)da öne çıktığını özetleyen bir AI "Karşılaştırma Özeti"
 - Dört AI özelliği de yalnızca uygulamanın kendi gerçek skor verisine atıfta bulunur; veri yoksa veya bir iddia doğrulanamıyorsa metin hiç gösterilmez, asla uydurulmaz
+- Veri tazeliği izlenir: `GET /health/data`, bir kaynağın son başarılı senkronizasyonu beklenen sıklığın gerisinde kalınca 503 döner, böylece bir uptime monitörü (UptimeRobot) veri bayatladığında e-posta ile haber verir
 
 ## Mimari
 
 Dış veri kaynaklarına yalnızca backend'in ingestion katmanı erişir; frontend hiçbir zaman doğrudan İBB'ye istek atmaz. Her ingest edilen kayıt kaynak adı/URL/lisans/yayın tarihi/son senkronizasyon zamanı metadata'sı taşır.
+
+İBB sunucuları yalnızca Türkiye IP'lerinden gelen bağlantıları kabul ediyor (2026-11'de 10+ ülkeden test edildi). Bu yüzden üretimde İBB ingestion job'ları API'nin barındığı Render'da değil, Türkiye'deki bir makinede `SemtSkoru.Ingest` konsol runner'ıyla çalışıp aynı veritabanına yazar. Yerel geliştirmede ise aynı job'lar API içindeki Hangfire ile çalışır.
 
 ```mermaid
 flowchart LR
@@ -49,7 +52,7 @@ flowchart LR
     end
 
     subgraph Backend[".NET Backend — Clean Architecture"]
-        ING["Hangfire<br/>Ingestion Jobs"] --> DB[("PostgreSQL<br/>+ PostGIS")]
+        ING["İBB Ingestion Jobs<br/>(SemtSkoru.Ingest, Türkiye'den)"] --> DB[("PostgreSQL<br/>+ PostGIS")]
         DB --> SCORE["Scoring Servisi<br/>(Application)"]
         SCORE --> API["ASP.NET Core API"]
     end
@@ -80,7 +83,8 @@ API, paylaşılan DB bağlantı havuzunu korumak için global bir eşzamanlılı
 | Mimari | Clean Architecture | Domain hiçbir dış bağımlılığa sahip değil; kaynak/DB değişimi izole |
 | ORM | EF Core + Npgsql | PostGIS geometry tipleriyle native entegrasyon |
 | Coğrafi veri | PostgreSQL + PostGIS, NetTopologySuite | İlçe sınırları, mesafe hesapları (Haversine) |
-| Zamanlanmış işler | Hangfire (+ Postgres storage) | Günlük/haftalık/aylık ingestion job'ları |
+| Zamanlanmış işler | Hangfire (+ Postgres storage), macOS launchd | Gemini job'ları Render'da Hangfire ile; İBB ingestion'ı Türkiye'deki Mac'te launchd ile |
+| İzleme | UptimeRobot + `/health`, `/health/data` | Soğuk başlangıcı önleme ve bayat veri uyarısı |
 | API dokümantasyonu | Scalar (OpenAPI) | Sıfır ekstra paket, .NET'in native `AddOpenApi()`'si üzerine |
 | Frontend framework | Next.js 16 (App Router) + TypeScript (strict) | Sunucu/istemci bileşen ayrımı, dosya tabanlı routing |
 | Data fetching | TanStack Query | Cache, loading/error state yönetimi |
@@ -114,7 +118,7 @@ docs/
   deployment.md                   → Ücretsiz katmanlarla adım adım yayına alma
 render.yaml                       → Render Blueprint (Docker web service tanımı)
 scripts/local-ingestion/         → İBB ingestion'ı macOS launchd ile çalıştıran kurulum/kaldırma betikleri
-.github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve keep-warm (free-tier soğuk başlangıç önleme + Gemini job catch-up)
+.github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve keep-warm (yedek uyandırıcı; asıl uyandırıcı UptimeRobot)
 SPEC.md, tasks/plan.md              → Ürün spesifikasyonu ve uygulama planı
 ```
 
@@ -151,7 +155,7 @@ npm run dev
 # Uygulama: http://localhost:3000
 ```
 
-Migration'lar İstanbul'un 39 ilçesini gerçek sınır verisiyle (OpenStreetMap) otomatik olarak seed eder. Skorlar, arka planda çalışan Hangfire ingestion job'ları (hava kalitesi ve otopark günlük, yeşil alan/sağlık erişimi/toplu taşıma erişimi haftalık, trafik aylık) gerçek veriyi çektikçe dolar; job'ları hemen tetiklemek isterseniz API'nin Hangfire panosundan (`/hangfire`, sadece Development ortamında) manuel çalıştırabilirsiniz.
+Migration'lar İstanbul'un 39 ilçesini gerçek sınır verisiyle (OpenStreetMap) otomatik olarak seed eder. Skorlar, arka planda çalışan Hangfire ingestion job'ları (hava kalitesi ve otopark günlük, yeşil alan/sağlık erişimi/toplu taşıma erişimi haftalık, trafik aylık) gerçek veriyi çektikçe dolar; job'ları hemen tetiklemek isterseniz API'nin Hangfire panosundan (`/hangfire`, sadece Development ortamında) manuel çalıştırabilirsiniz. Alternatif olarak İBB job'larını API'yi hiç çalıştırmadan konsol runner'ıyla da çalıştırabilirsiniz: `dotnet run --project src/SemtSkoru.Ingest -- all` (bağlantı dizesi `ConnectionStrings__Default` ortam değişkeninden okunur). İBB yalnızca Türkiye IP'lerine açık olduğundan bu adımlar Türkiye dışından veri getirmez.
 
 AI Semt Asistanı (`/asistan`, `POST /api/asistan`) isteğe bağlıdır ve anahtar olmadan da uygulamanın geri kalanını bozmadan 503 döner. Aynı Gemini anahtarı, her ilçe sayfasındaki "Öne Çıkan Özellikler" AI özetini de besler - bu özet canlı değil, haftalık bir Hangfire job'ı (`district-summary-generation`) tarafından önceden üretilip önbelleğe alınır, anahtar yoksa sayfa hiçbir hata vermeden özeti göstermeden devam eder. Aynı anahtar, ilçe sayfasındaki "Zaman İçindeki Değişim" trend özetini de besler - bu da haftalık bir Hangfire job'ı (`score-snapshot`) tarafından üretilir, ancak o job her ilçenin skorunun bir önceki, en az 1 hafta eski bir ölçümle GERÇEK sayısal farkı varsa metin üretir; ilk deploy'dan sonraki ilk hafta boyunca (ve karşılaştırılacak eski bir ölçüm birikene kadar) her ilçede bu alan dürüstçe boş kalır - tahmini bir trend asla gösterilmez. Aynı anahtar, karşılaştırma sayfasındaki "Karşılaştırma Özeti"ni de besler (`GET /api/neighborhoods/compare/summary`) - bu, weekly-batch değil, ilk kez sorulduğunda üretilip veritabanında kalıcı olarak önbelleğe alınan bir çift bazında (39 ilçe arasında mümkün 741 çiftin tamamını önceden üretmek yerine) - modelin "hangi ilçe daha güçlü" iddiası, bu istekte zaten hesaplanmış gerçek sayılara karşı ayrıca doğrulanır, gerçek skorlarla çelişen bir iddia asla gösterilmez. Yerelde denemek için [Google AI Studio](https://aistudio.google.com/apikey)'dan ücretsiz bir anahtar alıp user-secrets'a ekleyin:
 
@@ -162,7 +166,7 @@ dotnet user-secrets set "Gemini:ApiKey" "<anahtarınız>" --project src/SemtSkor
 ## Testler
 
 ```bash
-# Backend: 344 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
+# Backend: 409 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
 cd backend && dotnet test
 
 # Frontend: unit/component testleri (Vitest + React Testing Library)
@@ -183,13 +187,14 @@ flowchart TB
     GH -->|"otomatik deploy"| VERCEL["Vercel<br/>Next.js Frontend"]
     GH -->|"otomatik deploy"| RENDER["Render Free<br/>ASP.NET Core API + Hangfire"]
     RENDER <-->|"Session Pooler"| SUPABASE[("Supabase Free<br/>Postgres + PostGIS")]
-    CRON["GitHub Actions<br/>keep-warm.yml"] -->|"10 dakikada bir GET /health"| RENDER
+    UPTIME["UptimeRobot"] -->|"5 dakikada bir /health<br/>+ /health/data (bayat veri uyarısı)"| RENDER
+    CRON["GitHub Actions<br/>keep-warm.yml (yedek)"] -->|"GET /health"| RENDER
     MAC["Mac (Türkiye)<br/>launchd + SemtSkoru.Ingest"] -->|"İBB verisi (günde 3 deneme, --due)"| SUPABASE
     VERCEL -->|"fetch /api/*"| RENDER
     KULLANICI((Kullanıcı)) --> VERCEL
 ```
 
-Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur; `keep-warm.yml` her 10 dakikada bir uyandırıp soğuk başlangıcı önler, Hangfire da süresi geçmiş Gemini job'larını kendiliğinden kuyruğa alır. İBB sunucuları yalnızca Türkiye IP'lerini kabul ettiği için İBB ingestion job'ları Render'da kapalı (`Ingestion__IbbJobsEnabled=false`); onları Türkiye'deki bir Mac launchd ile çalıştırıp aynı Supabase veritabanına yazıyor (bkz. [`docs/deployment.md`](docs/deployment.md), bölüm 5). Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
+Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur. Bunu UptimeRobot önler: her 5 dakikada bir `/health`'e istek atarak container'ı uyanık tutar. `keep-warm.yml` yalnızca yedektir, çünkü GitHub zamanlanmış workflow'ları kısıtlıyor ve pratikte birkaç saatte bir çalıştırıyor. Container uyanınca Hangfire, süresi geçmiş Gemini job'larını kendiliğinden kuyruğa alır. İkinci bir UptimeRobot monitörü `/health/data`'yı izler ve bir veri kaynağı bayatladığında e-posta gönderir. İBB sunucuları yalnızca Türkiye IP'lerini kabul ettiği için İBB ingestion job'ları Render'da kapalı (`Ingestion__IbbJobsEnabled=false`); onları Türkiye'deki bir Mac launchd ile çalıştırıp aynı Supabase veritabanına yazıyor (bkz. [`docs/deployment.md`](docs/deployment.md), bölüm 5). Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
 
 ## Veri Kaynakları ve Lisansları
 
