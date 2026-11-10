@@ -56,7 +56,7 @@ kullanan bir cache eklenirse hem `docker-compose.yml`'e hem bu dokümana geri ek
    - `ConnectionStrings__Default` → adım 1'deki Supabase bağlantı dizesi
    - `Cors__FrontendOrigin` → adım 3'teki Vercel URL'i (örn. `https://semtskoru.vercel.app`)
    - `Gemini__ApiKey` → aşağıdaki adımlarla alınan ücretsiz Gemini API anahtarı
-4. Deploy sonrası servis URL'ini not al (örn. `https://semtskoru-api.onrender.com`) —
+4. Deploy sonrası servis URL'ini not al (örn. `https://semtskoru-api-s758.onrender.com`) —
    hem Vercel'de hem GitHub Actions secret'ında kullanılacak.
 
 **AI Semt Asistanı (Gemini) API anahtarı almak için:**
@@ -120,7 +120,17 @@ gerekmiyor.
 
 Repo Settings → Secrets and variables → Actions → yeni secret:
 
-- `API_BASE_URL` = Render API URL'i (örn. `https://semtskoru-api.onrender.com`, sonunda `/` olmadan)
+- `API_BASE_URL` = Render API URL'i (örn. `https://semtskoru-api-s758.onrender.com`, sonunda `/` olmadan)
+
+**Önemli — asıl uyandırıcı harici bir monitör:** GitHub, zamanlanmış (cron) workflow'ları
+kısıtlıyor; `keep-warm.yml` "her 10 dakika" diye ayarlı olsa da pratikte birkaç saatte bir
+çalışıyor (canlıda doğrulandı, 2026-11). Bu yüzden container'ı gerçekten sıcak tutan şey
+ücretsiz bir uptime monitörü; `keep-warm.yml` yalnızca yedek:
+
+1. [uptimerobot.com](https://uptimerobot.com) üzerinde ücretsiz hesap aç.
+2. **New Monitor** → tür **HTTP(s)**, URL: `<API_BASE_URL>/health`, aralık **5 dakika**.
+3. Kaydet. Monitör her 5 dakikada bir istek atar (Render'ın ~15 dakikalık penceresinin
+   içinde), servis düşerse de e-posta ile haber verir.
 
 ## Supabase güvenlik: Row Level Security
 

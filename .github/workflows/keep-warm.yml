@@ -1,14 +1,19 @@
 name: Keep-warm (free-tier cold-start avoidance + ingestion catch-up)
 
 # The API runs on Render's free tier, which stops the container after ~15 minutes of no
-# HTTP traffic - the next real visitor then eats a ~30-60s cold start. Pinging every 10
-# minutes (comfortably inside that 15-minute window) keeps the container warm around the
-# clock for free: this repo is public, so GitHub Actions minutes for it aren't metered/billed.
-# This also still doubles as the original job's purpose: Hangfire's recurring-job scheduler
-# only fires while the process is running, so a container asleep at its scheduled cron time
-# (see Program.cs) would simply miss it - on startup, HangfireServer checks each recurring
-# job's next-execution time against now and immediately enqueues anything overdue, so any of
-# these pings is enough to keep ingestion running without an always-on (paid) instance.
+# HTTP traffic - the next real visitor then eats a cold start (usually ~30-60s, but seen
+# taking ~8 minutes on 2026-11-10).
+#
+# This workflow is a BACKUP pinger, not the primary one: the cron below asks for every 10
+# minutes, but GitHub throttles scheduled workflows and in practice runs this one only every
+# few hours, so on its own it cannot keep the container warm. The primary pinger is an
+# external uptime monitor hitting /health every 5 minutes (see docs/deployment.md, section 4).
+#
+# It still matters for ingestion: Hangfire's recurring-job scheduler only fires while the
+# process is running, so a container asleep at its scheduled cron time (see Program.cs) would
+# simply miss it - on startup, HangfireServer checks each recurring job's next-execution time
+# against now and immediately enqueues anything overdue, so any of these pings is enough to
+# keep ingestion running without an always-on (paid) instance.
 on:
   schedule:
     - cron: "*/10 * * * *"
@@ -17,6 +22,9 @@ on:
 jobs:
   wake:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
+      # Budget: up to 8 attempts x 90s + 7 x 15s delay ~= 14 minutes, so a slow cold start
+      # (Render holds the request while the container boots) doesn't fail the run.
       - name: Ping API health endpoint
-        run: curl -sf --retry 5 --retry-delay 10 --max-time 60 "${{ secrets.API_BASE_URL }}/health"
+        run: curl -sf --retry 7 --retry-delay 15 --max-time 90 "${{ secrets.API_BASE_URL }}/health"
