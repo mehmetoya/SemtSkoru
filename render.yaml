@@ -15,3 +15,10 @@ services:
         sync: false # free-tier Google AI Studio key for the AI Semt Asistanı feature (POST /api/asistan) - optional, feature 503s gracefully until set
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
+      # İBB's servers (api.ibb.gov.tr, data.ibb.gov.tr) accept connections only from Turkish IPs
+      # (probed 2026-11-10 from 11 countries: only Turkey connected), so from this US region the six
+      # İBB ingestion jobs time out on every run. "false" stops scheduling them here AND removes
+      # their persisted Hangfire recurring jobs on boot; they run from a Mac in Turkey instead
+      # (scripts/local-ingestion, docs/deployment.md). The Gemini jobs keep running here.
+      - key: Ingestion__IbbJobsEnabled
+        value: "false"

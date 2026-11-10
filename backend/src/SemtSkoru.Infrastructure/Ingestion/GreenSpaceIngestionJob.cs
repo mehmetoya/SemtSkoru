@@ -19,7 +19,7 @@ public sealed class GreenSpaceIngestionJob(
     IGreenSpaceApiClient client,
     AppDbContext db,
     ILogger<GreenSpaceIngestionJob> logger,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : IIngestionJob
 {
     private const string SourceName = "İBB İstanbul Kentsel Açık ve Yeşil Alan Koordinatları";
     private const string SourceUrl = "https://data.ibb.gov.tr/dataset/kentsel-acik-ve-yesil-alanlar";
@@ -28,7 +28,10 @@ public sealed class GreenSpaceIngestionJob(
     // Dataset's own metadata_modified date at the time it was verified — see docs/data-sources.md, section 2.
     private static readonly DateTimeOffset SourcePublishedAt = new(2025, 7, 17, 0, 0, 0, TimeSpan.Zero);
 
-    public async Task RunAsync(CancellationToken ct)
+    /// <summary>Hangfire's entry point (see Program.cs); the outcome only matters to SemtSkoru.Ingest.</summary>
+    public async Task RunAsync(CancellationToken ct) => await IngestAsync(ct);
+
+    public async Task<IngestionOutcome> IngestAsync(CancellationToken ct)
     {
         IReadOnlyList<ParkFeatureDto> parks;
         try
@@ -37,18 +40,17 @@ public sealed class GreenSpaceIngestionJob(
         }
         catch (Exception ex)
         {
-            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.GreenSpace, "park dataset fetch failed");
-            return;
+            return IngestionOutcome.RunFailed(logger, ex, IngestionSyncStatusReader.GreenSpace, "park dataset fetch failed");
         }
 
         if (parks.Count == 0)
         {
-            IngestionLog.RunFailed(logger, null, IngestionSyncStatusReader.GreenSpace, "source returned no parks at all");
-            return;
+            return IngestionOutcome.RunFailed(logger, null, IngestionSyncStatusReader.GreenSpace, "source returned no parks at all");
         }
 
         var neighborhoods = await db.Neighborhoods.ToListAsync(ct);
         var now = timeProvider.GetUtcNow();
+        var districtsUpdated = 0;
 
         foreach (var neighborhood in neighborhoods)
         {
@@ -84,8 +86,11 @@ public sealed class GreenSpaceIngestionJob(
                 existing.NearestParkDistanceMeters = nearest.Distance;
                 existing.Source = metadata;
             }
+
+            districtsUpdated++;
         }
 
         await db.SaveChangesAsync(ct);
+        return IngestionOutcome.Completed(logger, IngestionSyncStatusReader.GreenSpace, parks.Count, districtsUpdated);
     }
 }

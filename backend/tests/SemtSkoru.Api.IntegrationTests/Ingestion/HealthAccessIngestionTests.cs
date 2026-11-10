@@ -91,7 +91,10 @@ public class HealthAccessIngestionTests : IAsyncLifetime
         await using var context = CreateContext();
         var job = CreateJob(context, FakeGeoJsonHandler(features));
 
-        await job.RunAsync(CancellationToken.None);
+        var outcome = await job.IngestAsync(CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Equal(1, outcome.DistrictsUpdated);
 
         var kadikoy = await context.HealthAccessReadings.SingleAsync(r => r.NeighborhoodId == "kadikoy");
         Assert.Equal(80, kadikoy.WeightedHealthIndex, precision: 3);
@@ -169,6 +172,12 @@ public class HealthAccessIngestionTests : IAsyncLifetime
 
         Assert.Null(exception);
         Assert.Empty(await context.HealthAccessReadings.ToListAsync());
+
+        // Same run via the runner-facing entry point: no exception reached Hangfire above,
+        // but the outcome must still report that nothing was ingested, and why.
+        var outcome = await CreateJob(context, handler).IngestAsync(CancellationToken.None);
+        Assert.False(outcome.Succeeded);
+        Assert.Contains("simulated network failure", outcome.FailureReason);
     }
 
     [Fact]

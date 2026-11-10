@@ -20,7 +20,7 @@ public sealed class TrafficIngestionJob(
     ITrafficDataClient client,
     AppDbContext db,
     ILogger<TrafficIngestionJob> logger,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : IIngestionJob
 {
     private const string SourceName = "İBB Saatlik Trafik Yoğunluk Veri Seti";
     private const string SourceUrl = "https://data.ibb.gov.tr/dataset/hourly-traffic-density-data-set";
@@ -30,7 +30,10 @@ public sealed class TrafficIngestionJob(
     // Last day covered by the January 2025 snapshot — see docs/data-sources.md, section 3.
     private static readonly DateTimeOffset SourcePublishedAt = new(2025, 1, 31, 23, 59, 59, TimeSpan.Zero);
 
-    public async Task RunAsync(CancellationToken ct)
+    /// <summary>Hangfire's entry point (see Program.cs); the outcome only matters to SemtSkoru.Ingest.</summary>
+    public async Task RunAsync(CancellationToken ct) => await IngestAsync(ct);
+
+    public async Task<IngestionOutcome> IngestAsync(CancellationToken ct)
     {
         var neighborhoods = await db.Neighborhoods.ToListAsync(ct);
         var envelopes = neighborhoods.ToDictionary(n => n.Id, n => n.Boundary.EnvelopeInternal);
@@ -46,10 +49,12 @@ public sealed class TrafficIngestionJob(
             n => n.Id,
             n => PreparedGeometryFactory.Prepare(n.Boundary));
 
+        var rowCount = 0;
         try
         {
             await foreach (var row in client.GetTrafficRowsAsync(ct))
             {
+                rowCount++;
                 var point = new Coordinate(row.Longitude, row.Latitude);
                 var pointGeometry = new Point(point);
 
@@ -69,11 +74,11 @@ public sealed class TrafficIngestionJob(
         }
         catch (Exception ex)
         {
-            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.Traffic, "traffic CSV fetch failed");
-            return;
+            return IngestionOutcome.RunFailed(logger, ex, IngestionSyncStatusReader.Traffic, "traffic CSV fetch failed");
         }
 
         var now = timeProvider.GetUtcNow();
+        var districtsUpdated = 0;
         foreach (var neighborhood in neighborhoods)
         {
             var (sum, count) = sums[neighborhood.Id];
@@ -110,8 +115,11 @@ public sealed class TrafficIngestionJob(
                 existing.SampleCount = count;
                 existing.Source = metadata;
             }
+
+            districtsUpdated++;
         }
 
         await db.SaveChangesAsync(ct);
+        return IngestionOutcome.Completed(logger, IngestionSyncStatusReader.Traffic, rowCount, districtsUpdated);
     }
 }

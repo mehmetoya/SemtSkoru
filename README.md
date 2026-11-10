@@ -101,7 +101,8 @@ API, paylaşılan DB bağlantı havuzunu korumak için global bir eşzamanlılı
     SemtSkoru.Application/     → Scoring servisi
     SemtSkoru.Infrastructure/  → EF Core, dış API client'ları, Hangfire ingestion job'ları
     SemtSkoru.Api/             → ASP.NET Core Web API, endpoint'ler
-  tests/                          → xUnit (Domain/Application unit, Api Testcontainers integration)
+    SemtSkoru.Ingest/          → İBB ingestion job'larını Hangfire'sız, bir kez çalıştıran konsol runner'ı (Türkiye'deki Mac'ten)
+  tests/                          → xUnit (Domain/Application unit, Api/Ingest Testcontainers integration)
   Dockerfile                      → Render deploy'u için multi-stage build
 /web
   app/                            → Next.js sayfaları (arama, ilçe detay, karşılaştırma)
@@ -112,7 +113,8 @@ docs/
   data-sources.md                 → Her veri kaynağının canlı doğrulanmış endpoint/lisans/güncellik bilgisi
   deployment.md                   → Ücretsiz katmanlarla adım adım yayına alma
 render.yaml                       → Render Blueprint (Docker web service tanımı)
-.github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve keep-warm (free-tier soğuk başlangıç önleme + ingestion catch-up)
+scripts/local-ingestion/         → İBB ingestion'ı macOS launchd ile çalıştıran kurulum/kaldırma betikleri
+.github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve keep-warm (free-tier soğuk başlangıç önleme + Gemini job catch-up)
 SPEC.md, tasks/plan.md              → Ürün spesifikasyonu ve uygulama planı
 ```
 
@@ -160,7 +162,7 @@ dotnet user-secrets set "Gemini:ApiKey" "<anahtarınız>" --project src/SemtSkor
 ## Testler
 
 ```bash
-# Backend: 150 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
+# Backend: 344 test (unit + Testcontainers ile gerçek Postgres'e karşı integration)
 cd backend && dotnet test
 
 # Frontend: unit/component testleri (Vitest + React Testing Library)
@@ -182,11 +184,12 @@ flowchart TB
     GH -->|"otomatik deploy"| RENDER["Render Free<br/>ASP.NET Core API + Hangfire"]
     RENDER <-->|"Session Pooler"| SUPABASE[("Supabase Free<br/>Postgres + PostGIS")]
     CRON["GitHub Actions<br/>keep-warm.yml"] -->|"10 dakikada bir GET /health"| RENDER
+    MAC["Mac (Türkiye)<br/>launchd + SemtSkoru.Ingest"] -->|"İBB verisi (günde 3 deneme, --due)"| SUPABASE
     VERCEL -->|"fetch /api/*"| RENDER
     KULLANICI((Kullanıcı)) --> VERCEL
 ```
 
-Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur; `keep-warm.yml` her 10 dakikada bir uyandırıp soğuk başlangıcı önler, Hangfire da süresi geçmiş ingestion job'larını kendiliğinden kuyruğa alır. Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
+Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur; `keep-warm.yml` her 10 dakikada bir uyandırıp soğuk başlangıcı önler, Hangfire da süresi geçmiş Gemini job'larını kendiliğinden kuyruğa alır. İBB sunucuları yalnızca Türkiye IP'lerini kabul ettiği için İBB ingestion job'ları Render'da kapalı (`Ingestion__IbbJobsEnabled=false`); onları Türkiye'deki bir Mac launchd ile çalıştırıp aynı Supabase veritabanına yazıyor (bkz. [`docs/deployment.md`](docs/deployment.md), bölüm 5). Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
 
 ## Veri Kaynakları ve Lisansları
 

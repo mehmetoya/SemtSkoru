@@ -66,7 +66,11 @@ public class TrafficIngestionTests : IAsyncLifetime
         await using var context = CreateContext();
         var job = CreateJob(context, handler);
 
-        await job.RunAsync(CancellationToken.None);
+        var outcome = await job.IngestAsync(CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Equal(4, outcome.SourceRecords);
+        Assert.Equal(2, outcome.DistrictsUpdated);
 
         var readings = await context.TrafficReadings.ToListAsync();
 
@@ -106,6 +110,12 @@ public class TrafficIngestionTests : IAsyncLifetime
 
         Assert.Null(exception);
         Assert.Empty(await context.TrafficReadings.ToListAsync());
+
+        // Same run via the runner-facing entry point: no exception reached Hangfire above,
+        // but the outcome must still report that nothing was ingested, and why.
+        var outcome = await CreateJob(context, handler).IngestAsync(CancellationToken.None);
+        Assert.False(outcome.Succeeded);
+        Assert.Contains("simulated network failure", outcome.FailureReason);
     }
 }
 

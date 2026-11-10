@@ -56,6 +56,11 @@ kullanan bir cache eklenirse hem `docker-compose.yml`'e hem bu dokümana geri ek
    - `ConnectionStrings__Default` → adım 1'deki Supabase bağlantı dizesi
    - `Cors__FrontendOrigin` → adım 3'teki Vercel URL'i (örn. `https://semtskoru.vercel.app`)
    - `Gemini__ApiKey` → aşağıdaki adımlarla alınan ücretsiz Gemini API anahtarı
+
+   Secret olmayan bir ayar daha var: `Ingestion__IbbJobsEnabled` = `false`. Bu, `render.yaml`'da
+   değeriyle birlikte duruyor; ama Blueprint dashboard'la senkron değilse (servis Blueprint'ten
+   değil elle oluşturulduysa) Render bunu kendiliğinden almaz, aynı **Environment** ekranından elle
+   eklenmesi gerekir. Neden gerektiği için bkz. aşağıdaki "Yerel İBB ingestion" bölümü.
 4. Deploy sonrası servis URL'ini not al (örn. `https://semtskoru-api-s758.onrender.com`) —
    hem Vercel'de hem GitHub Actions secret'ında kullanılacak.
 
@@ -80,8 +85,9 @@ uygulama için tek bir bütçe) uygular. Anahtarı ekledikten sonra o panodaki g
 görüp gerekirse `AiAssistantGlobalPermitLimitPerMinute`/`PerDay` sabitlerini ayarlaman gerekebilir.
 
 **Not:** Free plan, ~15 dakika istek almayınca container'ı durduruyor; sıradaki istek
-container'ı yeniden başlatıyor (ilk istekte ~30-60sn gecikme olur). Bu, günlük ingestion
-job'ını (Hangfire) etkiler — bkz. aşağıdaki GitHub Actions adımı.
+container'ı yeniden başlatıyor (ilk istekte ~30-60sn gecikme olur). Bu, Render'da çalışan
+Hangfire job'larını (artık yalnızca Gemini job'ları; İBB ingestion'ı Render'da çalışmıyor, bkz.
+"Yerel İBB ingestion") etkiler — bkz. aşağıdaki GitHub Actions adımı.
 
 ## 3. Vercel (frontend)
 
@@ -114,9 +120,11 @@ endpoint'ine bir istek atıyor — repo public olduğundan bu sık ping'in GitHu
 maliyeti yok. Amacı iki katlı: (1) container'ı Render'ın ~15 dakikalık boşta-durdurma
 penceresinin içinde sürekli sıcak tutup gerçek ziyaretçilerin ~30-60sn'lik soğuk başlangıç
 gecikmesi yaşamasını önlemek, (2) Hangfire'ın recurring-job scheduler'ının (process her
-başladığında) hava kalitesi/yeşil alan/trafik job'larının süresi geçmiş olanlarını otomatik
-kuyruğa almasını sağlamak — yani ayrı bir "ingestion tetikle" endpoint'i veya token yönetimi
-gerekmiyor.
+başladığında) Render'da kalan job'ların — AI özet (`district-summary-generation`) ve skor
+geçmişi/trend (`score-snapshot`) — süresi geçmiş olanlarını otomatik kuyruğa almasını sağlamak.
+İBB veri ingestion'ını **artık bu ping'ler ayakta tutmuyor**: İBB yalnızca Türkiye IP'lerini kabul
+ettiği için o altı job Render'da kapalı ve Türkiye'deki bir Mac'ten çalışıyor (bkz. "Yerel İBB
+ingestion").
 
 Repo Settings → Secrets and variables → Actions → yeni secret:
 
@@ -154,6 +162,130 @@ kesit, sağlık indeksi 2024 tarihli, bunlar normal). Bir kaynak kendi takvimine
 Bu monitörü keep-warm monitörünün **yerine değil, yanına** ekle: `/health/data` veritabanına
 dokunuyor ve veri bayatken bilerek `503` veriyor; container'ı uyanık tutma işi `/health`'te
 kalmalı.
+
+## 5. Yerel İBB ingestion (Türkiye'deki bir Mac'ten)
+
+### Neden
+
+İBB'nin sunucuları (`api.ibb.gov.tr`, `data.ibb.gov.tr`) TCP bağlantısını **yalnızca Türkiye
+IP'lerinden** kabul ediyor. 2026-11-10'da birçok ülkeden yapılan TCP denemesinde ABD, Kanada,
+Almanya, Hollanda, Fransa, Birleşik Krallık, Polonya, Bulgaristan, Romanya ve Singapur'dan
+gelen bağlantıların hepsi zaman aşımına düştü; bağlantı yalnızca Türkiye'den kuruldu. API'nin
+çalıştığı Render (Oregon, ABD) bu yüzden İBB'ye hiç ulaşamıyor: altı İBB job'ı (hava kalitesi ve
+otopark günlük, yeşil alan / sağlık erişimi / toplu taşıma erişimi haftalık, trafik aylık) her
+çalıştırmada zaman aşımına düşüp "skipping this run" diyerek geçiyordu ve hava kalitesi ile
+otopark verisi 19 gün bayat kaldı. Altı job'ın kaynak URL'lerinin hepsi İBB host'larında; Render'da
+kalması gereken İBB dışı bir ingestion job'ı yok.
+
+Çözüm: Render API'yi servis etmeye ve Gemini job'larını (`district-summary-generation`,
+`score-snapshot`) çalıştırmaya devam ediyor; İBB job'ları ise Türkiye'deki bir Mac'ten,
+**aynı Supabase veritabanına doğrudan** yazacak şekilde, launchd ile otomatik çalışıyor.
+
+- Render'da `Ingestion__IbbJobsEnabled=false` (bkz. adım 2.3 ve `render.yaml`). Bu ayar kapalıyken
+  API, İBB job'larını Hangfire'a kaydetmiyor **ve** Hangfire'ın veritabanında sakladığı eski
+  kayıtları da her açılışta siliyor (`RemoveIfExists`). Varsayılan `true`, yani yerel geliştirme
+  ve testler eskisi gibi Hangfire ile çalışıyor.
+- Mac tarafında `backend/src/SemtSkoru.Ingest` adlı küçük bir konsol uygulaması aynı job
+  sınıflarını bir kez çalıştırıp çıkıyor. Hangfire sunucusu başlatmıyor (aynı veritabanındaki
+  Render sunucusuyla iş kapışırdı), migration uygulamıyor (API de uygulamıyor; migration hâlâ
+  adım 1.4'teki gibi elle) ve en fazla 2 veritabanı bağlantısı kullanıyor (Supabase pooler'ın
+  proje genelindeki 15 bağlantı sınırının 8'i Render'da).
+- Zamanlama: her gün 09:00, 13:00 ve 19:00'da (yerel saat) `--due` ile çalışıyor. `--due`, bir
+  job'ı yalnızca o kaynağın veritabanındaki **son başarılı senkronizasyonu** yeterince eskiyse
+  çalıştırıyor (günlük ~20 saat, haftalık ~6,5 gün, aylık ~28 gün) — `/health/data`'nın baktığı
+  sinyalin aynısı, ayrı bir durum dosyası yok. Yani günün üç denemesinden ilk başarılı olan işi
+  yapıyor, sonrakiler saniyeler içinde "Nothing due" deyip çıkıyor; başarısız bir çalıştırma
+  ise bir sonraki saatte yeniden deneniyor. Mac uykudayken kaçan saat, uyanınca bir kez çalışıyor
+  (kapalıyken kaçanlar çalışmıyor, onları bir sonraki saat telafi ediyor).
+- Bir job yalnızca gerçekten en az bir ilçenin verisini yazdıysa başarılı sayılıyor; kaynağa
+  ulaşılamadıysa ya da hiçbir ilçe eşleşmediyse log'a `FAILED` satırı düşüyor ve çıkış kodu 1.
+- Bağlantı dizesi **yalnızca macOS Keychain'de** duruyor; repoda ya da diskte düz metin olarak
+  hiçbir yerde yok. launchd'nin çalıştırdığı küçük wrapper betiği onu her çalıştırmada
+  Keychain'den okuyup `ConnectionStrings__Default` olarak veriyor.
+- Kurulan dosyalar `~/Library/Application Support/SemtSkoru/ingest/` altında, repo'nun içinde
+  değil: macOS'un gizlilik korumaları launchd job'larının `~/Documents`'ı okumasını engelliyor.
+
+### Kurulum
+
+Ön koşul: .NET 10 SDK (`/usr/local/share/dotnet/dotnet`) ve bu repo'nun bir kopyası.
+
+1. Supabase bağlantı dizesini Keychain'e ekle (Render'daki `ConnectionStrings__Default` ile aynı,
+   adım 1.3'teki anahtar=değer formatı). Komut değeri iki kez sorar, böylece shell geçmişine
+   ya da diske hiç yazılmaz:
+
+   ```bash
+   security add-generic-password -s semtskoru-supabase -a "$USER" -w
+   ```
+
+2. Kur:
+
+   ```bash
+   scripts/local-ingestion/install.sh
+   ```
+
+   Betik runner'ı Release olarak derleyip `~/Library/Application Support/SemtSkoru/ingest/`'e
+   yayınlıyor, wrapper'ı ve `~/Library/LaunchAgents/com.semtskoru.ingest.plist`'i yazıp
+   launchd'ye yüklüyor, sonunda da `--list` ile (hiçbir job çalıştırmadan) veritabanı
+   bağlantısını kontrol edip her job'ın son başarılı senkronizasyonunu gösteriyor. Keychain
+   kaydı yoksa hiçbir şey kurmadan yukarıdaki komutu yazdırıp çıkıyor.
+
+3. İlk veriyi hemen çekmek için (sıradaki 09:00/13:00/19:00'u beklemeden):
+
+   ```bash
+   scripts/local-ingestion/run-now.sh
+   ```
+
+4. Render'da `Ingestion__IbbJobsEnabled=false` olduğundan emin ol (adım 2.3). Bir sonraki
+   deploy/yeniden başlatmada İBB job'ları Render'ın Hangfire'ından silinir.
+
+### Güncelleme
+
+Kodu güncelledikten sonra (`git pull`) aynı kurulum betiğini **yeniden çalıştırmak yeterli**:
+
+```bash
+scripts/local-ingestion/install.sh
+```
+
+Betik idempotent: mevcut LaunchAgent'ı durdurup runner'ı yeniden yayınlıyor, plist'i yeniden
+yazıp yeniden yüklüyor. O an bir çalıştırma sürüyorsa hiçbir şeye dokunmadan çıkıyor; birkaç
+dakika sonra tekrar dene. Bağlantı dizesi değişirse: `security add-generic-password -U -s
+semtskoru-supabase -a "$USER" -w` (`-U` mevcut kaydı günceller).
+
+### Log ve durum
+
+```bash
+tail -f ~/Library/Logs/SemtSkoru/ingest.log
+"$HOME/Library/Application Support/SemtSkoru/ingest/run-ingest.sh" --list
+launchctl print gui/$(id -u)/com.semtskoru.ingest   # launchd'nin gözünden: state, last exit code
+```
+
+Her job için bir `starting` ve bir `OK - N district reading(s) updated from M source record(s)`
+ya da `FAILED after Xs - <neden>` satırı var; her çalıştırma `Done: ...` ile bitiyor. Ayrıntılı
+hata (stack trace) aynı log'da `IngestionRunFailed` satırında. Veri yine de bayatlarsa
+`/health/data` monitörü (bölüm 4) e-posta atar — Mac kapalı kaldıysa ya da internet yoksa ilk
+bunu fark edersin.
+
+### Elle çalıştırma
+
+```bash
+scripts/local-ingestion/run-now.sh                  # zamanlanmış çalıştırmanın aynısı (--due), arka planda, log'a
+scripts/local-ingestion/run-now.sh all              # hepsini şimdi, bu terminalde (--due'yu yok sayar)
+scripts/local-ingestion/run-now.sh parking traffic  # yalnızca bunları, bu terminalde
+scripts/local-ingestion/run-now.sh --list           # durum, hiçbir şey çalıştırmaz
+```
+
+İlki `launchctl kickstart gui/$(id -u)/com.semtskoru.ingest` ile aynı şey. Job adları:
+`air-quality`, `parking`, `health-access`, `transit-access`, `green-space`, `traffic`.
+
+### Kaldırma
+
+```bash
+scripts/local-ingestion/uninstall.sh
+```
+
+LaunchAgent'ı durdurup plist'i ve yayınlanan runner'ı siliyor; Keychain kaydını ve log dosyasını
+bırakıyor (silmek için komutları yazdırıyor). **Dikkat:** kaldırdıktan sonra İBB verisini çeken
+hiçbir şey kalmaz (Render İBB'ye ulaşamıyor); hava kalitesi ve otopark birkaç gün içinde bayatlar.
 
 ## Supabase güvenlik: Row Level Security
 

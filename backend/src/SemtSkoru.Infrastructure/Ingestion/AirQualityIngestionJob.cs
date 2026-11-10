@@ -23,13 +23,16 @@ public sealed class AirQualityIngestionJob(
     IAirQualityApiClient client,
     AppDbContext db,
     ILogger<AirQualityIngestionJob> logger,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : IIngestionJob
 {
     private const string SourceName = "İBB Hava Kalitesi İstasyon Ölçüm Sonuçları Web Servisi";
     private const string SourceUrl = "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIByStationId";
     private const string SourceLicense = "İstanbul Büyükşehir Belediyesi Açık Veri Lisansı";
 
-    public async Task RunAsync(CancellationToken ct)
+    /// <summary>Hangfire's entry point (see Program.cs); the outcome only matters to SemtSkoru.Ingest.</summary>
+    public async Task RunAsync(CancellationToken ct) => await IngestAsync(ct);
+
+    public async Task<IngestionOutcome> IngestAsync(CancellationToken ct)
     {
         var neighborhoods = await db.Neighborhoods.ToListAsync(ct);
 
@@ -40,8 +43,7 @@ public sealed class AirQualityIngestionJob(
         }
         catch (Exception ex)
         {
-            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.AirQuality, "station list fetch failed");
-            return;
+            return IngestionOutcome.RunFailed(logger, ex, IngestionSyncStatusReader.AirQuality, "station list fetch failed");
         }
 
         var ingestedCount = 0;
@@ -65,11 +67,8 @@ public sealed class AirQualityIngestionJob(
 
         // The station list can load while every per-station reading fetch then times out - each
         // of those is only a per-station warning above, so without this the run would fail
-        // without its run-level event.
-        if (ingestedCount == 0)
-        {
-            IngestionLog.RunFailed(logger, null, IngestionSyncStatusReader.AirQuality, "no district received a reading");
-        }
+        // without its run-level event (Completed emits it when ingestedCount is 0).
+        return IngestionOutcome.Completed(logger, IngestionSyncStatusReader.AirQuality, stations.Count, ingestedCount);
     }
 
     /// <returns>Whether a reading was written for this neighborhood.</returns>
