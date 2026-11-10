@@ -17,8 +17,6 @@ public class RateLimitingTests : IAsyncLifetime
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgis/postgis:16-3.4")
         .Build();
 
-    private WebApplicationFactory<Program> _factory = null!;
-
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
@@ -26,20 +24,18 @@ public class RateLimitingTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(_postgres.GetConnectionString(), o => o.UseNetTopologySuite())
             .Options;
-        await using (var context = new AppDbContext(options))
-        {
-            await context.Database.MigrateAsync();
-        }
+        await using var context = new AppDbContext(options);
+        await context.Database.MigrateAsync();
+    }
 
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+    public async Task DisposeAsync() => await _postgres.DisposeAsync();
+
+    // Keep the factory owned by the individual test, not the xUnit test instance lifecycle.
+    // This guarantees it stays alive until every request has completed and makes its disposal
+    // order explicit, including when tests are run concurrently with other test classes.
+    private WebApplicationFactory<Program> CreateFactory() =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString()));
-    }
-
-    public async Task DisposeAsync()
-    {
-        await _factory.DisposeAsync();
-        await _postgres.DisposeAsync();
-    }
 
     // Mirrors how a single "kart" page render actually calls the API (see
     // web/app/mahalle/[id]/kart/route.tsx and web/app/karsilastir/kart/route.tsx: two
@@ -49,7 +45,8 @@ public class RateLimitingTests : IAsyncLifetime
     [Fact]
     public async Task Realistic_concurrent_ssr_style_traffic_is_not_rate_limited()
     {
-        var client = _factory.CreateClient();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
 
         var pageLoads = Enumerable.Range(0, 5).SelectMany(_ => new[]
         {
@@ -65,7 +62,8 @@ public class RateLimitingTests : IAsyncLifetime
     [Fact]
     public async Task Compare_per_IP_window_rejects_a_tight_request_loop_with_429_and_Retry_After()
     {
-        var client = _factory.CreateClient();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
 
         // The "compare" policy allows 30 requests/minute per client IP (see
         // RateLimitingExtensions.ComparePermitLimitPerMinute) - a real user comparing two
@@ -104,7 +102,8 @@ public class RateLimitingTests : IAsyncLifetime
     [Fact]
     public async Task A_burst_far_beyond_the_db_pool_concurrency_budget_gets_some_429s_not_a_pool_exhaustion_crash()
     {
-        var client = _factory.CreateClient();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
 
         // PermitLimit=5 + QueueLimit=10 admits at most 15 requests at once system-wide,
         // regardless of caller IP (this is the backstop that actually protects the
