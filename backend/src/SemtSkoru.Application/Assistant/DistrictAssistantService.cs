@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using SemtSkoru.Application.Localization;
 using SemtSkoru.Application.Scoring;
@@ -58,13 +59,22 @@ public sealed class DistrictAssistantService(
     // fail that check and get dropped as unverifiable - see this class's own remarks. Appended as
     // its own rule (not folded into the Turkish rule text above) so it's unmistakable and easy to
     // audit independently of the (deliberately still-Turkish, developer-authored) rules above it.
+    //
+    // Unlike the other three AI features, this one never asks the model to echo a dimension key
+    // back in a structured field - only "id" is validated - so the scores in the user prompt are
+    // keyed by their natural display name in the visitor's locale instead of by camelCase key
+    // (see BuildUserPrompt). Rule 6's last sentence just tells the model to keep using those
+    // words; there is no raw key in the prompt for it to copy any more.
     private static string BuildSystemInstruction(string locale) =>
         $$"""
         {{BaseSystemInstruction}}
         6. "reasoning" alanındaki serbest metni {{AiLocale.ToLanguageName(locale)}} dilinde yaz.
            Bunun dışındaki TÜM JSON anahtarları ve değerleri ("id", "confidence" gibi) verildiği
            gibi, DEĞİŞTİRMEDEN kalmalı - bunlar birer tanımlayıcı/sabit değerdir, çeviri konusu
-           değildir.
+           değildir. İlçe verilerindeki skorlar, her boyutun {{AiLocale.ToLanguageName(locale)}}
+           doğal adıyla verilmiştir; "reasoning" metninde bir skordan bahsederken o adı aynen
+           kullan (ör. "84 {{AiLocale.DimensionDisplayName("greenSpace", locale)}} skoru").
+        7. {{AiProse.DistrictNameSpacingRule}}
         """;
 
     public async Task<AssistantOutcome> GetRecommendationsAsync(string userQuery, string locale, CancellationToken ct)
@@ -83,8 +93,9 @@ public sealed class DistrictAssistantService(
         var names = await directory.GetAllNamesAsync(ct);
         var scores = await scoringService.GetAllScoresAsync(ct);
 
-        var userPrompt = BuildUserPrompt(trimmedQuery, names, scores);
-        var systemInstruction = BuildSystemInstruction(AiLocale.NormalizeOrDefault(locale));
+        var normalizedLocale = AiLocale.NormalizeOrDefault(locale);
+        var userPrompt = BuildUserPrompt(trimmedQuery, names, scores, normalizedLocale);
+        var systemInstruction = BuildSystemInstruction(normalizedLocale);
 
         string rawResponse;
         try
@@ -117,14 +128,15 @@ public sealed class DistrictAssistantService(
     private static string BuildUserPrompt(
         string userQuery,
         IReadOnlyDictionary<string, string> names,
-        IReadOnlyDictionary<string, NeighborhoodScoreResult> scores)
+        IReadOnlyDictionary<string, NeighborhoodScoreResult> scores,
+        string locale)
     {
-        var districts = names
+        var districts = new JsonArray(names
             .OrderBy(kv => kv.Value, StringComparer.CurrentCultureIgnoreCase)
-            .Select(kv => ToContext(kv.Key, kv.Value, scores.GetValueOrDefault(kv.Key)))
-            .ToList();
+            .Select(kv => (JsonNode?)ToContext(kv.Key, kv.Value, scores.GetValueOrDefault(kv.Key), locale))
+            .ToArray());
 
-        var districtsJson = JsonSerializer.Serialize(districts, SerializerOptions);
+        var districtsJson = districts.ToJsonString(SerializerOptions);
 
         return $"""
             Kullanıcının isteği: "{userQuery}"
@@ -134,16 +146,45 @@ public sealed class DistrictAssistantService(
             """;
     }
 
-    private static DistrictContext ToContext(string id, string name, NeighborhoodScoreResult? score) => new(
-        Id: id,
-        Name: name,
-        OverallScore: score?.Overall?.Value,
-        AirQuality: score?.AirQuality.Value?.Value,
-        GreenSpace: score?.GreenSpace.Value?.Value,
-        Transportation: score?.Transportation.Value?.Value,
-        Parking: score?.Parking.Value?.Value,
-        HealthAccess: score?.HealthAccess.Value?.Value,
-        TransitAccess: score?.TransitAccess.Value?.Value);
+    // One district's prompt entry, with every score keyed by its natural display name in the
+    // visitor's locale ("yeşil alan": 84 / "green space": 84) rather than by camelCase key
+    // ("greenSpace": 84). This is the fix for a live-observed bug (2026-11-10): with camelCase
+    // keys, the model explained a Turkish recommendation as "Fatih, 84 greenSpace skoru ile ...
+    // ve 100 healthAccess skoru ile ..." - it cited the score by the only name it had been given
+    // for it. The DistrictSummary/Trend/Comparison prompts cope with the same problem by
+    // instruction alone (AiLocale.DimensionDisplayNamesLine), because their model output has to
+    // echo the camelCase key back in a validated "dimension" field; this feature validates only
+    // "id", so it can do better and never show the model a camelCase key at all.
+    //
+    // A JsonObject (not a record with [JsonPropertyName]) because the key names are
+    // locale-dependent; it also serializes its properties in exactly the order they are added.
+    // Values are the same real numbers as before, null still meaning "veri yok".
+    private static JsonObject ToContext(string id, string name, NeighborhoodScoreResult? score, string locale)
+    {
+        var context = new JsonObject
+        {
+            ["id"] = id,
+            ["name"] = name,
+            [AiLocale.OverallScoreDisplayName(locale)] = score?.Overall?.Value,
+        };
+
+        (string Key, int? Value)[] dimensions =
+        [
+            ("airQuality", score?.AirQuality.Value?.Value),
+            ("greenSpace", score?.GreenSpace.Value?.Value),
+            ("transportation", score?.Transportation.Value?.Value),
+            ("parking", score?.Parking.Value?.Value),
+            ("healthAccess", score?.HealthAccess.Value?.Value),
+            ("transitAccess", score?.TransitAccess.Value?.Value),
+        ];
+
+        foreach (var (key, value) in dimensions)
+        {
+            context[AiLocale.DimensionDisplayName(key, locale)] = value;
+        }
+
+        return context;
+    }
 
     private static ModelResponsePayload? TryParseModelResponse(string rawResponse)
     {
@@ -225,21 +266,13 @@ public sealed class DistrictAssistantService(
         return result;
     }
 
+    // PromptJsonEncoder keeps "Kadıköy"/"yeşil alan" as real letters in the prompt instead of
+    // "\u0131"-style escapes - see AiProse.PromptJsonEncoder. Has no effect on parsing the reply.
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        Encoder = AiProse.PromptJsonEncoder,
     };
-
-    private sealed record DistrictContext(
-        [property: JsonPropertyName("id")] string Id,
-        [property: JsonPropertyName("name")] string Name,
-        [property: JsonPropertyName("overallScore")] int? OverallScore,
-        [property: JsonPropertyName("airQuality")] int? AirQuality,
-        [property: JsonPropertyName("greenSpace")] int? GreenSpace,
-        [property: JsonPropertyName("transportation")] int? Transportation,
-        [property: JsonPropertyName("parking")] int? Parking,
-        [property: JsonPropertyName("healthAccess")] int? HealthAccess,
-        [property: JsonPropertyName("transitAccess")] int? TransitAccess);
 
     private sealed record ModelResponsePayload(
         [property: JsonPropertyName("recommendations")] List<ModelRecommendationPayload>? Recommendations,
