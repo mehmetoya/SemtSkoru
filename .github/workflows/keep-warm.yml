@@ -1,4 +1,4 @@
-name: Keep-warm (free-tier cold-start avoidance + ingestion catch-up)
+name: Keep-warm (free-tier cold-start avoidance + Gemini job catch-up)
 
 # The API runs on Render's free tier, which stops the container after ~15 minutes of no
 # HTTP traffic - the next real visitor then eats a cold start (usually ~30-60s, but seen
@@ -9,11 +9,15 @@ name: Keep-warm (free-tier cold-start avoidance + ingestion catch-up)
 # few hours, so on its own it cannot keep the container warm. The primary pinger is an
 # external uptime monitor hitting /health every 5 minutes (see docs/deployment.md, section 4).
 #
-# It still matters for ingestion: Hangfire's recurring-job scheduler only fires while the
-# process is running, so a container asleep at its scheduled cron time (see Program.cs) would
-# simply miss it - on startup, HangfireServer checks each recurring job's next-execution time
-# against now and immediately enqueues anything overdue, so any of these pings is enough to
-# keep ingestion running without an always-on (paid) instance.
+# It still matters for the recurring jobs that run ON Render - today only the Gemini ones
+# (district-summary-generation, score-snapshot): Hangfire's recurring-job scheduler only fires
+# while the process is running, so a container asleep at its scheduled cron time (see Program.cs)
+# would simply miss it - on startup, HangfireServer checks each recurring job's next-execution
+# time against now and immediately enqueues anything overdue.
+#
+# It does NOT keep İBB data ingestion running any more: İBB only accepts Turkish IPs, so those six
+# jobs are disabled on Render (Ingestion__IbbJobsEnabled=false in render.yaml) and run from a Mac
+# in Turkey instead (scripts/local-ingestion, docs/deployment.md).
 on:
   schedule:
     - cron: "*/10 * * * *"

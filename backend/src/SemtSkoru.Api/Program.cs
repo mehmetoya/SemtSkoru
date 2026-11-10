@@ -3,10 +3,8 @@ using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NetTopologySuite.IO.Converters;
-using Npgsql;
 using Scalar.AspNetCore;
 using SemtSkoru.Api.Endpoints;
 using SemtSkoru.Api.RateLimiting;
@@ -17,6 +15,7 @@ using SemtSkoru.Application.Search;
 using SemtSkoru.Application.Summaries;
 using SemtSkoru.Application.Trends;
 using SemtSkoru.Infrastructure.Comparisons;
+using SemtSkoru.Infrastructure.DependencyInjection;
 using SemtSkoru.Infrastructure.ExternalApis;
 using SemtSkoru.Infrastructure.Ingestion;
 using SemtSkoru.Infrastructure.Persistence;
@@ -35,8 +34,19 @@ var rawConnectionString = builder.Configuration.GetConnectionString("Default")
 // total; live-verified a deploy crash ("EMAXCONNSESSION ... limited to pool_size: 15")
 // because EF Core's and Hangfire's independent ADO.NET pools each default to a max of
 // 100. Both use this same capped string, so they share Npgsql's process-wide pool for
-// it and can never together approach the server-side limit.
-var connectionString = new NpgsqlConnectionStringBuilder(rawConnectionString) { MaxPoolSize = 8 }.ConnectionString;
+// it and can never together approach the server-side limit. The 15 is shared with every OTHER
+// process on the project too - notably the local İBB ingestion runner (SemtSkoru.Ingest, capped
+// at 2), so 8 here leaves headroom for it plus ad-hoc dashboard/psql sessions.
+var connectionString = InfrastructureServiceCollectionExtensions.WithMaxPoolSize(rawConnectionString, maxPoolSize: 8);
+
+// İBB's servers (api.ibb.gov.tr, data.ibb.gov.tr) accept TCP connections only from Turkish IP
+// addresses (live-verified 2026-11-10: probes from the US, Canada, Germany, the Netherlands,
+// France, the UK, Poland, Bulgaria, Romania and Singapore all timed out; only Turkey connected).
+// The production host (Render, Oregon) therefore can't run the six İBB ingestion jobs - they'd
+// time out on every run - so production sets this to false (render.yaml) and runs them from a
+// machine in Turkey with SemtSkoru.Ingest instead (docs/deployment.md). Defaults to true so local
+// development and the test suite keep the Hangfire-scheduled behaviour.
+var ibbIngestionJobsEnabled = builder.Configuration.GetValue("Ingestion:IbbJobsEnabled", defaultValue: true);
 
 // Frontend (Next.js) and backend run on different ports/origins in dev; without this,
 // every browser fetch from web/ silently fails CORS (curl/jsdom tests never surfaced it --
@@ -67,29 +77,15 @@ builder.Services.AddResponseCompression(options =>
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new GeoJsonConverterFactory()));
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.UseNetTopologySuite()));
+builder.Services.AddAppDbContext(connectionString);
 
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddHttpClient<IAirQualityApiClient, AirQualityApiClient>();
-builder.Services.AddScoped<AirQualityIngestionJob>();
 
-// Longer timeout: the green space source is a ~53 MB city-wide GeoJSON download.
-builder.Services.AddHttpClient<IGreenSpaceApiClient, GreenSpaceApiClient>(c => c.Timeout = TimeSpan.FromMinutes(3));
-builder.Services.AddScoped<GreenSpaceIngestionJob>();
-
-// Longer timeout still: the traffic source streams a ~140 MB CSV (one month, hourly, city-wide).
-builder.Services.AddHttpClient<ITrafficDataClient, TrafficDataClient>(c => c.Timeout = TimeSpan.FromMinutes(5));
-builder.Services.AddScoped<TrafficIngestionJob>();
-
-builder.Services.AddHttpClient<IParkingApiClient, ParkingApiClient>();
-builder.Services.AddScoped<ParkingIngestionJob>();
-
-builder.Services.AddHttpClient<IHealthAccessApiClient, HealthAccessApiClient>();
-builder.Services.AddScoped<HealthAccessIngestionJob>();
-
-builder.Services.AddHttpClient<ITransitAccessApiClient, TransitAccessApiClient>();
-builder.Services.AddScoped<TransitAccessIngestionJob>();
+// The six İBB ingestion jobs and their HttpClients (timeouts included) live in Infrastructure so
+// the standalone SemtSkoru.Ingest runner registers exactly the same thing. Registered even when
+// Ingestion:IbbJobsEnabled is false: a job instance Hangfire had already enqueued before the
+// switch flipped must still resolve (it then just times out harmlessly) rather than crash.
+builder.Services.AddIbbIngestionJobs();
 
 // Backs GET/HEAD /health/data (see Endpoints/DataFreshnessHealthEndpoint.cs).
 builder.Services.AddScoped<IngestionSyncStatusReader>();
@@ -198,7 +194,10 @@ app.UseRateLimiter();
 
 // Cheap liveness ping: a free-tier host that spins the container down after idle time
 // (e.g. Render) wakes it back up on any request, at which point Hangfire's own recurring-job
-// scheduler catches up on whatever was missed while asleep. See .github/workflows/keep-warm.yml.
+// scheduler catches up on whatever was missed while asleep - in production that's only the
+// Gemini jobs (district-summary-generation, score-snapshot); the İBB ingestion jobs run from a
+// machine in Turkey instead (see Ingestion:IbbJobsEnabled above), so these pings no longer keep
+// ingestion running. See .github/workflows/keep-warm.yml.
 // /health/live is the same check under the path an external uptime monitor (UptimeRobot)
 // was already configured to poll - added as an alias rather than asking that config to change.
 // Both verbs are mapped explicitly: Minimal APIs don't auto-answer HEAD for a GET-only
@@ -223,49 +222,62 @@ app.MapAssistantEndpoints();
 
 var recurringJobs = app.Services.GetRequiredService<IRecurringJobManager>();
 
-// The six ingestion schedules below must stay in step with SourceCadenceSync.ExpectedSyncInterval
-// (Domain/SourceCadence.cs) for the cadence each job writes - Live = daily, Periodic = weekly,
-// StaticSnapshot = monthly - since that's what /health/data judges "overdue" against.
+if (ibbIngestionJobsEnabled)
+{
+    // The six ingestion schedules below must stay in step with SourceCadenceSync.ExpectedSyncInterval
+    // (Domain/SourceCadence.cs) for the cadence each job writes - Live = daily, Periodic = weekly,
+    // StaticSnapshot = monthly - since that's what /health/data judges "overdue" against.
 
-recurringJobs.AddOrUpdate<AirQualityIngestionJob>(
-    "air-quality-ingestion",
-    job => job.RunAsync(CancellationToken.None),
-    Cron.Daily());
+    recurringJobs.AddOrUpdate<AirQualityIngestionJob>(
+        "air-quality-ingestion",
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Daily());
 
-recurringJobs.AddOrUpdate<GreenSpaceIngestionJob>(
-    "green-space-ingestion",
-    job => job.RunAsync(CancellationToken.None),
-    Cron.Weekly());
+    recurringJobs.AddOrUpdate<GreenSpaceIngestionJob>(
+        "green-space-ingestion",
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Weekly());
 
-// Monthly, not because the January 2025 snapshot is expected to change, but so an eventual
-// real update from İBB (the dataset's own notes say more will come) is picked up automatically.
-recurringJobs.AddOrUpdate<TrafficIngestionJob>(
-    "traffic-ingestion",
-    job => job.RunAsync(CancellationToken.None),
-    Cron.Monthly());
+    // Monthly, not because the January 2025 snapshot is expected to change, but so an eventual
+    // real update from İBB (the dataset's own notes say more will come) is picked up automatically.
+    recurringJobs.AddOrUpdate<TrafficIngestionJob>(
+        "traffic-ingestion",
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Monthly());
 
-// Daily, matching air quality's cadence - parking occupancy is a fast-changing, live signal,
-// not a slow-moving one like green space or the frozen traffic snapshot.
-recurringJobs.AddOrUpdate<ParkingIngestionJob>(
-    "parking-ingestion",
-    job => job.RunAsync(CancellationToken.None),
-    Cron.Daily());
+    // Daily, matching air quality's cadence - parking occupancy is a fast-changing, live signal,
+    // not a slow-moving one like green space or the frozen traffic snapshot.
+    recurringJobs.AddOrUpdate<ParkingIngestionJob>(
+        "parking-ingestion",
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Daily());
 
-// Weekly, matching green space's cadence, not parking's/air quality's daily one - İBB's health
-// access index is a slow-changing published index (its GeoJSON resource was last modified
-// 2024-02-01, per İBB's own CKAN metadata), not a live feed.
-recurringJobs.AddOrUpdate<HealthAccessIngestionJob>(
-    "health-access-ingestion",
-    job => job.RunAsync(CancellationToken.None),
-    Cron.Weekly());
+    // Weekly, matching green space's cadence, not parking's/air quality's daily one - İBB's health
+    // access index is a slow-changing published index (its GeoJSON resource was last modified
+    // 2024-02-01, per İBB's own CKAN metadata), not a live feed.
+    recurringJobs.AddOrUpdate<HealthAccessIngestionJob>(
+        "health-access-ingestion",
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Weekly());
 
-// Weekly, matching green space's/health access's cadence - the İETT bus stop dataset's own CKAN
-// metadata shows a recent update (2026-03-18), but physical bus stop infrastructure changes
-// slowly in practice, not a live feed like air quality/parking occupancy.
-recurringJobs.AddOrUpdate<TransitAccessIngestionJob>(
-    "transit-access-ingestion",
-    job => job.RunAsync(CancellationToken.None),
-    Cron.Weekly());
+    // Weekly, matching green space's/health access's cadence - the İETT bus stop dataset's own CKAN
+    // metadata shows a recent update (2026-03-18), but physical bus stop infrastructure changes
+    // slowly in practice, not a live feed like air quality/parking occupancy.
+    recurringJobs.AddOrUpdate<TransitAccessIngestionJob>(
+        "transit-access-ingestion",
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Weekly());
+}
+else
+{
+    // Not calling AddOrUpdate is not enough: Hangfire persists recurring jobs in its own tables
+    // (schema "hangfire"), so a previous deploy's registrations would keep firing - and timing
+    // out against İBB - forever. Removing them by ID is idempotent, so this runs on every boot.
+    foreach (var ibbJob in IbbIngestionJobCatalog.All)
+    {
+        recurringJobs.RemoveIfExists(ibbJob.RecurringJobId);
+    }
+}
 
 // Weekly - deliberately the SAME bucket as green space/health access/transit access above, not
 // daily like air quality/parking. This is the one recurring job whose cost is measured in a
