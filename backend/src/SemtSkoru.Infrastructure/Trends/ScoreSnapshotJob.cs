@@ -188,8 +188,14 @@ public sealed class ScoreSnapshotJob(
             {
                 ct.ThrowIfCancellationRequested();
 
+                // Same rule as DistrictSummaryGenerationJob and ComparisonSummaryOrchestrator: an
+                // unchanged comparison only justifies a skip if the stored text still passes
+                // AiProse.IsPresentable, so a row saved before DistrictTrendService started
+                // rejecting raw dimension keys and run-together names gets replaced on this run.
                 var existing = existingTrends.GetValueOrDefault((id, locale));
-                if (existing is not null && existing.ComparisonSignature == signature)
+                if (existing is not null
+                    && existing.ComparisonSignature == signature
+                    && AiProse.IsPresentable(existing.SummaryText, name))
                 {
                     logger.LogInformation(
                         "Skipping {Locale} district trend for {NeighborhoodId}: comparison unchanged since {GeneratedAt}",
