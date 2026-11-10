@@ -8,6 +8,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NetTopologySuite.IO.Converters;
 using Npgsql;
 using Scalar.AspNetCore;
+using SemtSkoru.Api.Boundaries;
 using SemtSkoru.Api.Endpoints;
 using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Assistant;
@@ -51,8 +52,8 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 // observed leak.
 builder.Services.AddProblemDetails();
 
-// /api/neighborhoods ships full GeoJSON boundary polygons for all 39 districts in one
-// response - JSON/GeoJSON compresses very well (typically 70-90% smaller with gzip/Brotli).
+// /api/neighborhoods ships GeoJSON boundary polygons for all 39 districts in one response
+// (display-simplified - see BoundarySimplifier) - JSON/GeoJSON compresses very well (typically 70-90% smaller with gzip/Brotli).
 // Safe over HTTPS here specifically because these are public, unauthenticated, non-personalized
 // responses with no secret/user-reflected content - the usual HTTPS-compression concern
 // (CRIME/BREACH, which needs a secret mixed with attacker-influenced input in the same
@@ -102,6 +103,9 @@ builder.Services.AddScoped<NeighborhoodScoringRepository>();
 builder.Services.AddScoped<INeighborhoodScoringRepository>(sp => new CachedNeighborhoodScoringRepository(
     sp.GetRequiredService<NeighborhoodScoringRepository>(), sp.GetRequiredService<IMemoryCache>()));
 builder.Services.AddScoped<INeighborhoodScoringService, NeighborhoodScoringService>();
+// GET /api/neighborhoods' display-simplified boundaries, cached in the same IMemoryCache - see
+// SimplifiedNeighborhoodCache/BoundarySimplifier. Scoped because it takes the Scoped AppDbContext.
+builder.Services.AddScoped<SimplifiedNeighborhoodCache>();
 
 // AI Semt Asistanı - see GeminiClient.cs for the model/endpoint and
 // RateLimiting/RateLimitingExtensions.cs for why this gets its own dedicated rate-limit policy.
