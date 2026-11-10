@@ -55,7 +55,7 @@ public sealed class ParkingIngestionJob(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to fetch İSPARK parking facilities; skipping this run");
+            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.Parking, "İSPARK parking facility fetch failed");
             return;
         }
 

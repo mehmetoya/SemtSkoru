@@ -37,13 +37,13 @@ public sealed class GreenSpaceIngestionJob(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Green space fetch failed; skipping this run");
+            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.GreenSpace, "park dataset fetch failed");
             return;
         }
 
         if (parks.Count == 0)
         {
-            logger.LogWarning("Green space source returned no parks at all; skipping this run");
+            IngestionLog.RunFailed(logger, null, IngestionSyncStatusReader.GreenSpace, "source returned no parks at all");
             return;
         }
 

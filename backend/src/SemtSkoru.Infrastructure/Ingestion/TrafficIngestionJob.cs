@@ -69,7 +69,7 @@ public sealed class TrafficIngestionJob(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Traffic data fetch failed; skipping this run");
+            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.Traffic, "traffic CSV fetch failed");
             return;
         }
 

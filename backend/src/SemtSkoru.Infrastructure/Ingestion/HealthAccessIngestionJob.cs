@@ -55,7 +55,7 @@ public sealed class HealthAccessIngestionJob(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to fetch İBB health access index; skipping this run");
+            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.HealthAccess, "İBB health access index fetch failed");
             return;
         }
 

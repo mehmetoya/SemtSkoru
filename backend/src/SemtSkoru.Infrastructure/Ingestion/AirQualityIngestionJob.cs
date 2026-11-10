@@ -40,10 +40,11 @@ public sealed class AirQualityIngestionJob(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to fetch air quality station list; skipping this run");
+            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.AirQuality, "station list fetch failed");
             return;
         }
 
+        var ingestedCount = 0;
         foreach (var neighborhood in neighborhoods)
         {
             var matchingStations = stations
@@ -56,11 +57,23 @@ public sealed class AirQualityIngestionJob(
                 continue;
             }
 
-            await IngestOneAsync(neighborhood.Id, matchingStations, ct);
+            if (await IngestOneAsync(neighborhood.Id, matchingStations, ct))
+            {
+                ingestedCount++;
+            }
+        }
+
+        // The station list can load while every per-station reading fetch then times out - each
+        // of those is only a per-station warning above, so without this the run would fail
+        // without its run-level event.
+        if (ingestedCount == 0)
+        {
+            IngestionLog.RunFailed(logger, null, IngestionSyncStatusReader.AirQuality, "no district received a reading");
         }
     }
 
-    private async Task IngestOneAsync(string neighborhoodId, IReadOnlyList<AirQualityStationDto> stations, CancellationToken ct)
+    /// <returns>Whether a reading was written for this neighborhood.</returns>
+    private async Task<bool> IngestOneAsync(string neighborhoodId, IReadOnlyList<AirQualityStationDto> stations, CancellationToken ct)
     {
         var readings = new List<AirQualityReadingDto>();
         foreach (var station in stations)
@@ -82,7 +95,7 @@ public sealed class AirQualityIngestionJob(
         if (readings.Count == 0)
         {
             logger.LogWarning("Air quality source returned no data for neighborhood {NeighborhoodId}", neighborhoodId);
-            return;
+            return false;
         }
 
         // A district with multiple real stations gets the average of all of them rather than
@@ -119,5 +132,6 @@ public sealed class AirQualityIngestionJob(
         }
 
         await db.SaveChangesAsync(ct);
+        return true;
     }
 }
