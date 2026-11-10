@@ -91,6 +91,9 @@ builder.Services.AddScoped<HealthAccessIngestionJob>();
 builder.Services.AddHttpClient<ITransitAccessApiClient, TransitAccessApiClient>();
 builder.Services.AddScoped<TransitAccessIngestionJob>();
 
+// Backs GET/HEAD /health/data (see Endpoints/DataFreshnessHealthEndpoint.cs).
+builder.Services.AddScoped<IngestionSyncStatusReader>();
+
 // CachedNeighborhoodScoringRepository wraps the real repository with a short in-process cache -
 // see its remarks for why IMemoryCache (not a distributed cache) is the right call for a
 // single-instance free-tier deployment.
@@ -207,10 +210,22 @@ var healthHandler = () => Results.Ok();
 app.MapMethods("/health", ["GET", "HEAD"], healthHandler).DisableRateLimiting();
 app.MapMethods("/health/live", ["GET", "HEAD"], healthHandler).DisableRateLimiting();
 
+// Data-freshness check for a SECOND uptime monitor (docs/deployment.md, section 4): unlike the
+// two liveness pings above it reads the DB (one small query, result cached for 30s), and answers
+// 503 when any ingestion job's last successful sync is overdue for its cadence - so a job that
+// keeps failing and skipping (İBB timing out from Render's region) emails someone instead of
+// silently leaving the UI's data to go Stale. Same GET+HEAD mapping and rate-limit exemption as
+// above, for the same UptimeRobot reasons.
+app.MapDataFreshnessHealthEndpoint();
+
 app.MapNeighborhoodEndpoints();
 app.MapAssistantEndpoints();
 
 var recurringJobs = app.Services.GetRequiredService<IRecurringJobManager>();
+
+// The six ingestion schedules below must stay in step with SourceCadenceSync.ExpectedSyncInterval
+// (Domain/SourceCadence.cs) for the cadence each job writes - Live = daily, Periodic = weekly,
+// StaticSnapshot = monthly - since that's what /health/data judges "overdue" against.
 
 recurringJobs.AddOrUpdate<AirQualityIngestionJob>(
     "air-quality-ingestion",

@@ -79,7 +79,7 @@ public sealed class TransitAccessIngestionJob(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to fetch İETT bus stop data; skipping this run");
+            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.TransitAccess, "İETT bus stop data fetch failed");
             return;
         }
 

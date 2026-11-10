@@ -132,6 +132,29 @@ kısıtlıyor; `keep-warm.yml` "her 10 dakika" diye ayarlı olsa da pratikte bir
 3. Kaydet. Monitör her 5 dakikada bir istek atar (Render'ın ~15 dakikalık penceresinin
    içinde), servis düşerse de e-posta ile haber verir.
 
+**İkinci monitör — veri bayatladığında e-posta:** Ingestion job'ları (hava kalitesi,
+otopark, yeşil alan, sağlık erişimi, toplu taşıma, trafik) bir çalıştırmada kaynağa
+ulaşamazsa (örn. İBB sunucuları Render'ın bölgesinden zaman aşımına düşüyorsa) uyarı loglayıp
+sessizce bir sonraki çalıştırmayı bekliyor; yukarıdaki `/health` monitörü bunu görmez. Bunun
+için ayrı bir endpoint var: `/health/data`, her kaynağın **son başarılı senkronizasyon**
+zamanına bakıyor (veri setinin kendi yayın tarihine değil — trafik Ocak 2025'te donmuş bir
+kesit, sağlık indeksi 2024 tarihli, bunlar normal). Bir kaynak kendi takvimine göre gecikmişse
+(günlük job'lar 2,5 gün, haftalıklar 14,5 gün, aylık trafik 62,5 gün — yani bir kaçırılmış
+çalıştırma tolere ediliyor) `503` döner, her şey yolundaysa `200`.
+
+1. UptimeRobot'ta **New Monitor** → tür **HTTP(s)**, URL: `<API_BASE_URL>/health/data`,
+   aralık **5 dakika** (daha sık gerekmez; endpoint sonucu zaten 30 sn önbellekliyor).
+2. Uyarı kişisi olarak e-postanı seç ve kaydet. Kaynaklardan biri gecikince monitör "down"
+   olur ve e-posta gelir; tüm kaynaklar yeniden senkronize olunca kendiliğinden "up"a döner.
+3. Hangi kaynağın geciktiğini görmek için aynı adresi tarayıcıda (GET) aç: JSON'da her kaynak
+   için `lastSuccessfulSyncAt`, `thresholdHours` ve `status` (`Ok` / `Overdue` /
+   `NeverSynced`) var. Render loglarında da her başarısız çalıştırma tek tip bir satırla
+   görünüyor: `IngestionRunFailed` diye aratman yeterli.
+
+Bu monitörü keep-warm monitörünün **yerine değil, yanına** ekle: `/health/data` veritabanına
+dokunuyor ve veri bayatken bilerek `503` veriyor; container'ı uyanık tutma işi `/health`'te
+kalmalı.
+
 ## Supabase güvenlik: Row Level Security
 
 Supabase her projede PostgREST'i (kendi otomatik REST API katmanı) varsayılan olarak açık
