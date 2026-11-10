@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SemtSkoru.Infrastructure.Ingestion;
@@ -144,5 +145,7 @@ public sealed class IngestionRunner(
     }
 
     private static string FormatInterval(TimeSpan interval) =>
-        interval.TotalHours < 48 ? $"{interval.TotalHours:0}h" : $"{interval.TotalDays:0.#}d";
+        interval.TotalHours < 48
+            ? interval.TotalHours.ToString("0", CultureInfo.InvariantCulture) + "h"
+            : interval.TotalDays.ToString("0.#", CultureInfo.InvariantCulture) + "d";
 }
