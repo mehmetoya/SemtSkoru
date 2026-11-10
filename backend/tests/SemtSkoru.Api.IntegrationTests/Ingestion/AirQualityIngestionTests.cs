@@ -98,7 +98,11 @@ public class AirQualityIngestionTests : IAsyncLifetime
         await using var context = CreateContext();
         var job = CreateJob(context, handler);
 
-        await job.RunAsync(CancellationToken.None);
+        var outcome = await job.IngestAsync(CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Equal(1, outcome.SourceRecords);
+        Assert.Equal(1, outcome.DistrictsUpdated);
 
         var readings = await context.AirQualityReadings.ToListAsync();
         var reading = Assert.Single(readings);
@@ -106,6 +110,24 @@ public class AirQualityIngestionTests : IAsyncLifetime
         Assert.Equal(42.0, reading.AqiIndex);
         Assert.Equal("İBB Hava Kalitesi İstasyon Ölçüm Sonuçları Web Servisi", reading.Source.SourceName);
         Assert.Equal(DataFreshnessStatus.Fresh, reading.Source.GetFreshness(DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public async Task IngestAsync_reports_failure_when_the_station_list_loads_but_every_reading_fetch_fails()
+    {
+        // The partial-outage shape: per-station failures are only warnings inside the job, so
+        // without a run-level outcome this would look like a successful run to the local runner.
+        var handler = RoutingHandler(
+            StationsJson((KadikoyStationId, KadikoyStationLocation)),
+            _ => throw new HttpRequestException("simulated reading timeout"));
+
+        await using var context = CreateContext();
+        var outcome = await CreateJob(context, handler).IngestAsync(CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(1, outcome.SourceRecords);
+        Assert.Contains("no district received a reading", outcome.FailureReason);
+        Assert.Empty(await context.AirQualityReadings.ToListAsync());
     }
 
     [Fact]
@@ -162,6 +184,12 @@ public class AirQualityIngestionTests : IAsyncLifetime
 
         Assert.Null(exception);
         Assert.Empty(await context.AirQualityReadings.ToListAsync());
+
+        // Same run via the runner-facing entry point: no exception reached Hangfire above,
+        // but the outcome must still report that nothing was ingested, and why.
+        var outcome = await CreateJob(context, handler).IngestAsync(CancellationToken.None);
+        Assert.False(outcome.Succeeded);
+        Assert.Contains("simulated network failure", outcome.FailureReason);
     }
 
     [Fact]

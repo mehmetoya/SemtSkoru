@@ -32,7 +32,7 @@ public sealed class HealthAccessIngestionJob(
     IHealthAccessApiClient client,
     AppDbContext db,
     ILogger<HealthAccessIngestionJob> logger,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : IIngestionJob
 {
     private const string SourceName = "İBB 34 Dakika İstanbul Sağlık İndeksi";
     private const string SourceUrl =
@@ -46,7 +46,10 @@ public sealed class HealthAccessIngestionJob(
 
     private static readonly CultureInfo Turkish = new("tr-TR");
 
-    public async Task RunAsync(CancellationToken ct)
+    /// <summary>Hangfire's entry point (see Program.cs); the outcome only matters to SemtSkoru.Ingest.</summary>
+    public async Task RunAsync(CancellationToken ct) => await IngestAsync(ct);
+
+    public async Task<IngestionOutcome> IngestAsync(CancellationToken ct)
     {
         IReadOnlyList<HealthWardFeatureDto> wards;
         try
@@ -55,12 +58,12 @@ public sealed class HealthAccessIngestionJob(
         }
         catch (Exception ex)
         {
-            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.HealthAccess, "İBB health access index fetch failed");
-            return;
+            return IngestionOutcome.RunFailed(logger, ex, IngestionSyncStatusReader.HealthAccess, "İBB health access index fetch failed");
         }
 
         var neighborhoods = await db.Neighborhoods.ToListAsync(ct);
         var now = timeProvider.GetUtcNow();
+        var districtsUpdated = 0;
 
         foreach (var neighborhood in neighborhoods)
         {
@@ -112,8 +115,11 @@ public sealed class HealthAccessIngestionJob(
                 existing.WardCount = populatedWards.Count;
                 existing.Source = metadata;
             }
+
+            districtsUpdated++;
         }
 
         await db.SaveChangesAsync(ct);
+        return IngestionOutcome.Completed(logger, IngestionSyncStatusReader.HealthAccess, wards.Count, districtsUpdated);
     }
 }

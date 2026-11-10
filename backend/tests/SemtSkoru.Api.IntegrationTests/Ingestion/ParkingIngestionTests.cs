@@ -60,7 +60,11 @@ public class ParkingIngestionTests : IAsyncLifetime
         await using var context = CreateContext();
         var job = CreateJob(context, handler);
 
-        await job.RunAsync(CancellationToken.None);
+        var outcome = await job.IngestAsync(CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Equal(3, outcome.SourceRecords);
+        Assert.Equal(2, outcome.DistrictsUpdated);
 
         var kadikoy = await context.ParkingReadings.SingleAsync(r => r.NeighborhoodId == "kadikoy");
         Assert.Equal(0.5, kadikoy.AverageAvailabilityRatio, precision: 3);
@@ -139,6 +143,29 @@ public class ParkingIngestionTests : IAsyncLifetime
         var exception = await Record.ExceptionAsync(() => job.RunAsync(CancellationToken.None));
 
         Assert.Null(exception);
+        Assert.Empty(await context.ParkingReadings.ToListAsync());
+
+        // Same run via the runner-facing entry point: no exception reached Hangfire above,
+        // but the outcome must still report that nothing was ingested, and why.
+        var outcome = await CreateJob(context, handler).IngestAsync(CancellationToken.None);
+        Assert.False(outcome.Succeeded);
+        Assert.Contains("simulated network failure", outcome.FailureReason);
+    }
+
+    [Fact]
+    public async Task IngestAsync_reports_failure_when_the_fetch_succeeds_but_no_district_matches()
+    {
+        // A reachable source that matches nothing still leaves every reading stale, so the local
+        // runner must not record it as a successful run.
+        var handler = FakeParkingHandler(FacilityJson("Somewhere Else", "NOT-A-DISTRICT", capacity: 100, emptyCapacity: 50));
+
+        await using var context = CreateContext();
+        var outcome = await CreateJob(context, handler).IngestAsync(CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(1, outcome.SourceRecords);
+        Assert.Equal(0, outcome.DistrictsUpdated);
+        Assert.Contains("no district received a reading", outcome.FailureReason);
         Assert.Empty(await context.ParkingReadings.ToListAsync());
     }
 

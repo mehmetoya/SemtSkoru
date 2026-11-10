@@ -89,7 +89,10 @@ public class GreenSpaceIngestionTests : IAsyncLifetime
         await using var context = CreateContext();
         var job = CreateJob(context, FakeGeoJsonHandler(features));
 
-        await job.RunAsync(CancellationToken.None);
+        var outcome = await job.IngestAsync(CancellationToken.None);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Equal(39, outcome.DistrictsUpdated); // city-wide nearest-park search reaches every district
 
         var readings = await context.GreenSpaceReadings.ToListAsync();
 
@@ -119,6 +122,12 @@ public class GreenSpaceIngestionTests : IAsyncLifetime
 
         Assert.Null(exception);
         Assert.Empty(await context.GreenSpaceReadings.ToListAsync());
+
+        // Same run via the runner-facing entry point: no exception reached Hangfire above,
+        // but the outcome must still report that nothing was ingested, and why.
+        var outcome = await CreateJob(context, handler).IngestAsync(CancellationToken.None);
+        Assert.False(outcome.Succeeded);
+        Assert.Contains("simulated network failure", outcome.FailureReason);
     }
 }
 

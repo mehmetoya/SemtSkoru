@@ -55,7 +55,7 @@ public sealed class TransitAccessIngestionJob(
     ITransitAccessApiClient client,
     AppDbContext db,
     ILogger<TransitAccessIngestionJob> logger,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : IIngestionJob
 {
     private const string SourceName = "İETT Otobüs Durakları Verisi";
     private const string SourceUrl =
@@ -70,7 +70,10 @@ public sealed class TransitAccessIngestionJob(
 
     private const double EarthRadiusKm = 6371.0088;
 
-    public async Task RunAsync(CancellationToken ct)
+    /// <summary>Hangfire's entry point (see Program.cs); the outcome only matters to SemtSkoru.Ingest.</summary>
+    public async Task RunAsync(CancellationToken ct) => await IngestAsync(ct);
+
+    public async Task<IngestionOutcome> IngestAsync(CancellationToken ct)
     {
         IReadOnlyList<TransitStopDto> stops;
         try
@@ -79,8 +82,7 @@ public sealed class TransitAccessIngestionJob(
         }
         catch (Exception ex)
         {
-            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.TransitAccess, "İETT bus stop data fetch failed");
-            return;
+            return IngestionOutcome.RunFailed(logger, ex, IngestionSyncStatusReader.TransitAccess, "İETT bus stop data fetch failed");
         }
 
         var neighborhoods = await db.Neighborhoods.ToListAsync(ct);
@@ -115,6 +117,7 @@ public sealed class TransitAccessIngestionJob(
         }
 
         var now = timeProvider.GetUtcNow();
+        var districtsUpdated = 0;
 
         foreach (var neighborhood in neighborhoods)
         {
@@ -161,9 +164,12 @@ public sealed class TransitAccessIngestionJob(
                 existing.StopDensityPerKm2 = density;
                 existing.Source = metadata;
             }
+
+            districtsUpdated++;
         }
 
         await db.SaveChangesAsync(ct);
+        return IngestionOutcome.Completed(logger, IngestionSyncStatusReader.TransitAccess, stops.Count, districtsUpdated);
     }
 
     // Guards a degenerate/zero-area boundary from ever producing Infinity/NaN - not expected for

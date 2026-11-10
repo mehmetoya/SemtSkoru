@@ -27,7 +27,7 @@ public sealed class ParkingIngestionJob(
     IParkingApiClient client,
     AppDbContext db,
     ILogger<ParkingIngestionJob> logger,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : IIngestionJob
 {
     private const string SourceName = "İBB İSPARK Otopark Doluluk Bilgisi";
     private const string SourceUrl = "https://api.ibb.gov.tr/ispark/Park";
@@ -46,7 +46,10 @@ public sealed class ParkingIngestionJob(
         ["EYÜPSULTAN"] = "EYÜP",
     };
 
-    public async Task RunAsync(CancellationToken ct)
+    /// <summary>Hangfire's entry point (see Program.cs); the outcome only matters to SemtSkoru.Ingest.</summary>
+    public async Task RunAsync(CancellationToken ct) => await IngestAsync(ct);
+
+    public async Task<IngestionOutcome> IngestAsync(CancellationToken ct)
     {
         IReadOnlyList<ParkingFacilityDto> facilities;
         try
@@ -55,12 +58,12 @@ public sealed class ParkingIngestionJob(
         }
         catch (Exception ex)
         {
-            IngestionLog.RunFailed(logger, ex, IngestionSyncStatusReader.Parking, "İSPARK parking facility fetch failed");
-            return;
+            return IngestionOutcome.RunFailed(logger, ex, IngestionSyncStatusReader.Parking, "İSPARK parking facility fetch failed");
         }
 
         var neighborhoods = await db.Neighborhoods.ToListAsync(ct);
         var now = timeProvider.GetUtcNow();
+        var districtsUpdated = 0;
 
         foreach (var neighborhood in neighborhoods)
         {
@@ -115,8 +118,11 @@ public sealed class ParkingIngestionJob(
                 existing.FacilityCount = districtFacilities.Count;
                 existing.Source = metadata;
             }
+
+            districtsUpdated++;
         }
 
         await db.SaveChangesAsync(ct);
+        return IngestionOutcome.Completed(logger, IngestionSyncStatusReader.Parking, facilities.Count, districtsUpdated);
     }
 }
