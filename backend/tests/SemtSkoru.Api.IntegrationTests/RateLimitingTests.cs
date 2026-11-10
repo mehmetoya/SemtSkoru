@@ -30,9 +30,6 @@ public class RateLimitingTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await _postgres.DisposeAsync();
 
-    // Keep the factory owned by the individual test, not the xUnit test instance lifecycle.
-    // This guarantees it stays alive until every request has completed and makes its disposal
-    // order explicit, including when tests are run concurrently with other test classes.
     private WebApplicationFactory<Program> CreateFactory() =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString()));
