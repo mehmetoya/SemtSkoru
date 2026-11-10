@@ -163,7 +163,16 @@ Bu monitörü keep-warm monitörünün **yerine değil, yanına** ekle: `/health
 dokunuyor ve veri bayatken bilerek `503` veriyor; container'ı uyanık tutma işi `/health`'te
 kalmalı.
 
-## 5. Yerel İBB ingestion (Türkiye'deki bir Mac'ten)
+## 5. Yerel İBB ingestion (Türkiye'deki bir Mac'ten, isteğe bağlı)
+
+> **Şu anki durum (2026-11-10):** Üretimde İBB verisini **otomatik çeken bir yer yok.** Mac'teki
+> LaunchAgent kaldırıldı; proje sahibi Mac'ini sürekli bunun için kullanmak istemedi ve ücretsiz
+> bulut sağlayıcılarının (AWS, GCP, Azure, Oracle) Türkiye'de bölgesi yok. Son tam veri çekimi
+> 2026-11-10. O tarihten sonra hava kalitesi ve otopark ~2,5 gün içinde, diğerleri ~2 hafta içinde
+> UI'da **"bayat veri"** olarak işaretleniyor ve `/health/data` 503 dönüyor. Bu kasıtlı ve dürüst bir
+> durum: veri hiçbir zaman olduğundan taze gösterilmiyor. Veriyi tazelemek için Türkiye'deki
+> herhangi bir makineden aşağıdaki **Elle çalıştırma** adımı yeterli; otomatik hâle getirmek için
+> aşağıdaki kurulum (Mac) veya Türkiye'de bir VPS gerekiyor.
 
 ### Neden
 
@@ -284,6 +293,21 @@ scripts/local-ingestion/run-now.sh --list           # durum, hiçbir şey çalı
 
 İlki `launchctl kickstart gui/$(id -u)/com.semtskoru.ingest` ile aynı şey. Job adları:
 `air-quality`, `parking`, `health-access`, `transit-access`, `green-space`, `traffic`.
+
+**Kurulum yapmadan, tek seferlik** (Türkiye'deki herhangi bir makinede .NET 10 SDK ve repo
+kopyasıyla; LaunchAgent ya da Keychain gerekmez). Bağlantı dizesi ekranda görünmeden okunur ve
+yalnızca bu komutun ortamına verilir. Render'daki `ConnectionStrings__Default` değerini yapıştır:
+
+```bash
+read -rs -p "ConnectionStrings__Default: " CS && echo
+cd backend && ConnectionStrings__Default="$CS" dotnet run -c Release --project src/SemtSkoru.Ingest -- all
+unset CS
+```
+
+Runner işlere başlamadan önce tek bir giriş denemesi yapar. Şifre yanlışsa tekrar tekrar deneme,
+çünkü Supabase birkaç başarısız girişten sonra bağlantıları bir süre engelliyor. Yeşil alan
+kaynağı 53 MB'lık bir dosya ve İBB bazen indirmeyi yarıda kesiyor; o iş başarısız olursa
+yalnızca onu yeniden çalıştır (`-- green-space`).
 
 ### Kaldırma
 

@@ -31,7 +31,7 @@ AI Semt Asistanı, isteğe göre 2-3 ilçe önerip nedenini gerçek skorlara day
 - Her ilçe sayfasında "Öne Çıkan Özellikler" AI özeti ve "Zaman İçindeki Değişim" AI trend özeti (yalnızca gerçek, anlamlı bir skor değişimi olduğunda gösterilir)
 - Karşılaştırma sayfasında iki ilçenin hangi boyut(lar)da öne çıktığını özetleyen bir AI "Karşılaştırma Özeti"
 - Dört AI özelliği de yalnızca uygulamanın kendi gerçek skor verisine atıfta bulunur; veri yoksa veya bir iddia doğrulanamıyorsa metin hiç gösterilmez, asla uydurulmaz
-- Veri tazeliği izlenir: `GET /health/data`, bir kaynağın son başarılı senkronizasyonu beklenen sıklığın gerisinde kalınca 503 döner, böylece bir uptime monitörü (UptimeRobot) veri bayatladığında e-posta ile haber verir
+- Veri tazeliği izlenir: `GET /health/data`, bir kaynağın son başarılı senkronizasyonu beklenen sıklığın gerisinde kalınca 503 döner, böylece veri tazeliği bir uptime monitörüyle de izlenebilir
 
 ## Mimari
 
@@ -83,8 +83,8 @@ API, paylaşılan DB bağlantı havuzunu korumak için global bir eşzamanlılı
 | Mimari | Clean Architecture | Domain hiçbir dış bağımlılığa sahip değil; kaynak/DB değişimi izole |
 | ORM | EF Core + Npgsql | PostGIS geometry tipleriyle native entegrasyon |
 | Coğrafi veri | PostgreSQL + PostGIS, NetTopologySuite | İlçe sınırları, mesafe hesapları (Haversine) |
-| Zamanlanmış işler | Hangfire (+ Postgres storage), macOS launchd | Gemini job'ları Render'da Hangfire ile; İBB ingestion'ı Türkiye'deki Mac'te launchd ile |
-| İzleme | UptimeRobot + `/health`, `/health/data` | Soğuk başlangıcı önleme ve bayat veri uyarısı |
+| Zamanlanmış işler | Hangfire (+ Postgres storage) | Gemini job'ları Render'da Hangfire ile; İBB ingestion'ı Türkiye'den `SemtSkoru.Ingest` ile (isteğe bağlı launchd kurulumu hazır) |
+| İzleme | UptimeRobot + `/health`, `/health/data` | Soğuk başlangıcı önleme; veri tazeliği durumu |
 | API dokümantasyonu | Scalar (OpenAPI) | Sıfır ekstra paket, .NET'in native `AddOpenApi()`'si üzerine |
 | Frontend framework | Next.js 16 (App Router) + TypeScript (strict) | Sunucu/istemci bileşen ayrımı, dosya tabanlı routing |
 | Data fetching | TanStack Query | Cache, loading/error state yönetimi |
@@ -105,7 +105,7 @@ API, paylaşılan DB bağlantı havuzunu korumak için global bir eşzamanlılı
     SemtSkoru.Application/     → Scoring servisi
     SemtSkoru.Infrastructure/  → EF Core, dış API client'ları, Hangfire ingestion job'ları
     SemtSkoru.Api/             → ASP.NET Core Web API, endpoint'ler
-    SemtSkoru.Ingest/          → İBB ingestion job'larını Hangfire'sız, bir kez çalıştıran konsol runner'ı (Türkiye'deki Mac'ten)
+    SemtSkoru.Ingest/          → İBB ingestion job'larını Hangfire'sız, bir kez çalıştıran konsol runner'ı (Türkiye'deki bir makineden)
   tests/                          → xUnit (Domain/Application unit, Api/Ingest Testcontainers integration)
   Dockerfile                      → Render deploy'u için multi-stage build
 /web
@@ -117,7 +117,7 @@ docs/
   data-sources.md                 → Her veri kaynağının canlı doğrulanmış endpoint/lisans/güncellik bilgisi
   deployment.md                   → Ücretsiz katmanlarla adım adım yayına alma
 render.yaml                       → Render Blueprint (Docker web service tanımı)
-scripts/local-ingestion/         → İBB ingestion'ı macOS launchd ile çalıştıran kurulum/kaldırma betikleri
+scripts/local-ingestion/         → İBB ingestion'ı macOS launchd ile otomatik çalıştıran (isteğe bağlı, şu an kurulu değil) kurulum/kaldırma betikleri
 .github/workflows/                → CI (build+test), deploy-frontend (Vercel CLI ile otomatik deploy) ve keep-warm (yedek uyandırıcı; asıl uyandırıcı UptimeRobot)
 SPEC.md, tasks/plan.md              → Ürün spesifikasyonu ve uygulama planı
 ```
@@ -187,14 +187,14 @@ flowchart TB
     GH -->|"otomatik deploy"| VERCEL["Vercel<br/>Next.js Frontend"]
     GH -->|"otomatik deploy"| RENDER["Render Free<br/>ASP.NET Core API + Hangfire"]
     RENDER <-->|"Session Pooler"| SUPABASE[("Supabase Free<br/>Postgres + PostGIS")]
-    UPTIME["UptimeRobot"] -->|"5 dakikada bir /health<br/>+ /health/data (bayat veri uyarısı)"| RENDER
+    UPTIME["UptimeRobot"] -->|"5 dakikada bir /health"| RENDER
     CRON["GitHub Actions<br/>keep-warm.yml (yedek)"] -->|"GET /health"| RENDER
-    MAC["Mac (Türkiye)<br/>launchd + SemtSkoru.Ingest"] -->|"İBB verisi (günde 3 deneme, --due)"| SUPABASE
+    MAC["Türkiye'deki bir makine<br/>SemtSkoru.Ingest (elle)"] -.->|"İBB verisi (ara sıra)"| SUPABASE
     VERCEL -->|"fetch /api/*"| RENDER
     KULLANICI((Kullanıcı)) --> VERCEL
 ```
 
-Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur. Bunu UptimeRobot önler: her 5 dakikada bir `/health`'e istek atarak container'ı uyanık tutar. `keep-warm.yml` yalnızca yedektir, çünkü GitHub zamanlanmış workflow'ları kısıtlıyor ve pratikte birkaç saatte bir çalıştırıyor. Container uyanınca Hangfire, süresi geçmiş Gemini job'larını kendiliğinden kuyruğa alır. İkinci bir UptimeRobot monitörü `/health/data`'yı izler ve bir veri kaynağı bayatladığında e-posta gönderir. İBB sunucuları yalnızca Türkiye IP'lerini kabul ettiği için İBB ingestion job'ları Render'da kapalı (`Ingestion__IbbJobsEnabled=false`); onları Türkiye'deki bir Mac launchd ile çalıştırıp aynı Supabase veritabanına yazıyor (bkz. [`docs/deployment.md`](docs/deployment.md), bölüm 5). Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
+Render'ın ücretsiz planı ~15 dakika hareketsizlikten sonra container'ı durdurur. Bunu UptimeRobot önler: her 5 dakikada bir `/health`'e istek atarak container'ı uyanık tutar. `keep-warm.yml` yalnızca yedektir, çünkü GitHub zamanlanmış workflow'ları kısıtlıyor ve pratikte birkaç saatte bir çalıştırıyor. Container uyanınca Hangfire, süresi geçmiş Gemini job'larını kendiliğinden kuyruğa alır. İBB sunucuları yalnızca Türkiye IP'lerini kabul ettiği için İBB ingestion job'ları Render'da kapalı (`Ingestion__IbbJobsEnabled=false`). **Şu anda üretimde İBB verisini otomatik çeken bir yer yok**: veri, Türkiye'deki bir makineden `SemtSkoru.Ingest` ile ara sıra elle tazeleniyor (son tam çekim 2026-11-10). Arada kalan sürede veri UI'da açıkça "bayat" olarak işaretlenir ve `/health/data` 503 döner; otomatik hâle getirmek için Türkiye'de bir makine (Mac + launchd kurulumu hazır) ya da VPS gerekiyor (bkz. [`docs/deployment.md`](docs/deployment.md), bölüm 5 — elle tek seferlik çalıştırma komutu da orada). Adım adım kurulum (Supabase → Render → Vercel → GitHub secret) için bkz. [`docs/deployment.md`](docs/deployment.md).
 
 ## Veri Kaynakları ve Lisansları
 
