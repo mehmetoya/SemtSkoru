@@ -380,6 +380,59 @@ public class ScoreSnapshotJobTests : IAsyncLifetime
         }
     }
 
+    // Mirrors DistrictSummaryGenerationJobTests's equivalent: a stored trend whose signature still
+    // matches but whose text fails AiProse.IsPresentable (here a raw "airQuality" key) must be
+    // regenerated and replaced, while a clean row with a matching signature is still skipped.
+    [Fact]
+    public async Task RunAsync_regenerates_a_stored_trend_whose_text_is_no_longer_presentable_even_if_the_comparison_is_unchanged()
+    {
+        await SeedOrUpdateAirQualityAsync(0);
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, T0, new FakeHttpMessageHandler(_ => GeminiJson(ValidModelResponse))).RunAsync(CancellationToken.None);
+        }
+
+        await SeedOrUpdateAirQualityAsync(500);
+
+        var signature = DistrictTrendSignature.Compute([new DimensionDelta("airQuality", 100, 0)]);
+        await using (var context = CreateContext())
+        {
+            context.DistrictTrendSummaries.AddRange(
+                new DistrictTrendSummary
+                {
+                    NeighborhoodId = "kadikoy",
+                    Locale = "tr",
+                    SummaryText = "Kadıköy'ün airQuality skoru 100'den 0'a düştü.",
+                    GeneratedAt = T0.AddDays(7),
+                    ComparisonSignature = signature,
+                },
+                new DistrictTrendSummary
+                {
+                    NeighborhoodId = "kadikoy",
+                    Locale = "en",
+                    SummaryText = "Kadıköy's air quality score dropped from 100 to 0.",
+                    GeneratedAt = T0.AddDays(7),
+                    ComparisonSignature = signature,
+                });
+            await context.SaveChangesAsync();
+        }
+
+        var callCount = 0;
+        var countingHandler = new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); });
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, T0.AddDays(8), countingHandler).RunAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(1, callCount); // only the unpresentable "tr" row.
+        await using (var context = CreateContext())
+        {
+            var trends = await context.DistrictTrendSummaries.Where(t => t.NeighborhoodId == "kadikoy").ToListAsync();
+            Assert.Equal("Bu ilçenin hava kalitesi skoru belirgin şekilde azaldı.", Assert.Single(trends, t => t.Locale == "tr").SummaryText);
+            Assert.Equal("Kadıköy's air quality score dropped from 100 to 0.", Assert.Single(trends, t => t.Locale == "en").SummaryText);
+        }
+    }
+
     [Fact]
     public async Task RunAsync_still_takes_a_snapshot_but_writes_no_trend_when_gemini_is_not_configured()
     {

@@ -90,6 +90,7 @@ public sealed class DistrictTrendService(IDistrictAssistantAiClient aiClient) : 
            değerdir, çeviri konusu değildir. "summary" metninde bir boyuttan bahsederken KESİNLİKLE
            bu ham JSON anahtarını (ör. "greenSpace") DEĞİL, şu doğal adı kullan:
            {{AiLocale.DimensionDisplayNamesLine(locale)}}
+        7. {{AiProse.DistrictNameSpacingRule}}
         """;
 
     public async Task<DistrictTrendOutcome> GenerateTrendAsync(
@@ -141,6 +142,13 @@ public sealed class DistrictTrendService(IDistrictAssistantAiClient aiClient) : 
 
         var summaryText = parsed.Summary?.Trim();
         if (string.IsNullOrEmpty(summaryText) || summaryText.Length > MaxSummaryLength)
+        {
+            return DistrictTrendOutcome.NoUsableSummary;
+        }
+
+        // Grounded is not the same as presentable - same check, and same reject-don't-repair
+        // reasoning, as ComparisonSummaryService; see AiProse's remarks.
+        if (!AiProse.IsPresentable(summaryText, neighborhoodName))
         {
             return DistrictTrendOutcome.NoUsableSummary;
         }
@@ -238,9 +246,12 @@ public sealed class DistrictTrendService(IDistrictAssistantAiClient aiClient) : 
         return result;
     }
 
+    // PromptJsonEncoder keeps "Beşiktaş"/"Kadıköy" as real letters in the prompt instead of
+    // "\u015F"-style escapes - see AiProse.PromptJsonEncoder. Has no effect on parsing the reply.
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        Encoder = AiProse.PromptJsonEncoder,
     };
 
     private sealed record TrendContext(

@@ -219,14 +219,67 @@ public class DistrictAssistantServiceTests
         await CreateService(aiClient).GetRecommendationsAsync("Çocuklu bir aileyiz, yeşil alan önemli", "tr", CancellationToken.None);
 
         Assert.NotNull(aiClient.CapturedUserPrompt);
-        // The real score (83) for a fully-scored district must be present verbatim...
-        Assert.Contains("\"overallScore\":83", aiClient.CapturedUserPrompt);
+        // The real score (83) for a fully-scored district must be present verbatim (keyed by its
+        // natural Turkish name - see the identifier-leak test below for why)...
+        Assert.Contains("\"genel skor\":83", aiClient.CapturedUserPrompt);
+        Assert.Contains("\"yeşil alan\":83", aiClient.CapturedUserPrompt);
         // ...and besiktas's missing green space dimension must show up as an honest null, never
         // a made-up number - this is the same "Veri yok" boundary as the rest of the app.
         Assert.Contains("\"besiktas\"", aiClient.CapturedUserPrompt);
         var besiktasIndex = aiClient.CapturedUserPrompt!.IndexOf("\"besiktas\"", StringComparison.Ordinal);
         var besiktasBlock = aiClient.CapturedUserPrompt[besiktasIndex..Math.Min(besiktasIndex + 200, aiClient.CapturedUserPrompt.Length)];
-        Assert.Contains("\"greenSpace\":null", besiktasBlock);
+        Assert.Contains("\"yeşil alan\":null", besiktasBlock);
+    }
+
+    // Regression test for a live bug (2026-11-10): the assistant explained Fatih as "84 greenSpace
+    // skoru ile ... 100 healthAccess skoru ile ..." because the prompt sent every score under its
+    // camelCase JSON key and the model cited it by the only name it had. The model can't copy an
+    // identifier it was never shown, so this asserts NOTHING sent to the AI client - user prompt
+    // or system instruction, in either locale - contains one, and that the scores arrive under
+    // the same natural names the UI uses instead.
+    [Theory]
+    [InlineData("tr", "\"yeşil alan\":83", "\"sağlık erişimi\":83", "\"genel skor\":83")]
+    [InlineData("en", "\"green space\":83", "\"healthcare access\":83", "\"overall score\":83")]
+    public async Task GetRecommendationsAsync_never_shows_the_model_a_camelCase_dimension_key(
+        string locale, string expectedGreenSpace, string expectedHealthAccess, string expectedOverall)
+    {
+        var aiClient = new FakeAiClient { Response = """{"recommendations":[{"id":"kadikoy","reasoning":"x"}]}""" };
+
+        await CreateService(aiClient).GetRecommendationsAsync("yeşil alan önemli", locale, CancellationToken.None);
+
+        var everythingSent = aiClient.CapturedSystemInstruction + "\n" + aiClient.CapturedUserPrompt;
+        foreach (var key in new[] { "airQuality", "greenSpace", "healthAccess", "transitAccess", "overallScore" })
+        {
+            Assert.DoesNotContain(key, everythingSent, StringComparison.Ordinal);
+        }
+
+        if (locale == "tr")
+        {
+            // "transportation"/"parking" are English words, so only a Turkish prompt can prove
+            // they aren't being used as keys either.
+            Assert.DoesNotContain("\"transportation\"", aiClient.CapturedUserPrompt, StringComparison.Ordinal);
+            Assert.DoesNotContain("\"parking\"", aiClient.CapturedUserPrompt, StringComparison.Ordinal);
+        }
+
+        Assert.Contains(expectedGreenSpace, aiClient.CapturedUserPrompt);
+        Assert.Contains(expectedHealthAccess, aiClient.CapturedUserPrompt);
+        Assert.Contains(expectedOverall, aiClient.CapturedUserPrompt);
+    }
+
+    // District names must reach the model as the real words it is expected to write back -
+    // System.Text.Json's default encoder would send "Kadıköy" instead (see
+    // AiProse.PromptJsonEncoder) - and the name-spacing rule must be part of the instruction.
+    [Fact]
+    public async Task GetRecommendationsAsync_sends_district_names_as_literal_text_not_unicode_escapes()
+    {
+        var aiClient = new FakeAiClient { Response = """{"recommendations":[]}""" };
+
+        await CreateService(aiClient).GetRecommendationsAsync("bir istek", "tr", CancellationToken.None);
+
+        Assert.Contains("\"Kadıköy\"", aiClient.CapturedUserPrompt);
+        Assert.Contains("\"Beşiktaş\"", aiClient.CapturedUserPrompt);
+        Assert.DoesNotContain(@"\u", aiClient.CapturedUserPrompt);
+        Assert.Contains("Beşiktaşhava kalitesi", aiClient.CapturedSystemInstruction); // the rule's own "YANLIŞ" example.
     }
 
     [Fact]

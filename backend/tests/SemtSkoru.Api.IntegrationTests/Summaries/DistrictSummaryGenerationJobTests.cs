@@ -208,6 +208,51 @@ public class DistrictSummaryGenerationJobTests : IAsyncLifetime
         Assert.Equal(4, callCount);
     }
 
+    // A row saved before DistrictSummaryService started rejecting unpresentable prose still has a
+    // matching signature, so the signature check alone would keep it forever. It must instead be
+    // regenerated and replaced, while a clean row with a matching signature is still skipped.
+    [Fact]
+    public async Task RunAsync_regenerates_a_stored_summary_whose_text_is_no_longer_presentable_even_if_scores_are_unchanged()
+    {
+        await SeedOneScoredDistrictAsync();
+        await using (var context = CreateContext())
+        {
+            context.DistrictSummaries.AddRange(
+                new DistrictSummary
+                {
+                    NeighborhoodId = "kadikoy",
+                    Locale = "tr",
+                    SummaryText = "Kadıköyhava kalitesinde güçlü.",
+                    GeneratedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                    ScoreSignature = "100|null|null|null|null|null", // matches AqiIndex=0 -> score 100.
+                },
+                new DistrictSummary
+                {
+                    NeighborhoodId = "kadikoy",
+                    Locale = "en",
+                    SummaryText = "Kadıköy is strong in air quality.",
+                    GeneratedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                    ScoreSignature = "100|null|null|null|null|null",
+                });
+            await context.SaveChangesAsync();
+        }
+
+        var callCount = 0;
+        var handler = new FakeHttpMessageHandler(_ => { callCount++; return GeminiJson(ValidModelResponse); });
+        await using (var context = CreateContext())
+        {
+            await CreateJob(context, handler).RunAsync(CancellationToken.None);
+        }
+
+        Assert.Equal(1, callCount); // only the unpresentable "tr" row.
+        await using (var context = CreateContext())
+        {
+            var summaries = await context.DistrictSummaries.Where(s => s.NeighborhoodId == "kadikoy").ToListAsync();
+            Assert.Equal("Bu ilçe hava kalitesinde güçlü.", Assert.Single(summaries, s => s.Locale == "tr").SummaryText);
+            Assert.Equal("Kadıköy is strong in air quality.", Assert.Single(summaries, s => s.Locale == "en").SummaryText);
+        }
+    }
+
     // The specific per-locale-independent skip behavior the brief calls out explicitly: a locale
     // that already has an up-to-date row must be skipped, while a locale with NO row yet (the
     // exact state every "en" row is in immediately after this app added locale support, until the

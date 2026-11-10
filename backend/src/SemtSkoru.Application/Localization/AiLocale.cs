@@ -85,8 +85,20 @@ public static class AiLocale
     /// for in prose instead of the literal key. See <see cref="DimensionDisplayName"/>.</summary>
     public static string DimensionDisplayNamesLine(string? locale)
     {
-        string[] keys = ["airQuality", "greenSpace", "transportation", "parking", "healthAccess", "transitAccess"];
-        var pairs = keys.Select(k => $"{k}=\"{DimensionDisplayName(k, locale)}\"");
+        var pairs = DimensionKeys.Select(k => $"{k}=\"{DimensionDisplayName(k, locale)}\"");
         return string.Join(", ", pairs);
     }
+
+    /// <summary>The six dimension keys in the fixed canonical order used everywhere else in this
+    /// app (see e.g. DistrictSummarySignature.Compute).</summary>
+    public static readonly IReadOnlyList<string> DimensionKeys =
+        ["airQuality", "greenSpace", "transportation", "parking", "healthAccess", "transitAccess"];
+
+    /// <summary>The overall score's natural-language name in the given locale - the same words
+    /// web/messages/{tr,en}.json's "overallScoreLabel" shows, lowercased for mid-sentence prose.
+    /// Only the AI Semt Asistanı's prompt carries an overall score, and it keys it by this name
+    /// rather than the camelCase "overallScore" for the same reason as
+    /// <see cref="DimensionDisplayName"/>: see DistrictAssistantService.BuildUserPrompt.</summary>
+    public static string OverallScoreDisplayName(string? locale) =>
+        NormalizeOrDefault(locale) == English ? "overall score" : "genel skor";
 }

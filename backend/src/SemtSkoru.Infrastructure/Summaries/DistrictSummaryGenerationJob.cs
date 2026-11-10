@@ -98,8 +98,15 @@ public sealed class DistrictSummaryGenerationJob(
             {
                 ct.ThrowIfCancellationRequested();
 
+                // Unchanged scores only justify a skip if the stored text would still pass today's
+                // presentability check (AiProse.IsPresentable - the same one DistrictSummaryService
+                // now runs before anything is stored). A row written before that check existed,
+                // with a raw "greenSpace" key or a name run into the next word, would otherwise be
+                // kept for as long as the scores don't move - mirrors ComparisonSummaryOrchestrator.
                 var existing = existingSummaries.GetValueOrDefault((id, locale));
-                if (existing is not null && existing.ScoreSignature == signature)
+                if (existing is not null
+                    && existing.ScoreSignature == signature
+                    && AiProse.IsPresentable(existing.SummaryText, name))
                 {
                     logger.LogInformation(
                         "Skipping {Locale} district summary for {NeighborhoodId}: scores unchanged since {GeneratedAt}",
