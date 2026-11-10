@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using SemtSkoru.Api.Boundaries;
 using SemtSkoru.Api.RateLimiting;
 using SemtSkoru.Application.Comparisons;
 using SemtSkoru.Application.Localization;
@@ -25,13 +26,14 @@ public static class NeighborhoodEndpoints
 
     public static void MapNeighborhoodEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/neighborhoods", async (HttpContext context, AppDbContext db, INeighborhoodScoringService scoringService, CancellationToken ct) =>
+        app.MapGet("/api/neighborhoods", async (HttpContext context, SimplifiedNeighborhoodCache neighborhoodCache, INeighborhoodScoringService scoringService, CancellationToken ct) =>
         {
             SetCacheHeader(context);
-            var neighborhoods = await db.Neighborhoods
-                .OrderBy(n => n.Name)
-                .Select(n => new { n.Id, n.Name, n.Boundary })
-                .ToListAsync(ct);
+            // Display-simplified boundaries (~123 KB gzipped instead of ~304 KB), computed once
+            // and cached - see BoundarySimplifier for the tolerance reasoning and
+            // SimplifiedNeighborhoodCache for why the whole id/name/boundary projection is cached.
+            // Same JSON shape as before: still a GeoJSON Polygon/MultiPolygon per district.
+            var neighborhoods = await neighborhoodCache.GetAllAsync(ct);
 
             // Bulk-scored (a handful of queries total, not one round trip per neighborhood) -
             // live-verified that 39 sequential GetScoreAsync calls took ~21s end to end against

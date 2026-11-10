@@ -10,9 +10,11 @@ function ringsOf(boundary: GeoJSON.Geometry): Ring[] {
   return [];
 }
 
-// A district's real OSM/Nominatim boundary (also used at full precision by the actual map
-// in NeighborhoodMap.tsx) can carry several thousand vertices - live-measured on the
+// A district's real OSM/Nominatim boundary (the same geometry the actual map in
+// NeighborhoodMap.tsx draws) can carry several thousand vertices - live-measured on the
 // largest one (Şile's coastline), 4,118 points for a ring rendered at 36-48 CSS px here.
+// The API now serves it pre-simplified to ~5 m for that map (see the backend's
+// BoundarySimplifier), which still leaves well over a thousand points on the largest ones.
 // That's several thousand points of precision for a shape a few dozen pixels wide - most
 // of them sub-pixel and visually meaningless, but every one of them was still being
 // embedded verbatim as literal text in this icon's SVG path (this component runs
