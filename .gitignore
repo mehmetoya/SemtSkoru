@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+
+# .NET
+backend/**/bin/
+backend/**/obj/
+.vercel
+.env*

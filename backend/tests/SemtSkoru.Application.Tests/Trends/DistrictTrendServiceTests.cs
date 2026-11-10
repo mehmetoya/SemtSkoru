@@ -1,0 +1,340 @@
+using SemtSkoru.Application.Assistant;
+using SemtSkoru.Application.Trends;
+
+namespace SemtSkoru.Application.Tests.Trends;
+
+// Mirrors DistrictSummaryServiceTests's role for this feature: SemtSkoru's "never fabricate"
+// principle extends here as "never let the model's text past validation unless every change it
+// cites is one of the real, already-computed deltas it was given, with the real direction of
+// that delta" - and separately, "never even ask the model anything when there's nothing real to
+// compare" (the cold-start-shaped case: an empty delta list). These tests prove both boundaries
+// hold even when the model misbehaves, not just that they should in theory. Locale ("tr"/"en" -
+// see AiLocale) only ever changes the free-text "summary" the model wrote - the
+// grounding/validation logic below has no locale-specific branch and this file proves that stays
+// true for both supported locales.
+public class DistrictTrendServiceTests
+{
+    private static readonly DimensionDelta ParkingIncrease = new("parking", 45, 67);
+    private static readonly DimensionDelta AirQualityDecrease = new("airQuality", 80, 60);
+
+    private static DistrictTrendService CreateService(FakeAiClient aiClient) => new(aiClient);
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_NoMeaningfulChange_without_calling_the_ai_when_given_no_deltas()
+    {
+        // This is exactly the shape of the cold-start state ScoreSnapshotJob is in for every
+        // district until a baseline snapshot old enough to compare exists - see that job's
+        // remarks. It never actually calls this service with an empty list (it skips first,
+        // saving the Gemini call AND the pacing delay), but this service must never assume that
+        // guarantee holds and must degrade the same honest way if it ever were called like this.
+        var aiClient = new FakeAiClient { Response = "irrelevant" };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Üsküdar", [], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NoMeaningfulChange, outcome.Kind);
+        Assert.Null(outcome.SummaryText);
+        Assert.False(aiClient.WasCalled);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_Ok_with_a_valid_grounded_change()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"changes":[{"dimension":"parking","direction":"increased"}],
+                 "summary":"Otopark skoru belirgin şekilde arttı."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal("Otopark skoru belirgin şekilde arttı.", outcome.SummaryText);
+    }
+
+    // Mirrors the test above but for the "en" locale with English free-text "summary" - proves
+    // the hallucination gate (dimension must be one of the given deltas, direction must match the
+    // real sign) doesn't care what language the free text came back in.
+    [Fact]
+    public async Task GenerateTrendAsync_returns_Ok_with_a_valid_grounded_change_in_english_locale()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"changes":[{"dimension":"parking","direction":"increased"}],
+                 "summary":"The parking score increased significantly."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "en", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal("The parking score increased significantly.", outcome.SummaryText);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_drops_a_hallucinated_dimension_key_but_keeps_a_real_one()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"changes":[
+                    {"dimension":"parking","direction":"increased"},
+                    {"dimension":"denizManzarasi","direction":"increased"}
+                 ],
+                 "summary":"Otopark skoru belirgin şekilde arttı."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal("Otopark skoru belirgin şekilde arttı.", outcome.SummaryText);
+    }
+
+    // THE key hallucination-rejection test: a change that names a REAL delta's dimension but
+    // claims the WRONG direction is just as much an unsupported/false claim as an invented
+    // district fact would be - it must never reach a caller.
+    [Fact]
+    public async Task GenerateTrendAsync_rejects_the_entire_summary_when_every_change_claims_the_wrong_direction()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"changes":[{"dimension":"parking","direction":"decreased"}],
+                 "summary":"Otopark skoru azaldı."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
+        Assert.Null(outcome.SummaryText);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_rejects_a_change_citing_a_dimension_that_was_not_in_the_given_delta_list()
+    {
+        // "airQuality" IS one of the 6 real dimensions, but it was not part of THIS request's
+        // delta list - citing it here is just as unsupported as an invented dimension name.
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"changes":[{"dimension":"airQuality","direction":"decreased"}],
+                 "summary":"Hava kalitesi azaldı."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_grounds_multiple_real_changes_with_correct_directions()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """
+                {"changes":[
+                    {"dimension":"parking","direction":"increased"},
+                    {"dimension":"airQuality","direction":"decreased"}
+                 ],
+                 "summary":"Otopark skoru arttı, hava kalitesi skoru azaldı."}
+                """,
+        };
+
+        var outcome = await CreateService(aiClient)
+            .GenerateTrendAsync("Kadıköy", [ParkingIncrease, AirQualityDecrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
+        Assert.Equal("Otopark skoru arttı, hava kalitesi skoru azaldı.", outcome.SummaryText);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_NoUsableSummary_when_changes_is_empty_even_with_summary_text()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """{"changes":[],"summary":"Bir şeyler değişti."}""",
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_NoUsableSummary_when_the_summary_text_is_empty()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """{"changes":[{"dimension":"parking","direction":"increased"}],"summary":""}""",
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_NoUsableSummary_when_the_summary_text_is_unreasonably_long()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = $$"""{"changes":[{"dimension":"parking","direction":"increased"}],"summary":"{{new string('a', 500)}}"}""",
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_NoUsableSummary_when_the_response_is_not_valid_json()
+    {
+        var aiClient = new FakeAiClient { Response = "Bu bir JSON değil, düz metin." };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_tolerates_a_markdown_code_fence_around_the_json()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = "```json\n{\"changes\":[{\"dimension\":\"parking\",\"direction\":\"increased\"}],\"summary\":\"x\"}\n```",
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.Ok, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_NotConfigured_when_the_ai_client_has_no_api_key()
+    {
+        var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantNotConfiguredException() };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NotConfigured, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_RateLimited_when_the_ai_provider_rate_limits_the_call()
+    {
+        var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantRateLimitedException() };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.RateLimited, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_returns_Unavailable_on_a_generic_upstream_failure()
+    {
+        var aiClient = new FakeAiClient { ExceptionToThrow = new AiAssistantUnavailableException("network down") };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.Unavailable, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task GenerateTrendAsync_grounds_the_prompt_in_the_real_delta_values_never_the_reason_for_the_change()
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = """{"changes":[{"dimension":"parking","direction":"increased"}],"summary":"x"}""",
+        };
+
+        await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], "tr", CancellationToken.None);
+
+        Assert.NotNull(aiClient.CapturedUserPrompt);
+        Assert.Contains("\"previousScore\":45", aiClient.CapturedUserPrompt);
+        Assert.Contains("\"currentScore\":67", aiClient.CapturedUserPrompt);
+        // Never claims to know WHY - the system instruction (not the per-request prompt) is
+        // what forbids this; verify here that no reason/cause field is even part of the shape
+        // being sent, so there is nothing for the model to latch onto.
+        Assert.DoesNotContain("reason", aiClient.CapturedUserPrompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Proves the locale actually reaches the model: the system instruction embeds a
+    // human-readable target-language name (see AiLocale.ToLanguageName), not a raw locale code,
+    // and it changes with the requested locale.
+    [Theory]
+    [InlineData("tr", "Türkçe")]
+    [InlineData("en", "English")]
+    [InlineData("es", "Türkçe")] // unrecognized - normalizes to the "tr" default, see AiLocale.
+    [InlineData(null, "Türkçe")] // missing - same default.
+    public async Task GenerateTrendAsync_embeds_the_target_language_name_for_the_requested_locale(
+        string? locale, string expectedLanguageName)
+    {
+        var aiClient = new FakeAiClient { Response = """{"changes":[{"dimension":"parking","direction":"increased"}],"summary":"x"}""" };
+
+        await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], locale!, CancellationToken.None);
+
+        Assert.NotNull(aiClient.CapturedSystemInstruction);
+        Assert.Contains(expectedLanguageName, aiClient.CapturedSystemInstruction);
+    }
+
+    // Same two output defects observed live on 2026-11-10 in the assistant/comparison features -
+    // this feature shares the prompt shape that produced them, so it shares the check too (see
+    // AiProse). Each response below is otherwise fully grounded; only the prose is broken.
+    [Theory]
+    [InlineData("tr", "Kadıköyotopark skoru 45'ten 67'ye arttı.")]
+    [InlineData("tr", "Kadıköy'ün airQuality skoru düştü, otopark skoru arttı.")]
+    [InlineData("en", "Kadıköy's transitAccess and parking scores increased.")]
+    public async Task GenerateTrendAsync_rejects_a_grounded_summary_with_a_run_together_name_or_a_raw_dimension_key(
+        string locale, string summary)
+    {
+        var aiClient = new FakeAiClient
+        {
+            Response = $$"""{"changes":[{"dimension":"parking","direction":"increased"}],"summary":"{{summary}}"}""",
+        };
+
+        var outcome = await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [ParkingIncrease], locale, CancellationToken.None);
+
+        Assert.Equal(DistrictTrendOutcomeKind.NoUsableSummary, outcome.Kind);
+        Assert.Null(outcome.SummaryText);
+    }
+
+    [Theory]
+    [InlineData("tr", "airQuality=\"hava kalitesi\"")]
+    [InlineData("en", "airQuality=\"air quality\"")]
+    public async Task GenerateTrendAsync_prompt_carries_the_literal_name_natural_dimension_names_and_the_spacing_rule(
+        string locale, string expectedAirQualityMapping)
+    {
+        var aiClient = new FakeAiClient { Response = """{"changes":[],"summary":""}""" };
+
+        await CreateService(aiClient).GenerateTrendAsync("Kadıköy", [AirQualityDecrease], locale, CancellationToken.None);
+
+        Assert.Contains("\"name\":\"Kadıköy\"", aiClient.CapturedUserPrompt);
+        Assert.DoesNotContain(@"\u", aiClient.CapturedUserPrompt);
+        Assert.Contains(expectedAirQualityMapping, aiClient.CapturedSystemInstruction);
+        Assert.Contains("Beşiktaşhava kalitesi", aiClient.CapturedSystemInstruction); // the spacing rule's "YANLIŞ" example.
+    }
+
+    private sealed class FakeAiClient : IDistrictAssistantAiClient
+    {
+        public string Response { get; set; } = "";
+        public Exception? ExceptionToThrow { get; set; }
+        public bool WasCalled { get; private set; }
+        public string? CapturedUserPrompt { get; private set; }
+        public string? CapturedSystemInstruction { get; private set; }
+
+        public Task<string> GenerateAsync(string systemInstruction, string userPrompt, CancellationToken ct)
+        {
+            WasCalled = true;
+            CapturedSystemInstruction = systemInstruction;
+            CapturedUserPrompt = userPrompt;
+            return ExceptionToThrow is not null
+                ? Task.FromException<string>(ExceptionToThrow)
+                : Task.FromResult(Response);
+        }
+    }
+}

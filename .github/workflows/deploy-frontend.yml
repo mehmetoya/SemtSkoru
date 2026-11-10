@@ -1,0 +1,41 @@
+name: Deploy Frontend
+
+# Deploys via the Vercel CLI on every push to main, instead of relying on Vercel's own
+# GitHub integration - that integration was never actually authorized for this repo
+# (confirmed: zero webhooks exist on the GitHub repo, and `vercel git connect` fails),
+# so every push was silently NOT triggering a deploy. This workflow doesn't depend on
+# that integration at all - it needs only a Vercel API token (VERCEL_TOKEN repo secret).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/deploy-frontend.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      VERCEL_ORG_ID: team_howWPARxrsRgtFSwIzQg3QxO
+      VERCEL_PROJECT_ID: prj_0iatKZYyo9vOnxU91hf882kEcdvj
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm install --global vercel@latest
+      - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - run: vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

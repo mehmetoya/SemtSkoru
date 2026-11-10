@@ -1,0 +1,34 @@
+name: Keep-warm (free-tier cold-start avoidance + Gemini job catch-up)
+
+# The API runs on Render's free tier, which stops the container after ~15 minutes of no
+# HTTP traffic - the next real visitor then eats a cold start (usually ~30-60s, but seen
+# taking ~8 minutes on 2026-11-10).
+#
+# This workflow is a BACKUP pinger, not the primary one: the cron below asks for every 10
+# minutes, but GitHub throttles scheduled workflows and in practice runs this one only every
+# few hours, so on its own it cannot keep the container warm. The primary pinger is an
+# external uptime monitor hitting /health every 5 minutes (see docs/deployment.md, section 4).
+#
+# It still matters for the recurring jobs that run ON Render - today only the Gemini ones
+# (district-summary-generation, score-snapshot): Hangfire's recurring-job scheduler only fires
+# while the process is running, so a container asleep at its scheduled cron time (see Program.cs)
+# would simply miss it - on startup, HangfireServer checks each recurring job's next-execution
+# time against now and immediately enqueues anything overdue.
+#
+# It does NOT keep İBB data ingestion running any more: İBB only accepts Turkish IPs, so those six
+# jobs are disabled on Render (Ingestion__IbbJobsEnabled=false in render.yaml) and run from a Mac
+# in Turkey instead (scripts/local-ingestion, docs/deployment.md).
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Budget: up to 8 attempts x 90s + 7 x 15s delay ~= 14 minutes, so a slow cold start
+      # (Render holds the request while the container boots) doesn't fail the run.
+      - name: Ping API health endpoint
+        run: curl -sf --retry 7 --retry-delay 15 --max-time 90 "${{ secrets.API_BASE_URL }}/health"
