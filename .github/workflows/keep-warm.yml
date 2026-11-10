@@ -16,8 +16,8 @@ name: Keep-warm (free-tier cold-start avoidance + Gemini job catch-up)
 # time against now and immediately enqueues anything overdue.
 #
 # It does NOT keep İBB data ingestion running any more: İBB only accepts Turkish IPs, so those six
-# jobs are disabled on Render (Ingestion__IbbJobsEnabled=false in render.yaml) and run from a Mac
-# in Turkey instead (scripts/local-ingestion, docs/deployment.md).
+# jobs are disabled on Render (Ingestion__IbbJobsEnabled=false in render.yaml). İBB data is
+# refreshed manually from a machine in Turkey with SemtSkoru.Ingest (docs/deployment.md, section 5).
 on:
   schedule:
     - cron: "*/10 * * * *"
